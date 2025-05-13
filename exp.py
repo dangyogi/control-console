@@ -171,6 +171,7 @@ class exp_T(exp):
         return "T"
 
     def eval(self, instance, template):
+        assert template is not None, f"T used outside of template"
         return template
 
 T = exp_T()
@@ -281,7 +282,11 @@ class exp_getattr(exp):
         return f"{self.obj}.{self.name}"
 
     def eval(self, instance, template):
+        if Trace:
+            print(f"exp_getattr.eval: {self.obj=}, {instance=}, {template=}")
         obj = eval_exp(self.obj, instance, template)
+        if Trace:
+            print(f"... {self.obj=} evals to {obj=}")
         value = getattr(obj, self.name)
         if Trace:
             print(f"exp_getattr.eval: {self.obj=}, {obj=}, {self.name=}, {value=}")

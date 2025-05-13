@@ -145,8 +145,8 @@ if __name__ == "__main__":
     with screen.Screen_class():
         message="Hello gjpqy!"
         t = tbase(t=text(x_pos=E(1000), y_pos=E(600), size=80, text=message, max_text=message),
-                  r=rect(x_pos=S(1000), y_pos=E(600), height=80, width=300),
-                  h=hline(x_pos=S(1300), y_pos=E(600), length=40))
+                  r=rect(x_pos=T.t.x_next, y_pos=E(600), height=80, width=300),
+                  h=hline(x_pos=T.r.x_next, y_pos=E(600), length=40))
                   #r=rect(x_pos=F.S(I.t.x_right), y_pos=I.t.y_bottom, height=80, width=300),
                   #h=hline(x_pos=F.S(I.r.x_right), y_pos=I.r.y_bottom, length=40))
         t.components = (t.t, t.h, t.r)

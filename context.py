@@ -218,6 +218,8 @@ class instance(base_base):
         pass
 
     def get(self, name, template=None):
+        if Trace:
+            print(f"instance.get {name=}, {self=}, {template=}")
         return exp.eval_exp(getattr(self, name), self, template)
 
     #def do(self, name, template, **attrs):  # Don't know how to implement the attrs...
@@ -240,7 +242,10 @@ class context:
         value = getattr(self.inst, name)
         if Trace:
             print(f"... getattr got {value=}")
-        ans = exp.eval_exp(value, self, template)
+        templ = self.inst if isinstance(self.inst, template) else self.template
+        if Trace:
+            print(f"context.__getattr__ {name=}, {self.inst=}, {templ=}")
+        ans = exp.eval_exp(value, self, templ)
         if Trace:
             print(f"... eval_exp got {ans=}")
         return ans
@@ -259,50 +264,51 @@ class template(instance):
         r'''Sets width and height
         '''
         attrs = context(self, template)
+        print("template.init", template)
         x_left = 10000000
         x_right = -10000000
         y_top = 10000000
         y_bottom = -10000000
         for i, component in enumerate(attrs.components, 1):
             print("template.init doing component.init", i)
-            component.init(template)
+            component.init(self)
         for i, component in enumerate(attrs.components, 1):
             print("template.init getting pos's from component", i)
-            xl = component.get('x_left', template).i
+            xl = component.get('x_left', self).i
             if xl < x_left:
                 x_left = xl
-            xr = component.get('x_right', template).i
+            xr = component.get('x_right', self).i
             if xr > x_right:
                 x_right = xr
-            yt = component.get('y_top', template).i
+            yt = component.get('y_top', self).i
             if yt < y_top:
                 y_top = yt
-            yb = component.get('y_bottom', template).i
+            yb = component.get('y_bottom', self).i
             if yb > y_bottom:
                 y_bottom = yb
         self.width = x_right - x_left
-        assert isinstance(attrs.width, int), f"group.init got non-integer width {attrs.width}"
+        assert isinstance(attrs.width, int), f"template.init got non-integer width {attrs.width}"
         self.height = y_bottom - y_top 
-        assert isinstance(attrs.height, int), f"group.init got non-integer height {attrs.height}"
+        assert isinstance(attrs.height, int), f"template.init got non-integer height {attrs.height}"
         print(f"template.init: {attrs.width=}, {attrs.height=}")
 
     def draw(self, template=None, **kwargs):
         attrs = context(self, template, **kwargs)
-        #self.x_left = S(min(component.get('x_left', template).i
+        #self.x_left = S(min(component.get('x_left', self).i
         #                    for component in attrs.components))
-        #self.x_right = E(max(component.get('x_right', template).i
+        #self.x_right = E(max(component.get('x_right', self).i
         #                     for component in attrs.components))
         #self.width = self.x_right.i - self.x_left.i
         #self.x_center = attrs.x_right.C(attrs.width)
-        #self.y_top = S(min(component.get('y_top', template).i
+        #self.y_top = S(min(component.get('y_top', self).i
         #                   for component in attrs.components))
-        #self.y_bottom = E(max(component.get('y_bottom', template).i
+        #self.y_bottom = E(max(component.get('y_bottom', self).i
         #                      for component in attrs.components))
         #self.height = attrs.y_bottom.i - attrs.y_top.i
         #self.y_middle = attrs.y_top.C(attrs.height)
         for i, component in enumerate(attrs.components, 1):
-            print("group.draw doing component draw", i)
-            component.draw(template)
+            print("template.draw doing component draw", i)
+            component.draw(self)
 
 
 if __name__ == "__main__":
