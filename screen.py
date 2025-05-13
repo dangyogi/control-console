@@ -1,0 +1,115 @@
+# screen.py
+
+r'''The screen everything is displayed on.
+
+Use screen.register_init(init_fn) to have your init_fn called when the screen is initialized.  Your
+function will be passed the new screen object.
+
+Use screen.register_quit(quit_fn) to register your quit_fn (shutdown fn) when the screen is shutdown.
+Your function will not be passed any arguments.
+
+Use the screen object as a context manager to close the screen at the end of the with statement.
+'''
+
+from pyray import *
+
+import texture
+
+
+# log levels for set_trace_log_level calls:
+#    LOG_ALL = 0
+#    LOG_TRACE = 1
+#    LOG_DEBUG = 2
+#    LOG_INFO = 3
+#    LOG_WARNING = 4
+#    LOG_ERROR = 5
+#    LOG_FATAL = 6
+#    LOG_NONE = 7
+
+
+# For touch_device.py
+# Find the input touch device file path
+Touch_device_path = "/dev/input/by-id/usb-Siliconworks_SiW_HID_Touch_Controller-event-if00"
+
+# For text.py
+Font_dir = "/usr/share/fonts/truetype/dejavu"
+
+
+Inits = []
+Quits = []
+
+def register_init(init_fn):
+    r'''To get around cyclical imports so that anybody can import this module.
+
+    These functions are passed the initialized screen.
+
+    Can be used as a function decorator.
+    '''
+    Inits.append(init_fn)
+
+def register_quit(quit_fn):
+    r'''To get around cyclical imports so that anybody can import this module.
+
+    These functions are not passed any arguments.
+
+    Can be used as a function decorator.
+    '''
+    Quits.append(quit_fn)
+
+
+class Screen_class:
+    def __init__(self, width=1920, height=1080, background_color=SKYBLUE, trace=False):
+        global Screen
+        print(f"{width=}, {height=}")
+        self.width = width
+        self.height = height
+        self.center_x = (width - 1) // 2 + 1
+        self.center_y = (height - 1) // 2 + 1
+        self.background_color = background_color
+        self.trace = trace
+        set_trace_log_level(LOG_WARNING)
+        init_window(width, height, "Exp_console")  # width height title
+        self.render_texture = texture.texture(width, height, background_color, is_screen=True)
+        #self.draw_to_screen()
+
+        for init_fn in Inits:
+            init_fn(self)
+        Screen = self
+
+    def close(self):
+        for quit_fn in Quits:
+            quit_fn()
+        close_window()
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *excs):
+        self.close()
+        return False
+
+    def update(self, from_scratch=False):
+        r'''Directs all pyray draws to the render_texture.
+
+        Use in 'with' statement, or as function decorator.
+
+        If from_scratch is True, it will first clear the render_texture to the background_color.
+        '''
+        return self.render_texture.draw_on_texture(from_scratch=from_scratch)
+
+    def draw_to_screen(self):
+        r'''Draws the render_texture to the screen.
+        '''
+        assert texture.Current_texture is None, "screen.draw_to_screen: Current_texture is not None"
+        begin_drawing()
+        my_texture = self.render_texture.texture.texture
+        #draw_texture(my_texture, x, y, WHITE)
+        # inverted height here to flip image which reverse openGL flip wrt raylib.
+        draw_texture_rec(my_texture, (0, 0, my_texture.width, -my_texture.height), (0, 0), WHITE)
+        end_drawing()
+
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

@@ -1,0 +1,74 @@
+BASE CONTEXT
+    start out with base context that will have all of the defaults for a component.
+
+    getattr always raises an exception if the attribute is not found.
+
+    you can create new base contexts that are derived from existing base contexts.
+
+    area = base(x_left=I.x_pos.S(I.width), x_center=I.x_pos.C(I.width), x_right=I.x_pos.E(I.width),
+                y_top=I.y_pos.S(I.width), y_middle=I.y_pos.C(I.width), y_bottom=I.y_pos.E(I.width),
+                flipped=False)
+
+    line = area(width=3, color=BLACK)
+    text = area(size=20, color=BLACK, max_text=None, sans=False, bold=False, spacing=0)
+    rect = area(color=WHITE)
+
+INSTANCE CONTEXT
+    derived from another context.
+
+    my_text = text.create(text="my line")
+    my_line = line.create(length=30, x_pos=S(20), y_pos=S(300))
+
+    while being built, getattr returns an exp (and does not set the attr to the exp!) if the attr is
+    not directly in the instance context.  After building is done, getattr defers to the base context.
+
+    Can you create instances of instances? No!
+
+
+TEMPLATE CONTEXT
+    create a template to contain several instances linked together.  These can refer back to the
+    template context to get parameters from the template.
+
+    the template has it's own attrs (parameters), which are things that users of the template can set
+    and that will then propogate into the instances.
+
+    instances of the template may be made that set these attrs differently.  The instances are derived
+    from the master template base context.  This process may go on to any level.
+
+    When the template is done being built (no longer under_contruction), it's instances will raise
+    AttributeError rather than creating an exp for missing attrs.
+
+    Any instance may refer to the current template parameter instance with T.
+
+
+How this is implemented:
+
+Handling the "being built":
+
+    with under_contruction():
+        anything here is happening while everything is "being built"
+    now everything is "locked in".  You can still set values, but you can't get references to attrs in
+    other objects anymore.
+
+    This works by setting (and reseting) a global "Under_construction" variable.
+
+Handling T and I:
+
+    All exp's have an eval method that takes a context and instance parameter.  T refers to context, and
+    I refers to instance.
+
+    Both of these parameters are always passed down to all subordinate evals in the same exp.  But when
+    evaluating an exp returns another exp, that expression may get 
+
+class base
+
+# These sort of coorrespond to classes:
+base_1 = base(kwags)  -> creates a base to start building on
+base_2 = base_1(kwargs) -> creates a specialization of base_1
+base_3 = base_2(kwargs) -> creates a specialization of base_2
+inst_1 = base_3.create(kwargs) -> creates an instance of base_3
+
+
+template = base(kwargs) -> a place to store the components, this becomes the "global" context
+template_params = template(kwargs) -> creates a base for template parameters
+

@@ -1,0 +1,72 @@
+To setup for gtk, I did:
+
+    $ sudo apt-get install gir1.2-gtk-4.0 gtk-4-examples libgtk-4-doc
+    $ python -m venv Exp_console
+    $ . Exp_console/bin/activate
+    $ pip install update pip setuptools
+    $ pip install PyGObject
+
+To write to screen at the device level:
+    sudo apt install libegl-dev
+    ?sudo apt install libgl-dev  # may be included with libegl-dev
+
+    pip install --break-system-packages raylib_drm
+    
+    https://electronstudio.github.io/raylib-python-cffi/pyray.html
+
+    openvg is another option, but older and not supported on pi 4&5
+
+    /dev/fb0 for HDMI output
+    /dev/fb1 for SPI-based screen
+
+Touch-screen at the device level:
+
+    sudo apt install evtest
+
+    evtest /dev/input/by-id/usb-Siliconworks_SiW_HID_Touch_Controller-event-if00
+
+    Libraries:
+
+    python-libinput.xev
+    pip install libevdev
+
+MIDI
+    low latency kernel?  Got it!  Automatic with rpi os lite
+
+        /etc/security/limits.d -- should add audio.conf file:  NOT DONE YET!
+           @audio   - rtprio  95
+           @audio   - memlock unlimited
+           #@audio   - nice    -19
+
+    pulseaudio is not installed!  (yeah!)
+    pipewire (not installed on lite version, but yes on desktop?)
+
+    ALSA
+
+        pip install alsa-midi
+
+
+Window builder
+    Use ApplicationWindow, get headerbar_and_menubutton for free
+    title: <title>
+    menu:
+        name: <widget>
+
+YAML Widget builder
+    vertical:
+        - top
+        - middle
+        - bottom
+    horzontal:
+        - left
+        - middle
+        - right
+    label:
+        text: <text>
+        wrap: True|False
+        wrap_mode: word|char|word_char
+        ellipsize: none|start|middle|end
+    button:
+        label: <label>
+        code: <code>
+

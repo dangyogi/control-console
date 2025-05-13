@@ -1,0 +1,81 @@
+# TEXT
+
+    load_font(filename) -> font   # file file types: ttf (TrueType), otf (OpenType) and fnt (font alias)
+                                  # fnt may be useful for a sprite sheet.
+                                  # only fonts found on system are in /usr/share/fonts
+    is_font_valid(font)
+    unload_font(font)
+
+    measure_text(text, fontsize)  -> len
+    draw_text(text, x, y, fontsize, color)   # x, y is upper left corner
+    measure_text_ex(font, text, fontsize, spacing)  -> len
+    draw_text_ex(font, text, pos, size, spacing, tint)
+
+# CORE
+    init_window(width, height, title)  # see experiment/widget_test.py for supported resolutions
+    close_window()
+    window_should_close()
+    is_window_ready()  # window has been initialized successfully
+    is_window_fullscreen()
+    is_window_state(flag)
+    set_window_state(flags)  # flags must be OR-ed
+    clear_window_state(flags)
+    get_screen_width()
+    get_screen_height()
+    get_render_width()
+    get_render_height()
+
+    clear_background(color)
+    begin_drawing()
+    end_drawing()
+
+    set_target_fps(int fps)
+    get_frame_time()
+    get_time()
+    get_fps()
+
+    set_config_flags(flags)  # flags must be OR-ed
+
+    # automation events (what are these?) looks like recording and playback?
+
+# SHAPES
+
+    draw_line(start_x, start_y, end_x, end_y, color)
+    draw_line_ex(start, end, thick, color)  # start/end are Vector2
+    draw_rectangle(pos_x, pos_y, width, height, fill_color)  # pos is upper left corner
+    draw_rectangle_pro(rec, origin, rotation, color)   # rec is rectangle, origin is vector2
+    draw_rectangle_lines(pos_x, pos_y, width, height, fill_color)
+    draw_rectangle_lines_ex(rec, thick, fill_color)
+    draw_rectangle_rounded(rec, roundness, segments (int), color)   # solid rect
+    draw_rectangle_rounded_lines(rec, roundness, segments (int), color)
+    draw_rectangle_rounded_lines_ex(rec, roundness, segments (int), thick, color)
+    draw_triangle(v1, v2, v3, color)  # v's are Vector2
+
+# COLORS
+
+    LIGHTGRAY
+    GRAY
+    DARKGRAY
+    YELLOW
+    GOLD
+    ORANGE
+    PINK
+    RED
+    MAROON
+    GREEN
+    LIME
+    DARKGREEN
+    SKYBLUE
+    BLUE
+    DARKBLUE
+    PURPLE
+    VIOLET
+    DARKPURPLE
+    BEIGE
+    BROWN
+    DARKBROWN
+    WHITE
+    BLACK
+    BLANK  # transparent
+    MAGENTA
+    RAYWHITE  # my own white for raylib logo
