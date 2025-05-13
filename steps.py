@@ -6,12 +6,12 @@ from pyray import *
 
 from exp import *
 from alignment import *
-from context import base, instance
+from context import base, instance, template_base, context
 import screen
 
 area = base(x_left=I.x_pos.S(I.width), x_center=I.x_pos.C(I.width), x_right=I.x_pos.E(I.width),
             y_top=I.y_pos.S(I.height), y_middle=I.y_pos.C(I.height), y_bottom=I.y_pos.E(I.height),
-            x_next=F.S(I.x_right.i), y_next=F.S(I.y_bottom.i))
+            x_next=I.x_right.as_S(), y_next=I.y_bottom.as_S())
 
 line_base = area(width=3, color=BLACK)
 
@@ -20,10 +20,10 @@ vline_base = line_base(height=I.length)
 class vline(instance):
     base = vline_base
     def draw(self, template=None, **kwargs):
-        with self.store(template, **kwargs) as store_self:
-            draw_line_ex((self.x_center, self.y_top),
-                         ({self.x_center}, {self.y_bottom}),
-                         {self.width}, {self.color})
+        attrs = context(self, template, **kwargs)
+        draw_line_ex((attrs.x_center, attrs.y_top),
+                     ({attrs.x_center}, {attrs.y_bottom}),
+                     {attrs.width}, {attrs.color})
 
 
 hline_base = line_base()
@@ -32,16 +32,16 @@ class hline(instance):
     base = hline_base
 
     def init(self, template=None):
-        with self.store(template) as store_self:
-            width = self.width
-            store_self.width = self.length
-            store_self.height = width
+        attrs = context(self, template)
+        width = attrs.width
+        self.width = attrs.length
+        self.height = width
 
     def draw(self, template=None, **kwargs):
-        with self.store(template, **kwargs) as store_self:
-            draw_line_ex((self.x_left.i, self.y_middle.i),
-                         (self.x_right.i, self.y_middle.i),
-                         self.height, self.color)
+        attrs = context(self, template, **kwargs)
+        draw_line_ex((attrs.x_left.i, attrs.y_middle.i),
+                     (attrs.x_right.i, attrs.y_middle.i),
+                     attrs.height, attrs.color)
 
 
 
@@ -97,31 +97,31 @@ class text(instance):
     base = text_base
 
     def init(self, template=None):
-        with self.store(template) as store_self:
-            store_self.font = Fonts[2 * self.sans + self.bold]
-            if self.max_text is not None:
-                msize = measure_text_ex(self.font, self.max_text, self.size, self.spacing)
-                store_self.width = int(ceil(msize.x))
-                store_self.height = int(ceil(msize.y))
-                print("text.init: width", self.width, "height", self.height)
+        attrs = context(self, template)
+        self.font = Fonts[2 * self.sans + self.bold]
+        if attrs.max_text is not None:
+            msize = measure_text_ex(attrs.font, attrs.max_text, attrs.size, attrs.spacing)
+            self.width = int(ceil(msize.x))
+            self.height = int(ceil(msize.y))
+            print("text.init: width", self.width, "height", self.height)
 
     def draw(self, template=None, **kwargs):
-        with self.store(template, **kwargs) as store_self:
-            self_as_dict = as_dict(self)
-            text = self.text.format_map(self_as_dict)
-            if self.max_text is not None:
-                width = self.width
-                height = self.height
-            else:
-                mtext = self.text.format_map(self_as_dict)
-                msize = measure_text_ex(font, mtext, self.size, self.spacing)
-                width = int(ceil(msize.x))
-                height = int(ceil(msize.y))
-            # x, y for draw is upper left
-            x = self.x_pos.S(width).i
-            y = self.y_pos.S(height).i
-            print("text.draw to", x, y)
-            draw_text_ex(self.font, text, (x, y), self.size, self.spacing, self.color)
+        attrs = context(self, template, **kwargs)
+        attrs_as_dict = as_dict(attrs)
+        text = attrs.text.format_map(attrs_as_dict)
+        if attrs.max_text is not None:
+            width = attrs.width
+            height = attrs.height
+        else:
+            mtext = attrs.text.format_map(attrs_as_dict)
+            msize = measure_text_ex(font, mtext, attrs.size, attrs.spacing)
+            width = int(ceil(msize.x))
+            height = int(ceil(msize.y))
+        # x, y for draw is upper left
+        x = attrs.x_pos.S(width).i
+        y = attrs.y_pos.S(height).i
+        print("text.draw to", x, y)
+        draw_text_ex(attrs.font, text, (x, y), attrs.size, attrs.spacing, attrs.color)
 
 
 rect_base = area(color=WHITE)
@@ -130,62 +130,13 @@ rect_base = area(color=WHITE)
 class rect(instance):
     base = rect_base
     def draw(self, template=None, **kwargs):
-        with self.store(template, **kwargs):
-            x = self.x_pos.S(self.width).i
-            y = self.y_pos.S(self.height).i
-            draw_rectangle(x, y, self.width, self.height, self.color)
+        attrs = context(self, template, **kwargs)
+        x = attrs.x_pos.S(attrs.width).i
+        y = attrs.y_pos.S(attrs.height).i
+        draw_rectangle(x, y, attrs.width, attrs.height, attrs.color)
 
 
-group_base = area()
-
-# FIX: add spite
-class group(instance):
-    base = group_base
-
-    def init(self, template=None):
-        with self.store(template, x_pos=S(1000), y_pos=S(1000)) as store_self:
-            x_left = 10000000
-            x_right = -10000000
-            y_top = 10000000
-            y_bottom = -10000000
-            for i, component in enumerate(self.components, 1):
-                print("group.init doing component", i)
-                component.init(template)
-                xl = component.get('x_left', template).i
-                if xl < x_left:
-                    x_left = xl
-                xr = component.get('x_right', template).i
-                if xr > x_right:
-                    x_right = xr
-                yt = component.get('y_top', template).i
-                if yt < y_top:
-                    y_top = yt
-                yb = component.get('y_bottom', template).i
-                if yb > y_bottom:
-                    y_bottom = yb
-            store_self.width = x_right - x_left
-            assert isinstance(self.width, int), f"group.init got non-integer width {self.width}"
-            store_self.height = y_bottom - y_top
-            assert isinstance(self.height, int), f"group.init got non-integer height {self.height}"
-            print(f"group.init: {self.width=}, {self.height=}")
-
-    def draw(self, template=None, **kwargs):
-        with self.store(template, **kwargs) as store_self:
-            store_self.x_left = S(min(component.get('x_left', template).i
-                                      for component in self.components))
-            store_self.x_right = E(max(component.get('x_right', template).i
-                                       for component in self.components))
-            store_self.width = self.x_right.i - self.x_left.i
-            store_self.x_center = self.x_right.C(self.width)
-            store_self.y_top = S(min(component.get('y_top', template).i 
-                                     for component in self.components))
-            store_self.y_bottom = E(max(component.get('y_bottom', template).i
-                                        for component in self.components))
-            store_self.height = self.y_bottom.i - self.y_top.i
-            store_self.y_middle = self.y_top.C(self.height)
-            for i, component in enumerate(self.components, 1):
-                print("group.draw doing component", i)
-                component.draw(template)
+tbase = template_base(area)
 
 
 if __name__ == "__main__":
@@ -193,14 +144,15 @@ if __name__ == "__main__":
 
     with screen.Screen_class():
         message="Hello gjpqy!"
-        g = group(t=text(x_pos=E(1000), y_pos=E(600), size=80, text=message, max_text=message),
+        t = tbase(t=text(x_pos=E(1000), y_pos=E(600), size=80, text=message, max_text=message),
                   r=rect(x_pos=S(1000), y_pos=E(600), height=80, width=300),
                   h=hline(x_pos=S(1300), y_pos=E(600), length=40))
                   #r=rect(x_pos=F.S(I.t.x_right), y_pos=I.t.y_bottom, height=80, width=300),
                   #h=hline(x_pos=F.S(I.r.x_right), y_pos=I.r.y_bottom, length=40))
-        g.components = (g.t, g.h, g.r)
-        g.init()
+        t.components = (t.t, t.h, t.r)
+        t.init()
         with screen.Screen.update():
-            g.draw()
+            t.draw()
         screen.Screen.draw_to_screen()
         time.sleep(5)
+

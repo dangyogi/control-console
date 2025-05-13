@@ -32,8 +32,16 @@ import context
 from alignment import *
 
 
-__all__ = tuple('ITF') + ('exp',)
+__all__ = tuple('ITF') + ('eval_exp',)
 
+
+Trace = False
+
+
+def eval_exp(x, instance, template=None):
+    if isinstance(x, exp):
+        return x.eval(instance, template)
+    return x
 
 class exp:
     r'''This is the base class of all exp's.  It handles creating bigger exp's out smaller ones.
@@ -208,9 +216,9 @@ class call(exp):
     def eval(self, instance, template):
         r'''Doesn't support functions returning exp's.
         '''
-        fn = instance.eval(self.fn, template)
-        args = [instance.eval(arg, template) for arg in self.args]
-        kwargs = {key: instance.eval(value, template) for key, value in self.kwargs.items()}
+        fn = eval_exp(self.fn, instance, template)
+        args = [eval_exp(arg, instance, template) for arg in self.args]
+        kwargs = {key: eval_exp(value, instance, template) for key, value in self.kwargs.items()}
         return fn(*args, **kwargs)
 
 class unop(exp):
@@ -225,7 +233,7 @@ class unop(exp):
         return f"{self.sym}{self.a}"
 
     def eval(self, instance, template):
-        a_i = instance.eval(self.a, template)
+        a_i = eval_exp(self.a, instance, template)
         return self.op(a_i)
 
 class binop(exp):
@@ -258,8 +266,8 @@ class binop(exp):
         return f"{a_repr} {self.sym} {b_repr}"
 
     def eval(self, instance, template):
-        a_i = instance.eval(self.a, template)
-        b_i = instance.eval(self.b, template)
+        a_i = eval_exp(self.a, instance, template)
+        b_i = eval_exp(self.b, instance, template)
         return self.op(a_i, b_i)
 
 class exp_getattr(exp):
@@ -272,14 +280,27 @@ class exp_getattr(exp):
     def __repr__(self):
         return f"{self.obj}.{self.name}"
 
-    def eval(self, inst, template):
-        obj = inst.eval(self.obj, template)
+    def eval(self, instance, template):
+        obj = eval_exp(self.obj, instance, template)
+        value = getattr(obj, self.name)
+        if Trace:
+            print(f"exp_getattr.eval: {self.obj=}, {obj=}, {self.name=}, {value=}")
         if isinstance(obj, context.instance):
-            return obj.eval(getattr(obj, self.name), template)
-        return getattr(obj, self.name)
+            if Trace:
+                print(f"... obj is instance, calling eval_exp")
+            ans = eval_exp(value, obj, obj if isinstance(obj, context.template) else template)
+            if Trace:
+                print(f"... got {ans=}")
+            return ans
+        assert not isinstance(value, exp), \
+               f"unexpected exp from {self.obj=} in {obj=}.{self.name}, {type(obj)=}, {context.instance=}"
+        return value
 
 
 
 if __name__ == "__main__":
     import doctest
-    doctest.testmod()
+    if Trace:
+        doctest.testmod(verbose=True)
+    else:
+        doctest.testmod()

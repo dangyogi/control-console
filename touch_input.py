@@ -230,18 +230,15 @@ if __name__ == "__main__":
 
     try:
         # Open the device
-        gen = Touch_generator(screen.Touch_device_path, args.width, args.height, args.trace)
-        device_fd = open(device_path, "rb")
-        os.set_blocking(device_fd.fileno(), False)
-        device = libevdev.Device(device_fd)
-        print(f"Opened device: {device_path}")
+        gen = Touch_generator(screen.Touch_device_path, args.width, args.height, Touch_dispatcher(),
+                              args.trace)
 
         while True:
             # Read events from the device
             for slot_event in gen.gen_slot_events():
                 print(slot_event)
             print("break")
-            time.sleep(0.5)
+            time.sleep(0.1)
     finally:
         gen.close()
 

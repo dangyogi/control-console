@@ -142,6 +142,15 @@ class pos:
     def __sub__(self, i):
         return self.__class__(self.i - i)
 
+    def as_S(self):
+        return S(self.i)
+
+    def as_C(self):
+        return C(self.i)
+
+    def as_E(self):
+        return E(self.i)
+
 class S(pos):
     r'''START pos.
 

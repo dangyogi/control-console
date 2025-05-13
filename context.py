@@ -8,6 +8,7 @@ First step, building individual reusable components, like "line":
 
     >>> from exp import *         # I, T and F
     >>> from alignment import *   # S, C and E
+    >>> from context import base, instance, context
 
     >>> BLACK = "BLACK"
 
@@ -25,15 +26,15 @@ First step, building individual reusable components, like "line":
     ...     base = line_base
     ...
     ...     def draw(self, template=None, **kwargs):
-    ...         with self.store(template, **kwargs):
-    ...             if self.flipped:
-    ...                 print(f"draw horz line from ({self.x_left}, {self.y_middle}) "
-    ...                       f"to ({self.x_right}, {self.y_middle}), "
-    ...                       f"width {self.width} and color {self.color}")
-    ...             else:
-    ...                 print(f"draw vert line from ({self.x_center}, {self.y_top}) "
-    ...                       f"to ({self.x_center}, {self.y_bottom}), "
-    ...                       f"width {self.width} and color {self.color}")
+    ...         attrs = context(self, template, **kwargs)
+    ...         if attrs.flipped:
+    ...             print(f"draw horz line from ({attrs.x_left}, {attrs.y_middle}) "
+    ...                   f"to ({attrs.x_right}, {attrs.y_middle}), "
+    ...                   f"width {attrs.width} and color {attrs.color}")
+    ...         else:
+    ...             print(f"draw vert line from ({attrs.x_center}, {attrs.y_top}) "
+    ...                   f"to ({attrs.x_center}, {attrs.y_bottom}), "
+    ...                   f"width {attrs.width} and color {attrs.color}")
 
 4. Because no T expressions were used in any of this, this can be run without a template:
 
@@ -46,7 +47,7 @@ build a base template
 with template(...) as foo:  # also sets Under_construction global var
     foo.a = comp_a(...)          # no foo
     foo.b = comp_b(bar=t.a.foo)  # creates a dynamic reference to foo rather than raise AttributeError
-                               # because we're Under_construction!
+                                 # because we're Under_construction!
     .
     .
     .
@@ -62,6 +63,8 @@ foo_1.draw(...)   # foo_1 passed as parameter, not global variable
 
 import exp
 
+
+Trace = False
 
 Current_template = None
 
@@ -96,6 +99,8 @@ class instance(base_base):
     r'''An instance of a base object.
 
     Subclass this and set the class "base" variable to it's base object:
+
+        >>> from context import base, instance, context
 
         >>> my_base = base(width=9, height=19)
 
@@ -153,47 +158,48 @@ class instance(base_base):
 
     2. When the method accesses an instance attribute (through self.X), we want expressions evaluated.
 
-       The solution to both of the problems is the "store" method on the instance:
+       The solution to both of the problems is to create an context object!  This inherits attrs from
+       self and evaluates the inherited expression values.
 
         >>> my_base = base(x_left=I.x_pos.S(I.width), width=9)
 
         >>> class my_inst(instance):
         ...     base = my_base
         ...
-        ...     def my_method(self, template=None, **kwargs):           # same arguments to all methods!
-        ...         with self.store(template, **kwargs) as store_self:  # this line is always the same!
-        ...             # x_pos and width are stored on the instance:
-        ...             print(f"{self.x_pos=}, {self.width=}")
-        ...             # so that exp's work:
-        ...             print(f"{self.x_left=}")
+        ...     def my_method(self, template=None, **kwargs):     # same arguments to all methods!
+        ...         attrs = context(self, template, **kwargs)     # this line is always the same!
+        ...         # x_pos and width are stored on attrs:
+        ...         print(f"{attrs.x_pos=}, {attrs.width=}")
+        ...         # and inherited values are evaluated:
+        ...         print(f"{attrs.x_left=}")
 
         >>> my_a = my_inst()
 
-        # note that during the call, x_pos is set, and the default value for width have been overridden
+        # note that during the call, x_pos and width are set in the context, while x_left is inherited
+        # from self.
         >>> my_a.my_method(x_pos=C(100), width=51)
-        self.x_pos=C(100), self.width=51
-        self.x_left=S(75)
+        attrs.x_pos=C(100), attrs.width=51
+        attrs.x_left=S(75)
 
         # after the call...
-        >>> my_a.width   # reverts back to default value
+        >>> my_a.width   # still the default value
         9
-        >>> my_a.x_pos   # no longer set
+        >>> my_a.x_pos   # still not set
         Traceback (most recent call last):
         ...
         AttributeError: x_pos
 
-    3. "store_self" is used to store permanent values on the instance that won't go away when the
-       method returns.
+    3. To store permanent values on the instance, just assign them to self.
 
         >>> my_base = base(x=1, num_calls=0)
 
         >>> class my_inst(instance):
         ...     base = my_base
         ...
-        ...     def my_method(self, template=None, **kwargs):           # same arguments to all methods!
-        ...         with self.store(template, **kwargs) as store_self:  # this line is always the same!
-        ...             store_self.x = self.x
-        ...             store_self.num_calls = self.num_calls + 1       # += doesn't work here!
+        ...     def my_method(self, template=None, **kwargs):     # same arguments to all methods!
+        ...         attrs = context(self, template, **kwargs)     # this line is always the same!
+        ...         self.x = attrs.x
+        ...         self.num_calls = attrs.num_calls + 1
 
         >>> my_a = my_inst()
         >>> my_a.x
@@ -208,17 +214,6 @@ class instance(base_base):
     '''
     def __init__(self, **values):
         super().__init__(self.base, **values)
-
-    def __getattr__(self, name):
-        try:
-            ans = super().__getattr__(name)
-        except AttributeError:
-            if Under_construction:
-                return exp_getattr(self, name)
-            raise
-        if hasattr(self, '_template'):
-            ans = self.eval(ans, self._template)
-        return ans
 
     def init(self, template=None):
         pass
@@ -263,33 +258,92 @@ class instance(base_base):
                 return False
         return context_manager()
 
-    def eval(self, x, template=None):
-        if isinstance(x, exp.exp):
-            x = x.eval(self, template)
-        return x
-
     def get(self, name, template=None):
-        return self.eval(getattr(self, name), template)
+        return exp.eval_exp(getattr(self, name), self, template)
 
     #def do(self, name, template, **attrs):  # Don't know how to implement the attrs...
     #    fn = self.get(name, template)  # This is assumed to be a method on self
     #    fn(self, template)
 
 
-Under_construction = False
+class context:
+    def __init__(self, inst, template, **kwargs):
+        self.inst = inst
+        self.template = template
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
-class template(base):
-    def __enter__(self):
-        global Under_construction
-        self.under_construction = Under_construction
-        Under_construction = True
-        return self
+    def __getattr__(self, name):
+        r'''Accesses attr from inst.
+        '''
+        if Trace:
+            print(f"context.__getattr__, {name=}, calling get on {self.inst=}")
+        value = getattr(self.inst, name)
+        if Trace:
+            print(f"... getattr got {value=}")
+        ans = exp.eval_exp(value, self, template)
+        if Trace:
+            print(f"... eval_exp got {ans=}")
+        return ans
 
-    def __exit__(self, *excs):
-        global Under_construction
-        Under_construction = self.under_construction
-        return False
 
+class template_base(base):
+    def __call__(self, **kwargs):
+        return template(self, **kwargs)
+
+# FIX: add sprite
+class template(instance):
+    def __init__(self, base, **kwargs):
+        super(instance, self).__init__(base, **kwargs)
+
+    def init(self, template=None):
+        r'''Sets width and height
+        '''
+        attrs = context(self, template)
+        x_left = 10000000
+        x_right = -10000000
+        y_top = 10000000
+        y_bottom = -10000000
+        for i, component in enumerate(attrs.components, 1):
+            print("template.init doing component.init", i)
+            component.init(template)
+        for i, component in enumerate(attrs.components, 1):
+            print("template.init getting pos's from component", i)
+            xl = component.get('x_left', template).i
+            if xl < x_left:
+                x_left = xl
+            xr = component.get('x_right', template).i
+            if xr > x_right:
+                x_right = xr
+            yt = component.get('y_top', template).i
+            if yt < y_top:
+                y_top = yt
+            yb = component.get('y_bottom', template).i
+            if yb > y_bottom:
+                y_bottom = yb
+        self.width = x_right - x_left
+        assert isinstance(attrs.width, int), f"group.init got non-integer width {attrs.width}"
+        self.height = y_bottom - y_top 
+        assert isinstance(attrs.height, int), f"group.init got non-integer height {attrs.height}"
+        print(f"template.init: {attrs.width=}, {attrs.height=}")
+
+    def draw(self, template=None, **kwargs):
+        attrs = context(self, template, **kwargs)
+        #self.x_left = S(min(component.get('x_left', template).i
+        #                    for component in attrs.components))
+        #self.x_right = E(max(component.get('x_right', template).i
+        #                     for component in attrs.components))
+        #self.width = self.x_right.i - self.x_left.i
+        #self.x_center = attrs.x_right.C(attrs.width)
+        #self.y_top = S(min(component.get('y_top', template).i
+        #                   for component in attrs.components))
+        #self.y_bottom = E(max(component.get('y_bottom', template).i
+        #                      for component in attrs.components))
+        #self.height = attrs.y_bottom.i - attrs.y_top.i
+        #self.y_middle = attrs.y_top.C(attrs.height)
+        for i, component in enumerate(attrs.components, 1):
+            print("group.draw doing component draw", i)
+            component.draw(template)
 
 
 if __name__ == "__main__":
