@@ -66,7 +66,6 @@ import exp
 
 Trace = False
 
-Current_template = None
 
 class base_base:
     def __init__(self, parent=None, **values):
@@ -217,46 +216,6 @@ class instance(base_base):
 
     def init(self, template=None):
         pass
-
-    def store(self_instance, template=None, **kwargs):
-        r'''Simulates temporary variables that only live as long as the with statement body.
-
-        It stores the variable as attributes on self.  They can be accessed within the with statement
-        simply as: self.foo.
-        '''
-        class context_manager:
-            def __init__(self):
-                self._reset = {}
-                self._delete = []
-
-            def __enter__(self):
-                assert not hasattr(self, '_template'), \
-                       f"store called with template already set to {self._template}"
-                self._delete.append('_template')
-                self_instance._template = template
-                for key, value in kwargs.items():
-                    if key in self.__dict__:
-                        self._reset[key] = self.key
-                    else:
-                        self._delete.append(key)
-                    setattr(self_instance, key, value)
-
-                class setter:
-                    def __setattr__(_, name, value):
-                        if name in self._delete:
-                            self._delete.remove(name)
-                        if name in self._reset:
-                            del self._reset[name]
-                        setattr(self_instance, name, value)
-                return setter()
-
-            def __exit__(self, *excs):
-                for key, value in self._reset.items():
-                    setattr(self_instance, key, value)
-                for name in self._delete:
-                    delattr(self_instance, name)
-                return False
-        return context_manager()
 
     def get(self, name, template=None):
         return exp.eval_exp(getattr(self, name), self, template)
