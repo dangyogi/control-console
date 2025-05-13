@@ -286,30 +286,6 @@ def as_E(some_pos, length):
         return some_pos
 
 
-# FIX: Do we still need this?
-class offset:
-    r'''Translates parent pos to child pos.
-
-        >>> o = offset(S, C, 20) # position child C at parent.S + 20
-        >>> o.apply(S(10), 5)
-        C(30)
-        >>> o.apply(C(10), 5)
-        C(28)
-        >>> o.apply(E(10), 5)
-        C(26)
-    '''
-    def __init__(self, from_alignment, to_alignment, offset=0):
-        self.from_alignment = \
-          from_alignment.__name__ if isinstance(from_alignment, type) else from_alignment
-        self.to_alignment = to_alignment
-        self.offset = offset
-
-    def apply(self, pos, width):
-        pos_inc = pos + self.offset
-        pos_from = getattr(pos_inc, self.from_alignment)(width)
-        return self.to_alignment(pos_from.i)
-
-
 
 if __name__ == "__main__":
     import doctest

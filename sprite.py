@@ -33,21 +33,21 @@ class Sprite:
 
         This needs to be called outside of begin_drawing/end_drawing.
         '''
+        texture = self.saved_texture.texture
         if self.texture_saved:
             # restore the saved image to the screen
-            begin_drawing()  # FIX
-            texture = self.saved_texture.texture
-            draw_texture_rec(texture,
-                             (0, 0, texture.width, -texture.height),
-                             (self.last_x, self.last_y),
-                             WHITE)
-            end_drawing()
-        texture = self.saved_texture.texture
+            with screen.Screen.update():
+                draw_texture_rec(texture,
+                                 (0, 0, texture.width, texture.height),
+                                 (self.last_x, self.last_y),
+                                 WHITE)
+
+        # capture current image in screen render_template at x_pos, y_pos
         x = as_S(x_pos, texture.width)
         y = as_S(y_pos, texture.height)
-        begin_texture_mode(self.saved_texture)  # FIX
+        begin_texture_mode(texture)
         draw_texture_rec(screen.Screen.render_texture.texture.texture,
-                         (x, y, texture.width, texture.height), (0, 0), WHITE)
+                         (x, y, texture.width, -texture.height), (0, 0), WHITE)
         end_texture_mode()
         self.last_x = x
         self.last_y = y
