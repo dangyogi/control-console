@@ -1,12 +1,12 @@
 # texture.py
 
-r'''A texture class
+r'''A texture class, specifically render_textures that can be drawn on the screen.
 '''
 
 from contextlib import ContextDecorator
 from pyray import *
 
-from alignment import as_S
+from alignment import Si
 import screen
 from sprite import Sprite
 
@@ -39,7 +39,7 @@ class texture:
         '''
         class texture_mode_cm(ContextDecorator):
             def __init__(self, texture, to_screen_location, from_scratch):
-                self.texture = texture
+                self.texture = texture  # texture object
                 self.to_screen_location = to_screen_location
                 if to_screen_location is not None:
                     if self.texture.is_screen:
@@ -52,16 +52,15 @@ class texture:
 
             def __enter__(self):
                 global Current_texture
-                texture = self.texture.texture
-                if texture == Current_texture:
+                if self.texture.texture == Current_texture:
                     self.do_end = False
                 else:
                     self.do_end = True
                     self.previous_texture = Current_texture
                     if Current_texture is not None:
                         end_texture_mode()  # for Current_texture
-                    Current_texture = texture
-                    begin_texture_mode(texture)
+                    Current_texture = self.texture.texture
+                    begin_texture_mode(self.texture.texture)
                 if from_scratch:
                     clear_background(self.fillcolor)
                 return self
@@ -90,11 +89,11 @@ class texture:
         '''
         assert not self.is_screen, "texture.draw_to_screen called for screen's render_texture"
         texture = self.texture.texture
-        x = as_S(x_pos, texture.width)
-        y = as_S(y_pos, texture.height)
+        x = Si(x_pos, texture.width)
+        y = Si(y_pos, texture.height)
         if self.as_sprite:
             self.sprite.save_pos(x, y)
-        with screen.Screen.update(copy_to_screen=False):
+        with screen.Screen.update():
             # draw texture into screen's render_texture at x, y
             print("draw_texture: width", texture.width, "height", texture.height)
             draw_texture_rec(texture, (0, 0, texture.width, texture.height), (x, y), WHITE)

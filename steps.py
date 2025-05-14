@@ -8,10 +8,11 @@ from exp import *
 from alignment import *
 from context import base, instance, template_base, context
 import screen
+from sprite import Sprite
 
 area = base(x_left=I.x_pos.S(I.width), x_center=I.x_pos.C(I.width), x_right=I.x_pos.E(I.width),
             y_top=I.y_pos.S(I.height), y_middle=I.y_pos.C(I.height), y_bottom=I.y_pos.E(I.height),
-            x_next=I.x_right.as_S(), y_next=I.y_bottom.as_S())
+            x_next=I.x_right.as_S(), y_next=I.y_bottom.as_S(), as_sprite=False, dynamic_capture=False)
 
 line_base = area(width=3, color=BLACK)
 
@@ -79,7 +80,6 @@ class as_dict(dict):
         except AttributeError:
             raise KeyError(key)
 
-# FIX: add spite
 class text(instance):
     r'''Draw text.
 
@@ -104,6 +104,10 @@ class text(instance):
             self.width = int(ceil(msize.x))
             self.height = int(ceil(msize.y))
             print("text.init: width", self.width, "height", self.height)
+            if attrs.as_sprite:
+                self.sprite = Sprite(self.width, self.height, attrs.dynamic_capture)
+        elif attrs.as_sprite:
+            raise AssertionError("text.init: must specify max_text with as_sprite")
 
     def draw(self, template=None, **kwargs):
         attrs = context(self, template, **kwargs)
@@ -121,27 +125,32 @@ class text(instance):
         x = attrs.x_pos.S(width).i
         y = attrs.y_pos.S(height).i
         print("text.draw to", x, y)
+        if self.as_sprite:
+            self.sprite.save_pos(x, y)
         draw_text_ex(attrs.font, text, (x, y), attrs.size, attrs.spacing, attrs.color)
 
 
 rect_base = area(color=WHITE)
 
-# FIX: add spite
 class rect(instance):
     base = rect_base
+    def init(self, template=None):
+        attrs = context(self, template)
+        if attrs.as_sprite:
+            self.sprite = Sprite(self.width, self.height, attrs.dynamic_capture)
+
     def draw(self, template=None, **kwargs):
         attrs = context(self, template, **kwargs)
-        x = attrs.x_pos.S(attrs.width).i
-        y = attrs.y_pos.S(attrs.height).i
-        draw_rectangle(x, y, attrs.width, attrs.height, attrs.color)
+        x = attrs.x_pos.S(attrs.width)
+        y = attrs.y_pos.S(attrs.height)
+        if self.as_sprite:
+            self.sprite.save_pos(x, y)
+        draw_rectangle(x.i, y.i, attrs.width, attrs.height, attrs.color)
 
 
 tbase = template_base(area)
 
-
-if __name__ == "__main__":
-    import time
-
+def test_1():
     with screen.Screen_class():
         message="Hello gjpqy!"
         t = tbase(t=text(x_pos=E(1000), y_pos=E(600), size=80, text=message, max_text=message),
@@ -156,3 +165,22 @@ if __name__ == "__main__":
         screen.Screen.draw_to_screen()
         time.sleep(5)
 
+
+def test_2():
+    with screen.Screen_class():
+        message="Hello gjpqy!"
+        r = rect(y_pos=E(600), height=80, width=300, as_sprite=True)
+        r.init()
+        for x in range(100, 801, 100):
+            print("drawing x", x)
+            with screen.Screen.update():
+                r.draw(x_pos=S(x))
+            screen.Screen.draw_to_screen()
+            time.sleep(1)
+
+
+if __name__ == "__main__":
+    import time
+
+    #test_1()
+    test_2()

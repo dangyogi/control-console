@@ -85,7 +85,7 @@ Do the same thing for the y axis...
 import math
 
 
-__all__ = ('S', 'C', 'E', 'as_S', 'as_C', 'as_E')
+__all__ = ('S', 'C', 'E', 'Si', 'Ci', 'Ei')
 
 
 #              horz    vert
@@ -234,16 +234,16 @@ class E(pos):
         return self
 
 
-def as_S(some_pos, length):
+def Si(some_pos, length):
     r'''Returns the start (S) position of some_pos relative to length.
 
-    >>> as_S(4, 9)       # integers are returned unchanged
+    >>> Si(4, 9)       # integers are returned unchanged
     4
-    >>> as_S(C(10), 9)   # any pos is converted to an S
+    >>> Si(C(10), 9)   # any pos is converted to an S
     6
-    >>> as_S(E(10), 9)   # any pos is converted to an S
+    >>> Si(E(10), 9)   # any pos is converted to an S
     2
-    >>> as_S(S(10), 9)   # any pos is converted to an S
+    >>> Si(S(10), 9)   # any pos is converted to an S
     10
     '''
     if isinstance(some_pos, pos):
@@ -251,16 +251,16 @@ def as_S(some_pos, length):
     else:
         return some_pos
 
-def as_C(some_pos, length):
+def Ci(some_pos, length):
     r'''Returns the center (C) position of some_pos relative to length.
 
-    >>> as_C(4, 9)       # integers are returned unchanged
+    >>> Ci(4, 9)       # integers are returned unchanged
     4
-    >>> as_C(S(10), 9)   # any pos is converted to an C
+    >>> Ci(S(10), 9)   # any pos is converted to an C
     14
-    >>> as_C(E(10), 9)   # any pos is converted to an C
+    >>> Ci(E(10), 9)   # any pos is converted to an C
     6
-    >>> as_C(C(10), 9)   # any pos is converted to an C
+    >>> Ci(C(10), 9)   # any pos is converted to an C
     10
     '''
     if isinstance(some_pos, pos):
@@ -268,16 +268,16 @@ def as_C(some_pos, length):
     else:
         return some_pos
 
-def as_E(some_pos, length):
+def Ei(some_pos, length):
     r'''Returns the end (E) position of some_pos relative to length.
 
-    >>> as_E(4, 9)       # integers are returned unchanged
+    >>> Ei(4, 9)       # integers are returned unchanged
     4
-    >>> as_E(S(10), 9)   # any pos is converted to an E
+    >>> Ei(S(10), 9)   # any pos is converted to an E
     18
-    >>> as_E(C(10), 9)   # any pos is converted to an E
+    >>> Ei(C(10), 9)   # any pos is converted to an E
     14
-    >>> as_E(E(10), 9)   # any pos is converted to an E
+    >>> Ei(E(10), 9)   # any pos is converted to an E
     10
     '''
     if isinstance(some_pos, pos):
