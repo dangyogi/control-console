@@ -15,6 +15,7 @@ To use, create an Touch_generator and then repeatedly call gen_slot_events with 
 
 import os
 import time
+from operator import itemgetter
 import libevdev
 import screen
 
@@ -44,8 +45,8 @@ class SlotEvent:
 
 
 @screen.register_init
-def init_touch_dispatcher(screen):
-    screen.touch_dispatcher = Touch_dispatcher()
+def init_touch_dispatcher(screen_obj):
+    screen_obj.Touch_dispatcher = Touch_dispatcher()
 
 class Touch_dispatcher:
     def __init__(self):
@@ -102,9 +103,10 @@ class Touch_dispatcher:
 
 
 @screen.register_init
-def init_event_generator(screen):
-    screen.touch_generator = Touch_generator(screen.Touch_device_path, screen.width, screen.height,
-                                             screen.touch_dispatcher, screen.trace)
+def init_event_generator(screen_obj):
+    screen_obj.Touch_generator = \
+      Touch_generator(screen.Touch_device_path, screen_obj.width, screen_obj.height,
+                      screen_obj.Touch_dispatcher, screen_obj.trace)
 
 class Touch_generator:
     r'''width, height in pixels.
@@ -124,9 +126,15 @@ class Touch_generator:
         self.action = 'move'
         self.touch_dispatch = touch_dispatch
         screen.register_quit(self.close)
+        self.timers = []
 
     def close(self):
         self.device_fd.close()
+
+    def add_timer(self, delay, fn):
+        trigger_time = time.time() + delay
+        self.timers.append((trigger_time, fn))
+        self.timers.sort(key=itemgetter(0), reverse=True)
 
     def run(self, secs=None):
         r'''Runs for secs seconds, or forever if secs is None.
@@ -134,9 +142,20 @@ class Touch_generator:
         if secs is not None:
             end = time.time() + secs
         while secs is None or time.time() < end:
-            with window.update_window(draw_texture=True):
+            with screen.Screen.update(draw_to_framebuffer=False):
+                saw_events = 0
                 for event in self.gen_slot_events():
                     self.touch_dispatch.dispatch(event)
+                    saw_events += 1
+                while self.timers and time.time() >= self.timers[-1][0]:
+                    fn = self.timers.pop()[1]
+                    if self.trace:
+                        print("run got timer", fn)
+                    fn()
+            if saw_events:
+                if self.trace:
+                    print("run saw", saw_events, "touch events, calling draw_to_framebuffer")
+                screen.Screen.draw_to_framebuffer()
             if secs is None or time.time() < end - 0.1:
                 time.sleep(0.1)
 

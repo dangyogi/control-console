@@ -70,7 +70,7 @@ class Screen_class:
         set_trace_log_level(LOG_WARNING)
         init_window(width, height, "Exp_console")  # width height title
         self.render_texture = texture.texture(width, height, background_color, is_screen=True)
-        #self.draw_to_screen()
+        #self.draw_to_framebuffer()
 
         for init_fn in Inits:
             init_fn(self)
@@ -88,19 +88,20 @@ class Screen_class:
         self.close()
         return False
 
-    def update(self, from_scratch=False):
+    def update(self, draw_to_framebuffer=True, from_scratch=False):
         r'''Directs all pyray draws to the render_texture.
 
         Use in 'with' statement, or as function decorator.
 
         If from_scratch is True, it will first clear the render_texture to the background_color.
         '''
-        return self.render_texture.draw_on_texture(from_scratch=from_scratch)
+        return self.render_texture.draw_on_texture(draw_to_framebuffer=draw_to_framebuffer,
+                                                   from_scratch=from_scratch)
 
-    def draw_to_screen(self):
+    def draw_to_framebuffer(self):
         r'''Draws the render_texture to the screen.
         '''
-        assert texture.Current_texture is None, "screen.draw_to_screen: Current_texture is not None"
+        assert texture.Current_texture is None, "screen.draw_to_framebuffer: Current_texture is not None"
         begin_drawing()
         my_texture = self.render_texture.texture.texture
         #draw_texture(my_texture, x, y, WHITE)

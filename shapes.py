@@ -85,7 +85,7 @@ Fonts = []   # Serif, Serif-Bold, Sans, Sans-Bold
 Font_names = []
 
 @screen.register_init
-def init_fonts(screen):
+def init_fonts(screen_obj):
     # This must run _after_ init_window is called!
 
     global Fonts, Font_names
@@ -213,10 +213,12 @@ class circle(instance):
 
 if __name__ == "__main__":
     import time
+    import argparse
+    import touch_input  # does register_init on Screen
 
     tbase = template_base(area)
 
-    def test_1():
+    def template():
         with screen.Screen_class():
             message="Hello gjpqy!"
             t = tbase(t=text(x_pos=E(1000), y_pos=E(600), size=80, text=message, max_text=message),
@@ -229,10 +231,9 @@ if __name__ == "__main__":
             t.init()
             with screen.Screen.update():
                 t.draw()
-            screen.Screen.draw_to_screen()
-            time.sleep(5)
+            screen.Screen.Touch_generator.run(5)
 
-    def test_2():
+    def rect_as_sprite():
         with screen.Screen_class():
             message="Hello gjpqy!"
             r = rect(y_pos=E(600), height=80, width=300, as_sprite=True)
@@ -241,10 +242,9 @@ if __name__ == "__main__":
                 print("drawing x", x)
                 with screen.Screen.update():
                     r.draw(x_pos=S(x))
-                screen.Screen.draw_to_screen()
-                time.sleep(1)
+                screen.Screen.Touch_generator.run(1)
 
-    def test_3():
+    def circle_colors():
         with screen.Screen_class():
             t1 = text(y_pos=E(350))
             cir1 = circle(y_pos=C(400))
@@ -300,11 +300,15 @@ if __name__ == "__main__":
                 t2.draw(x_pos=c.x_center, text="DARKBROWN")
                 c = cir2.draw(x_pos=C(700), color=BLACK)
                 t2.draw(x_pos=c.x_center, text="BLACK")
-            screen.Screen.draw_to_screen()
-            time.sleep(20)
+            screen.Screen.Touch_generator.run(10)
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("test", choices=("template", "rect_as_sprite", "circle_colors"))
 
+    args = parser.parse_args()
 
-    #test_1()
-    #test_2()
-    test_3()
+    match args.test:
+        case "template": template()
+        case "rect_as_sprite": rect_as_sprite()
+        case "circle_colors": circle_colors()
+
