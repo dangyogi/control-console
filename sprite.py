@@ -29,9 +29,9 @@ class Sprite:
     def save_pos(self, x_pos=0, y_pos=0):
         r'''Captures the screen image at x, y.
 
-        x, y may be integers for the upper left corner of where to place this on the screen; or it can by
-        positions to specify the left/center/right and/or top/middle/bottom rather than the upper (top)
-        left (see alignment.py).
+        x, y may be integers for the upper left corner of where to place this on the screen; or
+        it can be positions to specify the left/center/right and/or upper/middle/lower rather
+        than the upper left (see alignment.py).
 
         This needs to be called outside of begin_drawing/end_drawing.
         '''

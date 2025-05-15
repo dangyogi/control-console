@@ -12,8 +12,9 @@ First step, building individual reusable components, like "line":
 
     >>> BLACK = "BLACK"
 
-    >>> area = Base(x_left=I.x_pos.S(I.width), x_center=I.x_pos.C(I.width), x_right=I.x_pos.E(I.width),
-    ...             y_top=I.y_pos.S(I.height), y_middle=I.y_pos.C(I.height), y_bottom=I.y_pos.E(I.height),
+    >>> area = Base(
+    ...   x_left=I.x_pos.S(I.width), x_center=I.x_pos.C(I.width), x_right=I.x_pos.E(I.width),
+    ...   y_upper=I.y_pos.S(I.height), y_middle=I.y_pos.C(I.height), y_lower=I.y_pos.E(I.height),
     ...             flipped=False)
 
 2. Create a Base that has the default settings.  This includes the settings defined in area:
@@ -32,8 +33,8 @@ First step, building individual reusable components, like "line":
     ...                   f"to ({attrs.x_right}, {attrs.y_middle}), "
     ...                   f"width {attrs.width} and color {attrs.color}")
     ...         else:
-    ...             print(f"draw vert line from ({attrs.x_center}, {attrs.y_top}) "
-    ...                   f"to ({attrs.x_center}, {attrs.y_bottom}), "
+    ...             print(f"draw vert line from ({attrs.x_center}, {attrs.y_upper}) "
+    ...                   f"to ({attrs.x_center}, {attrs.y_lower}), "
     ...                   f"width {attrs.width} and color {attrs.color}")
 
 4. Because no T expressions were used in any of this, this can be run without a template:
@@ -254,8 +255,8 @@ class Context:
 
 area = Base(
          x_left=I.x_pos.S(I.width), x_center=I.x_pos.C(I.width), x_right=I.x_pos.E(I.width),
-         y_top=I.y_pos.S(I.height), y_middle=I.y_pos.C(I.height), y_bottom=I.y_pos.E(I.height),
-         x_next=I.x_right.as_S(), y_next=I.y_bottom.as_S(), as_sprite=False, dynamic_capture=False)
+         y_upper=I.y_pos.S(I.height), y_middle=I.y_pos.C(I.height), y_lower=I.y_pos.E(I.height),
+         x_next=I.x_right.as_S(), y_next=I.y_lower.as_S(), as_sprite=False, dynamic_capture=False)
 
 class Template(Instance):
     base = area
@@ -268,8 +269,8 @@ class Template(Instance):
         print("Template.init", template)
         x_left = 10000000
         x_right = -10000000
-        y_top = 10000000
-        y_bottom = -10000000
+        y_upper = 10000000
+        y_lower = -10000000
         for i, component in enumerate(attrs.components, 1):
             print("Template.init doing component.init", i)
             component.init(self)
@@ -281,15 +282,15 @@ class Template(Instance):
             xr = component.get('x_right', self).i
             if xr > x_right:
                 x_right = xr
-            yt = component.get('y_top', self).i
-            if yt < y_top:
-                y_top = yt
-            yb = component.get('y_bottom', self).i
-            if yb > y_bottom:
-                y_bottom = yb
+            yu = component.get('y_upper', self).i
+            if yu < y_upper:
+                y_upper = yu
+            yl = component.get('y_lower', self).i
+            if yl > y_lower:
+                y_lower = yl
         self.width = x_right - x_left
         assert isinstance(attrs.width, int), f"Template.init got non-integer width {attrs.width}"
-        self.height = y_bottom - y_top 
+        self.height = y_lower - y_upper 
         assert isinstance(attrs.height, int), f"Template.init got non-integer height {attrs.height}"
         print(f"Template.init: {attrs.width=}, {attrs.height=}")
         if attrs.as_sprite:
@@ -303,14 +304,14 @@ class Template(Instance):
         #                     for component in attrs.components))
         #self.width = self.x_right.i - self.x_left.i
         #self.x_center = attrs.x_right.C(attrs.width)
-        #self.y_top = S(min(component.get('y_top', self).i
+        #self.y_upper = S(min(component.get('y_upper', self).i
         #                   for component in attrs.components))
-        #self.y_bottom = E(max(component.get('y_bottom', self).i
+        #self.y_lower = E(max(component.get('y_lower', self).i
         #                      for component in attrs.components))
-        #self.height = attrs.y_bottom.i - attrs.y_top.i
-        #self.y_middle = attrs.y_top.C(attrs.height)
+        #self.height = attrs.y_lower.i - attrs.y_upper.i
+        #self.y_middle = attrs.y_upper.C(attrs.height)
         if self.as_sprite:
-            self.sprite.save_pos(attrs.x_left, attrs.y_top)
+            self.sprite.save_pos(attrs.x_left, attrs.y_upper)
         for i, component in enumerate(attrs.components, 1):
             print("Template.draw doing component draw", i)
             component.draw(self)

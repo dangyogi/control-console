@@ -51,7 +51,7 @@ class Icon(context.Template):
         '''
         attrs = Context(self, template, **kwargs)
         if self.as_sprite:
-            self.sprite.save_pos(attrs.x_left, attrs.y_top)
+            self.sprite.save_pos(attrs.x_left, attrs.y_upper)
         texture = self.texture.texture.texture
         x = Si(attrs.x_pos, texture.width)
         y = Si(attrs.y_pos, texture.height)

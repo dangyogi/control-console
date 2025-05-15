@@ -85,8 +85,8 @@ class Texture:
         r'''Draws texture to the screen's render_texture at x, y.
 
         x, y are integers for the upper left corner of where to place this on the screen; or it can be
-        positions to specify where to place the left/center/right and/or top/middle/bottom rather
-        than the upper (top) left (see alignment.py).
+        positions to specify where to place the left/center/right and/or upper/middle/lower rather
+        than the upper left (see alignment.py).
         '''
         assert not self.is_screen, "Texture.draw_to_screen called for screen's render_texture"
         texture = self.texture.texture

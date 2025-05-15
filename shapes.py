@@ -51,8 +51,8 @@ class vline(Instance):
     base = vline_base
     def draw(self, template=None, **kwargs):
         attrs = Context(self, template, **kwargs)
-        draw_line_ex((attrs.x_center, attrs.y_top),
-                     ({attrs.x_center}, {attrs.y_bottom}),
+        draw_line_ex((attrs.x_center, attrs.y_upper),
+                     ({attrs.x_center}, {attrs.y_lower}),
                      {attrs.width}, {attrs.color})
         return attrs
 

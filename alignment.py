@@ -5,7 +5,7 @@ The alignment module is not dependent on any other module here.  So it is always
 
     from alignment import *
 
-areas have x_left, x_center, x_right and y_top, y_center, y_bottom
+areas have x_left, x_center, x_right and y_upper, y_middle, y_lower
 
     >>> from context import Base, Instance
     >>> from exp import *
@@ -30,7 +30,7 @@ areas have x_left, x_center, x_right and y_top, y_center, y_bottom
     >>> A.x_right.i               # get the integer
     18
 
-    Do the same things for y_top (always an S), y_middle (always a C), and y_bottom (always an E).
+    Do the same things for y_upper (always an S), y_middle (always a C), and y_lower (always an E).
     This is an exercise left to the reader.
 
 Now we have B with a different width.
