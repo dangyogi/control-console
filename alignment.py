@@ -1,12 +1,16 @@
 # alignment.py
 
 r'''
+The alignment module is not dependent on any other module here.  So it is always safe to do:
+
+    from alignment import *
+
 areas have x_left, x_center, x_right and y_top, y_center, y_bottom
 
-    >>> from context import base, instance
+    >>> from context import Base, Instance
     >>> from exp import *
 
-    >>> A = base(width=9)
+    >>> A = Base(width=9)
 
     >>> A.x_left = S(10)
     >>> A.x_left                  # x_left is always marked as S (start).
@@ -31,7 +35,7 @@ areas have x_left, x_center, x_right and y_top, y_center, y_bottom
 
 Now we have B with a different width.
 
-    >>> B = base(width=5)
+    >>> B = Base(width=5)
 
 and we want to link B's x position to A.  We do that by setting B.x_pos.  Once x_pos is set, we can
 calculate B's x_left/center/right from that as follows:
@@ -42,7 +46,7 @@ calculate B's x_left/center/right from that as follows:
 
 We need to set up instances of B to evaluate these:
 
-    >>> class B_inst(instance):
+    >>> class B_inst(Instance):
     ...     base = B
 
 How get different alignments with A by setting B'x x_pos to different things.

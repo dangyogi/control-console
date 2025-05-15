@@ -22,7 +22,7 @@ class Sprite:
     def __init__(self, width, height, dynamic_capture=False):
         r'''Captures and restores the original screen image before its changed by the user of the class.
         '''
-        self.saved_texture = texture.texture(width, height, fillcolor=None)
+        self.saved_texture = texture.Texture(width, height, fillcolor=None)
         self.texture_saved = False
         self.dynamic_capture = dynamic_capture
 
@@ -56,3 +56,8 @@ class Sprite:
         self.last_y = y
         self.texture_saved = True
 
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

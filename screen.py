@@ -15,8 +15,11 @@ from pyray import *
 
 import texture
 
+# pyray calls of interest:
+#
+# check_collision_point_rec((x, y), self.usable_rect)
 
-# log levels for set_trace_log_level calls:
+# pyray log levels for set_trace_log_level calls:
 #    LOG_ALL = 0
 #    LOG_TRACE = 1
 #    LOG_DEBUG = 2
@@ -25,6 +28,26 @@ import texture
 #    LOG_ERROR = 5
 #    LOG_FATAL = 6
 #    LOG_NONE = 7
+
+# pyray ConfigFlags:
+#
+# FLAG_VSYNC_HINT
+# FLAG_FULLSCREEN_MODE
+# FLAG_WINDOW_RESIZABLE
+# FLAG_WINDOW_UNDECORATED
+# FLAG_WINDOW_HIDDEN
+# FLAG_WINDOW_MINIMIZED
+# FLAG_WINDOW_MAXIMIZED
+# FLAG_WINDOW_UNFOCUSED
+# FLAG_WINDOW_TOPMOST
+# FLAG_WINDOW_ALWAYS_RUN
+# FLAG_WINDOW_TRANSPARENT
+# FLAG_WINDOW_HIGHDPI
+# FLAG_WINDOW_MOUSE_PASSTHROUGH
+# FLAG_BORDERLESS_WINDOWED_MODE
+# FLAG_MSAA_4X_HINT
+# FLAG_INTERLACED_HINT
+
 
 
 # For touch_device.py
@@ -69,7 +92,7 @@ class Screen_class:
         self.trace = trace
         set_trace_log_level(LOG_WARNING)
         init_window(width, height, "Exp_console")  # width height title
-        self.render_texture = texture.texture(width, height, background_color, is_screen=True)
+        self.render_texture = texture.Texture(width, height, background_color, is_screen=True)
         #self.draw_to_framebuffer()
 
         for init_fn in Inits:
@@ -108,6 +131,9 @@ class Screen_class:
         # inverted height here to flip image which reverse openGL flip wrt raylib.
         draw_texture_rec(my_texture, (0, 0, my_texture.width, -my_texture.height), (0, 0), WHITE)
         end_drawing()
+
+
+import touch_input
 
 
 

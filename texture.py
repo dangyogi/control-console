@@ -1,6 +1,6 @@
 # texture.py
 
-r'''A texture class, specifically render_textures that can be drawn on the screen.
+r'''A Texture class, specifically render_textures that can be drawn on the screen.
 '''
 
 from contextlib import ContextDecorator
@@ -8,14 +8,14 @@ from pyray import *
 
 from alignment import Si
 import screen
-from sprite import Sprite
+import sprite
 
 
 Current_texture = None
 
-class texture:
+class Texture:
     def __init__(self, width, height, fillcolor=BLANK, as_sprite=False, is_screen=False):
-        r'''Creates a new texture.
+        r'''Creates a new render texture.
         '''
         self.texture = load_render_texture(width, height)
         self.fillcolor = fillcolor
@@ -26,7 +26,7 @@ class texture:
             end_texture_mode()
         self.as_sprite = as_sprite
         if as_sprite:
-            self.sprite = Sprite(width, height)
+            self.sprite = sprite.Sprite(width, height)
 
     def draw_on_texture(self, draw_to_framebuffer=False, from_scratch=False):
         r'''Directs all raylib draw_x commands to draw on the texture.
@@ -40,14 +40,14 @@ class texture:
         '''
         class texture_mode_cm(ContextDecorator):
             def __init__(self, texture, draw_to_framebuffer, from_scratch):
-                self.texture = texture  # texture object
+                self.texture = texture  # Texture object
                 self.draw_to_framebuffer = draw_to_framebuffer
                 if draw_to_framebuffer:
                     if not self.texture.is_screen:
-                        raise AssertionError("normal texture (not screen render_texture) called with "
+                        raise AssertionError("normal Texture (not screen render_texture) called with "
                                              "draw_to_framebuffer")
                     if Current_texture is not None:
-                        raise AssertionError("nested texture.draw_on_texture called with "
+                        raise AssertionError("nested Texture.draw_on_texture called with "
                                              "draw_to_framebuffer")
                 self.from_scratch = from_scratch
 
@@ -88,7 +88,7 @@ class texture:
         positions to specify where to place the left/center/right and/or top/middle/bottom rather
         than the upper (top) left (see alignment.py).
         '''
-        assert not self.is_screen, "texture.draw_to_screen called for screen's render_texture"
+        assert not self.is_screen, "Texture.draw_to_screen called for screen's render_texture"
         texture = self.texture.texture
         x = Si(x_pos, texture.width)
         y = Si(y_pos, texture.height)
@@ -96,6 +96,10 @@ class texture:
             self.sprite.save_pos(x, y)
         with screen.Screen.update(draw_to_framebuffer=False):
             # draw texture into screen's render_texture at x, y
-            print("draw_texture: width", texture.width, "height", texture.height)
-            draw_texture_rec(texture, (0, 0, texture.width, texture.height), (x, y), WHITE)
+            draw_texture(texture, x, y, WHITE)
 
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

@@ -8,25 +8,25 @@ First step, building individual reusable components, like "line":
 
     >>> from exp import *         # I, T and F
     >>> from alignment import *   # S, C and E
-    >>> from context import base, instance, context
+    >>> from context import Base, Instance, Context
 
     >>> BLACK = "BLACK"
 
-    >>> area = base(x_left=I.x_pos.S(I.width), x_center=I.x_pos.C(I.width), x_right=I.x_pos.E(I.width),
+    >>> area = Base(x_left=I.x_pos.S(I.width), x_center=I.x_pos.C(I.width), x_right=I.x_pos.E(I.width),
     ...             y_top=I.y_pos.S(I.height), y_middle=I.y_pos.C(I.height), y_bottom=I.y_pos.E(I.height),
     ...             flipped=False)
 
-2. Create a base that has the default settings.  This includes the settings defined in area:
+2. Create a Base that has the default settings.  This includes the settings defined in area:
 
     >>> line_base = area(width=3, color=BLACK, height=I.length)
 
-3. Define an instance class with the methods:
+3. Define an Instance class with the methods:
 
-    >>> class line(instance):
+    >>> class line(Instance):
     ...     base = line_base
     ...
     ...     def draw(self, template=None, **kwargs):
-    ...         attrs = context(self, template, **kwargs)
+    ...         attrs = Context(self, template, **kwargs)
     ...         if attrs.flipped:
     ...             print(f"draw horz line from ({attrs.x_left}, {attrs.y_middle}) "
     ...                   f"to ({attrs.x_right}, {attrs.y_middle}), "
@@ -43,6 +43,7 @@ First step, building individual reusable components, like "line":
     draw vert line from (C(11), S(30)) to (C(11), E(49)), width 3 and color BLACK
 
 
+# FIX this mess!
 build a base template
 with template(...) as foo:  # also sets Under_construction global var
     foo.a = comp_a(...)          # no foo
@@ -51,23 +52,23 @@ with template(...) as foo:  # also sets Under_construction global var
     .
     .
     .
-    class foo_instance(instance):
+    class foo_instance(Instance):
         base = foo
 
-# create an instance of the template
+# create an Instance of the template
 foo_1 = foo_instance(...)
 foo_2 = foo_instance(...)
 
 foo_1.draw(...)   # foo_1 passed as parameter, not global variable
 '''
 
-import exp
+from exp import *
 
 
 Trace = False
 
 
-class base_base:
+class Base_base:
     def __init__(self, parent=None, **values):
         self.parent = parent
         for key, value in values.items():
@@ -80,30 +81,30 @@ class base_base:
             return getattr(self.parent, name)
         raise AttributeError(name)
 
-class base(base_base):
+class Base(Base_base):
     r'''So we can do obj.attr, rather than obj['attr'].  Just looking for cleaner syntax...
 
-        >>> a = base(width=9, height=19)
+        >>> a = Base(width=9, height=19)
         >>> a.width
         9
         >>> a.height
         19
     '''
     def __call__(self, **kwargs):
-        r'''Create a specialized base from this base.
+        r'''Create a specialized Base from this Base.
         '''
-        return base(self, **kwargs)
+        return Base(self, **kwargs)
 
-class instance(base_base):
-    r'''An instance of a base object.
+class Instance(Base_base):
+    r'''An Instance of a Base object.
 
-    Subclass this and set the class "base" variable to it's base object:
+    Subclass this and set the class "base" variable to it's Base object:
 
-        >>> from context import base, instance, context
+        >>> from context import Base, Instance, Context
 
-        >>> my_base = base(width=9, height=19)
+        >>> my_base = Base(width=9, height=19)
 
-        >>> class my_inst(instance):
+        >>> class my_inst(Instance):
         ...     base = my_base
 
         >>> my_a = my_inst(x=20, y=200)
@@ -120,7 +121,7 @@ class instance(base_base):
         >>> my_b.height
         19
 
-    To place expressions in the base that would apply to each instance, use the exp module:
+    To place expressions in the Base that would apply to each Instance, use the exp module:
 
         >>> from exp import *
 
@@ -128,11 +129,11 @@ class instance(base_base):
 
         >>> from alignment import *   # S, C and E
 
-    The I in the exp module refers to the instance of the base, which will be defined later:
+    The I in the exp module refers to the Instance of the Base, which will be defined later:
 
-        >>> my_base = base(sum=I.a + I.b, b=40)
+        >>> my_base = Base(sum=I.a + I.b, b=40)
 
-        >>> class my_inst(instance):
+        >>> class my_inst(Instance):
         ...     base = my_base
 
         >>> my_a = my_inst(a=20)
@@ -149,24 +150,24 @@ class instance(base_base):
         >>> my_b.get('sum')   # use get to evaluate expressions
         50
 
-    Finally, the instance class may have methods on it.  But this presents two problems:
+    Finally, the Instance class may have methods on it.  But this presents two problems:
 
     1. We want the I exp's to have access to the parameters to the method, as if they were attributes
-       on the instance.  But we don't want these values to remain on the instance after the method call
+       on the Instance.  But we don't want these values to remain on the Instance after the method call
        completes.
 
-    2. When the method accesses an instance attribute (through self.X), we want expressions evaluated.
+    2. When the method accesses an Instance attribute (through self.X), we want expressions evaluated.
 
-       The solution to both of the problems is to create an context object!  This inherits attrs from
+       The solution to both of the problems is to create an Context object!  This inherits attrs from
        self and evaluates the inherited expression values.
 
-        >>> my_base = base(x_left=I.x_pos.S(I.width), width=9)
+        >>> my_base = Base(x_left=I.x_pos.S(I.width), width=9)
 
-        >>> class my_inst(instance):
+        >>> class my_inst(Instance):
         ...     base = my_base
         ...
         ...     def my_method(self, template=None, **kwargs):     # same arguments to all methods!
-        ...         attrs = context(self, template, **kwargs)     # this line is always the same!
+        ...         attrs = Context(self, template, **kwargs)     # this line is always the same!
         ...         # x_pos and width are stored on attrs:
         ...         print(f"{attrs.x_pos=}, {attrs.width=}")
         ...         # and inherited values are evaluated:
@@ -174,7 +175,7 @@ class instance(base_base):
 
         >>> my_a = my_inst()
 
-        # note that during the call, x_pos and width are set in the context, while x_left is inherited
+        # note that during the call, x_pos and width are set in the Context, while x_left is inherited
         # from self.
         >>> my_a.my_method(x_pos=C(100), width=51)
         attrs.x_pos=C(100), attrs.width=51
@@ -188,15 +189,15 @@ class instance(base_base):
         ...
         AttributeError: x_pos
 
-    3. To store permanent values on the instance, just assign them to self.
+    3. To store permanent values on the Instance, just assign them to self.
 
-        >>> my_base = base(x=1, num_calls=0)
+        >>> my_base = Base(x=1, num_calls=0)
 
-        >>> class my_inst(instance):
+        >>> class my_inst(Instance):
         ...     base = my_base
         ...
         ...     def my_method(self, template=None, **kwargs):     # same arguments to all methods!
-        ...         attrs = context(self, template, **kwargs)     # this line is always the same!
+        ...         attrs = Context(self, template, **kwargs)     # this line is always the same!
         ...         self.x = attrs.x
         ...         self.num_calls = attrs.num_calls + 1
 
@@ -214,20 +215,20 @@ class instance(base_base):
     def __init__(self, **values):
         super().__init__(self.base, **values)
 
-    def init(self, template=None):
+    def init(self, template=None, **kwargs):
         pass
 
     def get(self, name, template=None):
         if Trace:
-            print(f"instance.get {name=}, {self=}, {template=}")
-        return exp.eval_exp(getattr(self, name), self, template)
+            print(f"Instance.get {name=}, {self=}, {template=}")
+        return eval_exp(getattr(self, name), self, template)
 
     #def do(self, name, template, **attrs):  # Don't know how to implement the attrs...
     #    fn = self.get(name, template)  # This is assumed to be a method on self
     #    fn(self, template)
 
 
-class context:
+class Context:
     def __init__(self, inst, template, **kwargs):
         self.inst = inst
         self.template = template
@@ -238,42 +239,42 @@ class context:
         r'''Accesses attr from inst.
         '''
         if Trace:
-            print(f"context.__getattr__, {name=}, calling get on {self.inst=}")
+            print(f"Context.__getattr__, {name=}, calling get on {self.inst=}")
         value = getattr(self.inst, name)
         if Trace:
             print(f"... getattr got {value=}")
-        templ = self.inst if isinstance(self.inst, template) else self.template
+        templ = self.inst if isinstance(self.inst, Template) else self.template
         if Trace:
-            print(f"context.__getattr__ {name=}, {self.inst=}, {templ=}")
-        ans = exp.eval_exp(value, self, templ)
+            print(f"Context.__getattr__ {name=}, {self.inst=}, {templ=}")
+        ans = eval_exp(value, self, templ)
         if Trace:
             print(f"... eval_exp got {ans=}")
         return ans
 
 
-class template_base(base):
-    def __call__(self, **kwargs):
-        return template(self, **kwargs)
+area = Base(
+         x_left=I.x_pos.S(I.width), x_center=I.x_pos.C(I.width), x_right=I.x_pos.E(I.width),
+         y_top=I.y_pos.S(I.height), y_middle=I.y_pos.C(I.height), y_bottom=I.y_pos.E(I.height),
+         x_next=I.x_right.as_S(), y_next=I.y_bottom.as_S(), as_sprite=False, dynamic_capture=False)
 
-# FIX: add sprite
-class template(instance):
-    def __init__(self, base, **kwargs):
-        super(instance, self).__init__(base, **kwargs)
+class Template(Instance):
+    base = area
 
-    def init(self, template=None):
+    def init(self, template=None, **kwargs):
         r'''Sets width and height
         '''
-        attrs = context(self, template)
-        print("template.init", template)
+        super().init(template, **kwargs)
+        attrs = Context(self, template, **kwargs)         # I'm only the Template for my components
+        print("Template.init", template)
         x_left = 10000000
         x_right = -10000000
         y_top = 10000000
         y_bottom = -10000000
         for i, component in enumerate(attrs.components, 1):
-            print("template.init doing component.init", i)
+            print("Template.init doing component.init", i)
             component.init(self)
         for i, component in enumerate(attrs.components, 1):
-            print("template.init getting pos's from component", i)
+            print("Template.init getting pos's from component", i)
             xl = component.get('x_left', self).i
             if xl < x_left:
                 x_left = xl
@@ -287,13 +288,15 @@ class template(instance):
             if yb > y_bottom:
                 y_bottom = yb
         self.width = x_right - x_left
-        assert isinstance(attrs.width, int), f"template.init got non-integer width {attrs.width}"
+        assert isinstance(attrs.width, int), f"Template.init got non-integer width {attrs.width}"
         self.height = y_bottom - y_top 
-        assert isinstance(attrs.height, int), f"template.init got non-integer height {attrs.height}"
-        print(f"template.init: {attrs.width=}, {attrs.height=}")
+        assert isinstance(attrs.height, int), f"Template.init got non-integer height {attrs.height}"
+        print(f"Template.init: {attrs.width=}, {attrs.height=}")
+        if attrs.as_sprite:
+            self.sprite = sprite.Sprite(self.width, self.height, attrs.dynamic_capture)
 
     def draw(self, template=None, **kwargs):
-        attrs = context(self, template, **kwargs)
+        attrs = Context(self, template, **kwargs)
         #self.x_left = S(min(component.get('x_left', self).i
         #                    for component in attrs.components))
         #self.x_right = E(max(component.get('x_right', self).i
@@ -306,9 +309,14 @@ class template(instance):
         #                      for component in attrs.components))
         #self.height = attrs.y_bottom.i - attrs.y_top.i
         #self.y_middle = attrs.y_top.C(attrs.height)
+        if self.as_sprite:
+            self.sprite.save_pos(attrs.x_left, attrs.y_top)
         for i, component in enumerate(attrs.components, 1):
-            print("template.draw doing component draw", i)
+            print("Template.draw doing component draw", i)
             component.draw(self)
+
+import sprite
+
 
 
 if __name__ == "__main__":

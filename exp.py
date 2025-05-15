@@ -4,8 +4,8 @@ r'''Expressions.
 
 Expressions start with one of the following three special letters:
 
-    I - refers to the current instance.  Much like "self" within a function.
-    T - refers to the surrounding template instance.  Much like the module containing the function.
+    I - refers to the current Instance.  Much like "self" within a function.
+    T - refers to the surrounding Template instance.  Much like the module containing the function.
     F - refers to standard python functions, e.g, F.str
 
 After seeing any of these, any of the these things following it are baked into an expression object for
@@ -22,13 +22,12 @@ later evaluation/execution:
         ... and all of the reverse versions, e.g., b + exp
     exp.name
 
-The exp's are later evaluated by a context (see context.py).
+The exp's are later evaluated by a Context (see context.py).
 '''
 
 import operator
 import builtins
 
-import context
 from alignment import *
 
 
@@ -39,11 +38,11 @@ Trace = False
 
 
 def eval_exp(x, instance, template=None):
-    if isinstance(x, exp):
+    if isinstance(x, Exp):
         return x.eval(instance, template)
     return x
 
-class exp:
+class Exp:
     r'''This is the base class of all exp's.  It handles creating bigger exp's out smaller ones.
 
         >>> I.foobar
@@ -58,7 +57,7 @@ class exp:
         I.foo * 1 * 2 * 3
     '''
     def __call__(self, *args, **kwargs):
-        r'''Doesn't support functions returning exp's.
+        r'''Doesn't support functions returning Exp's.
 
             >>> I.foo(2, 3)
             I.foo(2, 3)
@@ -149,8 +148,8 @@ class exp:
         '''
         return exp_getattr(self, name)
 
-class exp_I(exp):
-    r'''Returns the current instance.
+class exp_I(Exp):
+    r'''Returns the current Instance.
     '''
     prec = 100
 
@@ -162,8 +161,8 @@ class exp_I(exp):
 
 I = exp_I()
 
-class exp_T(exp):
-    r'''Returns the current template (e.g., template param instance).
+class exp_T(Exp):
+    r'''Returns the current Template (e.g., template param instance).
     '''
     prec = 100
 
@@ -176,17 +175,17 @@ class exp_T(exp):
 
 T = exp_T()
 
-class exp_F(exp):
-    r'''Returns the current instance.
+class exp_F(Exp):
+    r'''Returns the a global variable (usually a function, hence, F).
     '''
     prec = 100
 
     def __getattr__(self, name):
-        return global_getter(name)  # needs to return an exp to continue building the exp
+        return global_getter(name)  # needs to return an Exp to continue building the exp
 
 F = exp_F()
 
-class global_getter(exp):
+class global_getter(Exp):
     prec = 93
     def __init__(self, name):
         self.name = name
@@ -200,7 +199,7 @@ class global_getter(exp):
         except KeyError:
             return getattr(builtins, self.name)
 
-class call(exp):
+class call(Exp):
     prec = 90
 
     def __init__(self, fn, args, kwargs):
@@ -215,14 +214,14 @@ class call(exp):
         return head + ')'
 
     def eval(self, instance, template):
-        r'''Doesn't support functions returning exp's.
+        r'''Doesn't support functions returning Exp's.
         '''
         fn = eval_exp(self.fn, instance, template)
         args = [eval_exp(arg, instance, template) for arg in self.args]
         kwargs = {key: eval_exp(value, instance, template) for key, value in self.kwargs.items()}
         return fn(*args, **kwargs)
 
-class unop(exp):
+class unop(Exp):
     prec = 80
 
     def __init__(self, a, op, sym):
@@ -237,7 +236,7 @@ class unop(exp):
         a_i = eval_exp(self.a, instance, template)
         return self.op(a_i)
 
-class binop(exp):
+class binop(Exp):
     def __init__(self, a, b, op, sym, prec):
         self.a = a
         self.b = b
@@ -246,7 +245,7 @@ class binop(exp):
         self.prec = prec
 
     def __repr__(self):
-        if not isinstance(self.a, exp):
+        if not isinstance(self.a, Exp):
             a_prec = 100
         else:
             a_prec = self.a.prec
@@ -255,7 +254,7 @@ class binop(exp):
         else:
             a_repr = repr(self.a)
 
-        if not isinstance(self.b, exp):
+        if not isinstance(self.b, Exp):
             b_prec = 100
         else:
             b_prec = self.b.prec
@@ -271,7 +270,7 @@ class binop(exp):
         b_i = eval_exp(self.b, instance, template)
         return self.op(a_i, b_i)
 
-class exp_getattr(exp):
+class exp_getattr(Exp):
     prec = 93
 
     def __init__(self, obj, name):
@@ -290,17 +289,18 @@ class exp_getattr(exp):
         value = getattr(obj, self.name)
         if Trace:
             print(f"exp_getattr.eval: {self.obj=}, {obj=}, {self.name=}, {value=}")
-        if isinstance(obj, context.instance):
+        if isinstance(obj, context.Instance):
             if Trace:
-                print(f"... obj is instance, calling eval_exp")
-            ans = eval_exp(value, obj, obj if isinstance(obj, context.template) else template)
+                print(f"... obj is Instance, calling eval_exp")
+            ans = eval_exp(value, obj, obj if isinstance(obj, context.Template) else template)
             if Trace:
                 print(f"... got {ans=}")
             return ans
-        assert not isinstance(value, exp), \
-               f"unexpected exp from {self.obj=} in {obj=}.{self.name}, {type(obj)=}, {context.instance=}"
+        assert not isinstance(value, Exp), \
+               f"unexpected Exp from {self.obj=} in {obj=}.{self.name}, {type(obj)=}"
         return value
 
+import context
 
 
 if __name__ == "__main__":
