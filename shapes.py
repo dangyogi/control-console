@@ -4,11 +4,9 @@ from math import ceil
 import os.path
 from pyray import *
 
-from exp import *
-from alignment import *
-from context import area, Instance, Context
+from context import Instance
 import screen
-from sprite import Sprite
+
 
 # raylib colors:
 #
@@ -43,37 +41,37 @@ from sprite import Sprite
 
 __all__ = ("vline", "hline", "text", "rect", "circle")
 
-line_base = area(width=3, color=BLACK)
 
-vline_base = line_base(height=I.length)
+class line(Instance):
+    width = 3
+    color = BLACK
 
-class vline(Instance):
-    base = vline_base
-    def draw(self, template=None, **kwargs):
-        attrs = Context(self, template, **kwargs)
-        draw_line_ex((attrs.x_center, attrs.y_upper),
-                     ({attrs.x_center}, {attrs.y_lower}),
-                     {attrs.width}, {attrs.color})
-        return attrs
+class vline(line):
+    @property
+    def height(self):
+        return self.length
+
+    def draw2(self):
+        draw_line_ex((self.x_center, self.y_upper),
+                     ({self.x_center}, {self.y_lower}),
+                     {self.width}, {self.color})
 
 
-hline_base = line_base()
-
-class hline(Instance):
-    base = hline_base
-
-    def init(self, template=None, **kwargs):
-        attrs = Context(self, template, **kwargs)
-        width = attrs.width
-        self.width = attrs.length
+class hline(line):
+    def __init__(self, length, **kwargs):
+        super().__init__(**kwargs)
+        width = self.width
+        self.width = length
         self.height = width
+        if self.trace:
+            print(f"hline.__init__: {self.get_raw('y_pos')=}, {kwargs=}")
 
-    def draw(self, template=None, **kwargs):
-        attrs = Context(self, template, **kwargs)
-        draw_line_ex((attrs.x_left.i, attrs.y_middle.i),
-                     (attrs.x_right.i, attrs.y_middle.i),
-                     attrs.height, attrs.color)
-        return attrs
+    def draw2(self):
+        if self.trace:
+            print(f"hline.draw2: {self.y_pos=}, {self.height=}, {self.y_middle=}")
+        draw_line_ex((self.x_left.i, self.y_middle.i),
+                     (self.x_right.i, self.y_middle.i),
+                     self.height, self.color)
 
 
 
@@ -96,8 +94,6 @@ def init_fonts(screen_obj):
             font = load_font(path)
             #print(f"{font=}, {is_font_valid(font)=}")
             Fonts.append(font)
-
-text_base = area(max_text=None, size=20, sans=False, bold=False, color=BLACK, spacing=0)
 
 class as_dict(dict):
     def __init__(self, attrs):
@@ -123,87 +119,82 @@ class text(Instance):
     other things on the same line, add about 6% of the height to the Y pos, no matter what the Y
     alignment.
     '''
-    base = text_base
+    max_text = None
+    size = 20
+    sans = False
+    bold = False
+    spacing = 0
+    color = BLACK
 
-    def init(self, template=None, **kwargs):
-        attrs = Context(self, template, **kwargs)
-        self.font = Fonts[2 * self.sans + self.bold]
-        if attrs.max_text is not None:
-            msize = measure_text_ex(attrs.font, attrs.max_text, attrs.size, attrs.spacing)
+    # FIX: move to __init__ with screen.Screen.register_init
+    def init2(self):
+        font = Fonts[2 * self.sans + self.bold]
+        if self.max_text is not None:
+            msize = measure_text_ex(font, self.max_text, self.size, self.spacing)
             self.width = int(ceil(msize.x))
             self.height = int(ceil(msize.y))
             print("text.init: width", self.width, "height", self.height)
-            if attrs.as_sprite:
-                self.sprite = Sprite(self.width, self.height, attrs.dynamic_capture)
-        elif attrs.as_sprite:
-            raise AssertionError("text.init: must specify max_text with as_sprite")
+        elif self.as_sprite:
+            raise AssertionError("text.init2: must specify max_text with as_sprite")
 
-    def draw(self, template=None, **kwargs):
-        attrs = Context(self, template, **kwargs)
-        attrs_as_dict = as_dict(attrs)
-        text = attrs.text.format_map(attrs_as_dict)
-        if attrs.max_text is not None:
-            width = attrs.width
-            height = attrs.height
+    def draw2(self):
+        font = Fonts[2 * self.sans + self.bold]
+        attrs_as_dict = as_dict(self)
+        text = self.text.format_map(attrs_as_dict)
+        if self.max_text is not None:
+            width = self.width
+            height = self.height
         else:
-            mtext = attrs.text.format_map(attrs_as_dict)
-            msize = measure_text_ex(attrs.font, mtext, attrs.size, attrs.spacing)
+            # FIX: not needed if x_pos and y_pos are S types.
+            mtext = self.text.format_map(attrs_as_dict)
+            msize = measure_text_ex(font, mtext, self.size, self.spacing)
             width = int(ceil(msize.x))
             height = int(ceil(msize.y))
+
+        # FIX: How does this work for the sprite call in Instance.draw?
         # x, y for draw is upper left
-        x = attrs.x_pos.S(width).i
-        y = attrs.y_pos.S(height).i
+        x = self.x_pos.S(width).i
+        y = self.y_pos.S(height).i
         print("text.draw to", x, y)
-        if self.as_sprite:
-            self.sprite.save_pos(x, y)
-        draw_text_ex(attrs.font, text, (x, y), attrs.size, attrs.spacing, attrs.color)
-        return attrs
+        draw_text_ex(font, text, (x, y), self.size, self.spacing, self.color)
 
-
-rect_base = area(color=WHITE)
 
 class rect(Instance):
-    base = rect_base
-    def init(self, template=None, **kwargs):
-        attrs = Context(self, template, **kwargs)
-        if attrs.as_sprite:
-            self.sprite = Sprite(self.width, self.height, attrs.dynamic_capture)
+    color = WHITE
 
-    def draw(self, template=None, **kwargs):
-        attrs = Context(self, template, **kwargs)
-        x = attrs.x_pos.S(attrs.width)
-        y = attrs.y_pos.S(attrs.height)
-        if self.as_sprite:
-            self.sprite.save_pos(x, y)
-        draw_rectangle(x.i, y.i, attrs.width, attrs.height, attrs.color)
-        return attrs
+    def draw2(self):
+        x = self.x_left
+        y = self.y_upper
+        if self.trace:
+            print(f"{self=}.draw2, {x=}, {y=}, {self.width=}, {self.height=}, {self.color=}")
+        draw_rectangle(x.i, y.i, self.width, self.height, self.color)
 
 
 # possibly interesting "on" colors for "LED"s: RED, GREEN, BLUE
 # possibly interesting "off" colors for "LED"s: GRAY, DARKGRAY, BROWN, BLACK
 # see test_3
-circle_base = area(diameter=20, color=WHITE)
-
 class circle(Instance):
-    base = circle_base
-    def init(self, template=None, **kwargs):
-        attrs = Context(self, template, **kwargs)
-        self.width = self.height = attrs.diameter
-        if attrs.diameter & 1:  # odd
-            self.radius = (self.diameter - 1) // 2
-        else:
-            self.radius = (self.diameter - 1) / 2
-        if attrs.as_sprite:
-            self.sprite = Sprite(self.width, self.height, attrs.dynamic_capture)
+    diameter = 21
+    color = WHITE
 
-    def draw(self, template=None, **kwargs):
-        attrs = Context(self, template, **kwargs)
-        x = attrs.x_pos.C(attrs.width)
-        y = attrs.y_pos.C(attrs.height)
-        if self.as_sprite:
-            self.sprite.save_pos(x, y)
-        draw_circle(x.i, y.i, attrs.radius, attrs.color)
-        return attrs
+    @property
+    def radius(self):
+        if self.diameter & 1:  # odd
+            return (self.diameter - 1) // 2
+        return (self.diameter - 1) / 2
+    
+    @property
+    def width(self):
+        return self.diameter
+    
+    @property
+    def height(self):
+        return self.diameter
+
+    def draw2(self):
+        x = self.x_pos.C(self.width)
+        y = self.y_pos.C(self.height)
+        draw_circle(x.i, y.i, self.radius, self.color)
 
 
 

@@ -7,27 +7,23 @@ The alignment module is not dependent on any other module here.  So it is always
 
 areas have x_left, x_center, x_right and y_upper, y_middle, y_lower
 
-    >>> from context import Base, Instance
-    >>> from exp import *
-
-    >>> A = Base(width=9)
-
-    >>> A.x_left = S(10)
-    >>> A.x_left                  # x_left is always marked as S (start).
+    >>> width = 9
+    >>> x_left = S(10)
+    >>> x_left                     # x_left is always marked as S (start).
     S(10)
-    >>> A.x_left.i                # get the integer
+    >>> x_left.i                   # get the integer
     10
-    >>> A.x_center = A.x_left.C(A.width) # Use C to convert the S to a C.
-    >>> A.x_center                # x_center is always marked as C (center)
+    >>> x_center = x_left.C(width) # Use C to convert the S to a C.
+    >>> x_center                   # x_center is always marked as C (center)
     C(14)
-    >>> A.x_center.i              # get the integer
+    >>> x_center.i                 # get the integer
     14
-    >>> A.x_right = A.x_left.E(A.width)  # Use E to convert the S to an E.
-    >>> A.x_right
+    >>> x_right = x_left.E(width)  # Use E to convert the S to an E.
+    >>> x_right
     E(18)
-    >>> A.x_center.E(A.width)              # Or you could have converted the C to an E.
+    >>> x_center.E(width)          # Or you could have converted the C to an E.
     E(18)
-    >>> A.x_right.i               # get the integer
+    >>> x_right.i                  # get the integer
     18
 
     Do the same things for y_upper (always an S), y_middle (always a C), and y_lower (always an E).
@@ -35,50 +31,63 @@ areas have x_left, x_center, x_right and y_upper, y_middle, y_lower
 
 Now we have B with a different width.
 
-    >>> B = Base(width=5)
+    >>> width = 5
 
-and we want to link B's x position to A.  We do that by setting B.x_pos.  Once x_pos is set, we can
+and we want to link B's x position to A.  We do that by setting B.x_pos.
+
+    >>> x_pos    = x_left          # pretending x_pos is B and x_left is A.x_left
+
+Once x_pos is set, we can
 calculate B's x_left/center/right from that as follows:
 
-    >>> B.x_left   = I.x_pos.S(I.width)
-    >>> B.x_center = I.x_pos.C(I.width)
-    >>> B.x_right  = I.x_pos.E(I.width)
-
-We need to set up instances of B to evaluate these:
-
-    >>> class B_inst(Instance):
-    ...     base = B
+    >>> x_pos.S(width)  # x_left
+    S(10)
+    >>> x_pos.C(width)  # x_center
+    C(12)
+    >>> x_pos.E(width)  # x_right
+    E(14)
 
 How get different alignments with A by setting B'x x_pos to different things.
 
     to left align B to A:
 
-        >>> B1 = B_inst(x_pos=A.x_left)      # remember, x_left will always be an "S" object
-        >>> B1.x_pos                         # this is the same as A's x_left, i.e., left aligned!
+        >>> x_left      # remember, x_left will always be an "S" object
         S(10)
-        >>> A.x_left
-        S(10)
+        >>> x_pos = x_left                   # this is the same as A's x_left, i.e., left aligned!
 
-        >>> B1.get('x_left'), B1.get('x_center'), B1.get('x_right')
-        (S(10), C(12), E(14))
+        >>> x_pos.S(width)  # x_left
+        S(10)
+        >>> x_pos.C(width)  # x_center
+        C(12)
+        >>> x_pos.E(width)  # x_right
+        E(14)
 
     to center align B to A:
 
-        >>> B2 = B_inst(x_pos = A.x_center)  # remember, x_center will always be a "C" object
-        >>> B2.x_pos                         # this is the same as A's x_center, i.e., center aligned!
+        >>> x_center      # remember, x_center will always be a "C" object
         C(14)
+        >>> x_pos = x_center                 # this is the same as A's x_center, i.e., center aligned!
 
-        >>> B2.get('x_left'), B2.get('x_center'), B2.get('x_right')
-        (S(12), C(14), E(16))
+        >>> x_pos.S(width)  # x_left
+        S(12)
+        >>> x_pos.C(width)  # x_center
+        C(14)
+        >>> x_pos.E(width)  # x_right
+        E(16)
 
     to right align B to A:
 
-        >>> B3 = B_inst(x_pos = A.x_right)   # remember, x_right will always be an "E" object
-        >>> B3.x_pos                         # this is the same as A's x_right, i.e., center aligned!
+        >>> x_right      # remember, x_right will always be an "E" object
+        E(18)
+        >>> x_pos = x_right                 # this is the same as A's x_right, i.e., right aligned!
+
+        >>> x_pos.S(width)  # x_left
+        S(14)
+        >>> x_pos.C(width)  # x_center
+        C(16)
+        >>> x_pos.E(width)  # x_right
         E(18)
 
-        >>> B3.get('x_left'), B3.get('x_center'), B3.get('x_right')
-        (S(14), C(16), E(18))
 
 Now B can use whichever of these makes sense to it.  And areas downstream of B can link to these values
 just like above.
@@ -139,6 +148,12 @@ class pos:
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.i})"
+
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, memo):
+        return self
 
     def __add__(self, i):
         return self.__class__(self.i + i)

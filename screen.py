@@ -121,12 +121,16 @@ class Screen_class:
         self.trace = trace
         set_trace_log_level(LOG_WARNING)
         init_window(width, height, "Exp_console")  # width height title
-        self.render_texture = texture.Texture(width, height, background_color, is_screen=True)
+        self.render_texture = texture.Texture("Screen", width, height, background_color, is_screen=True)
         #self.draw_to_framebuffer()
 
         for init_fn in Inits:
             init_fn(self)
         Screen = self
+
+    def __deepcopy__(self, memo):
+        print("Screen.__deepcopy__!!!")
+        return self
 
     def close(self):
         for quit_fn in Quits:
@@ -140,6 +144,10 @@ class Screen_class:
         self.close()
         return False
 
+    def clear(self):
+        with self.update(from_scratch=True):
+            pass
+
     def update(self, draw_to_framebuffer=True, from_scratch=False):
         r'''Directs all pyray draws to the render_texture.
 
@@ -147,6 +155,7 @@ class Screen_class:
 
         If from_scratch is True, it will first clear the render_texture to the background_color.
         '''
+        #print(f"Screen.update calling render_texture.draw_on_texture")
         return self.render_texture.draw_on_texture(draw_to_framebuffer=draw_to_framebuffer,
                                                    from_scratch=from_scratch)
 

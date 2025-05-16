@@ -22,13 +22,13 @@ later evaluation/execution:
         ... and all of the reverse versions, e.g., b + exp
     exp.name
 
-The exp's are later evaluated by a Context (see context.py).
+The exp's are later evaluated by eval_exp.
 '''
 
 import operator
 import builtins
 
-from alignment import *
+from alignment import *   # so F can find these in globals()
 
 
 __all__ = tuple('ITF') + ('eval_exp',)
@@ -37,9 +37,9 @@ __all__ = tuple('ITF') + ('eval_exp',)
 Trace = False
 
 
-def eval_exp(x, instance, template=None):
+def eval_exp(x, instance):
     if isinstance(x, Exp):
-        return x.eval(instance, template)
+        return x.eval(instance)
     return x
 
 class Exp:
@@ -63,6 +63,12 @@ class Exp:
             I.foo(2, 3)
         '''
         return call(self, args, kwargs)
+
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, memo):
+        return self
 
     def __neg__(self):
         r'''
@@ -156,7 +162,7 @@ class exp_I(Exp):
     def __repr__(self):
         return "I"
 
-    def eval(self, instance, template):
+    def eval(self, instance):
         return instance
 
 I = exp_I()
@@ -169,9 +175,12 @@ class exp_T(Exp):
     def __repr__(self):
         return "T"
 
-    def eval(self, instance, template):
-        assert template is not None, f"T used outside of template"
-        return template
+    def eval(self, instance):
+        assert hasattr(instance, 'template'), f"T used outside of template"
+        ans = instance.template
+        if Trace or instance.trace:
+            print(f"exp_T got {ans=}, {ans.x_pos=}, {ans.y_pos=}")
+        return ans
 
 T = exp_T()
 
@@ -193,7 +202,7 @@ class global_getter(Exp):
     def __repr__(self):
         return f"F.{self.name}"
 
-    def eval(self, instance, template):
+    def eval(self, instance):
         try:
             return globals()[self.name]
         except KeyError:
@@ -213,12 +222,12 @@ class call(Exp):
             return head + f", {', '.join((f'{name}={value}' for name, value in self.kwargs.items()))})"
         return head + ')'
 
-    def eval(self, instance, template):
+    def eval(self, instance):
         r'''Doesn't support functions returning Exp's.
         '''
-        fn = eval_exp(self.fn, instance, template)
-        args = [eval_exp(arg, instance, template) for arg in self.args]
-        kwargs = {key: eval_exp(value, instance, template) for key, value in self.kwargs.items()}
+        fn = eval_exp(self.fn, instance)
+        args = [eval_exp(arg, instance) for arg in self.args]
+        kwargs = {key: eval_exp(value, instance) for key, value in self.kwargs.items()}
         return fn(*args, **kwargs)
 
 class unop(Exp):
@@ -232,8 +241,8 @@ class unop(Exp):
     def __repr__(self):
         return f"{self.sym}{self.a}"
 
-    def eval(self, instance, template):
-        a_i = eval_exp(self.a, instance, template)
+    def eval(self, instance):
+        a_i = eval_exp(self.a, instance)
         return self.op(a_i)
 
 class binop(Exp):
@@ -265,9 +274,9 @@ class binop(Exp):
 
         return f"{a_repr} {self.sym} {b_repr}"
 
-    def eval(self, instance, template):
-        a_i = eval_exp(self.a, instance, template)
-        b_i = eval_exp(self.b, instance, template)
+    def eval(self, instance):
+        a_i = eval_exp(self.a, instance)
+        b_i = eval_exp(self.b, instance)
         return self.op(a_i, b_i)
 
 class exp_getattr(Exp):
@@ -280,20 +289,20 @@ class exp_getattr(Exp):
     def __repr__(self):
         return f"{self.obj}.{self.name}"
 
-    def eval(self, instance, template):
-        if Trace:
-            print(f"exp_getattr.eval: {self.obj=}, {instance=}, {template=}")
-        obj = eval_exp(self.obj, instance, template)
-        if Trace:
+    def eval(self, instance):
+        if Trace or instance.trace:
+            print(f"exp_getattr.eval: {self.obj=}, {instance=}")
+        obj = eval_exp(self.obj, instance)
+        if Trace or instance.trace:
             print(f"... {self.obj=} evals to {obj=}")
         value = getattr(obj, self.name)
-        if Trace:
+        if Trace or instance.trace:
             print(f"exp_getattr.eval: {self.obj=}, {obj=}, {self.name=}, {value=}")
         if isinstance(obj, context.Instance):
-            if Trace:
+            if Trace or instance.trace:
                 print(f"... obj is Instance, calling eval_exp")
-            ans = eval_exp(value, obj, obj if isinstance(obj, context.Template) else template)
-            if Trace:
+            ans = eval_exp(value, obj)
+            if Trace or instance.trace:
                 print(f"... got {ans=}")
             return ans
         assert not isinstance(value, Exp), \

@@ -142,22 +142,21 @@ class Touch_generator:
         if secs is not None:
             end = time.time() + secs
         while secs is None or time.time() < end:
-            with screen.Screen.update(draw_to_framebuffer=False):
+            with screen.Screen.update(draw_to_framebuffer=True):
                 saw_events = 0
-                for event in self.gen_slot_events():
-                    self.touch_dispatch.dispatch(event)
-                    saw_events += 1
-                while self.timers and time.time() >= self.timers[-1][0]:
-                    fn = self.timers.pop()[1]
-                    if self.trace:
-                        print("run got timer", fn)
-                    fn()
-            if saw_events:
-                if self.trace:
-                    print("run saw", saw_events, "touch events, calling draw_to_framebuffer")
-                screen.Screen.draw_to_framebuffer()
-            if secs is None or time.time() < end - 0.1:
-                time.sleep(0.1)
+                while True:
+                    for event in self.gen_slot_events():
+                        self.touch_dispatch.dispatch(event)
+                        saw_events += 1
+                    while self.timers and time.time() >= self.timers[-1][0]:
+                        fn = self.timers.pop()[1]
+                        if self.trace:
+                            print("run got timer", fn)
+                        fn()
+                        saw_events += 1
+                    if saw_events or (secs is not None and time.time() > end - 0.1):
+                        break  # break out of with to draw_to_framebuffer and re-enter with
+                    time.sleep(0.1)
 
     def gen_slot_events(self):
         for event in self.device.events():
