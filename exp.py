@@ -4,8 +4,8 @@ r'''Expressions.
 
 Expressions start with one of the following three special letters:
 
-    I - refers to the current Instance.  Much like "self" within a function.
-    T - refers to the surrounding Template instance.  Much like the module containing the function.
+    I - refers to the current Drawable instance.  Much like "self" within a method.
+    P - refers to the surrounding Template instance.  Much like the module containing the function.
     F - refers to standard python functions, e.g, F.str
 
 After seeing any of these, any of the these things following it are baked into an expression object for
@@ -25,13 +25,14 @@ later evaluation/execution:
 The exp's are later evaluated by eval_exp.
 '''
 
+import sys
 import operator
 import builtins
 
 from alignment import *   # so F can find these in globals()
 
 
-__all__ = tuple('ITF') + ('eval_exp',)
+__all__ = tuple('IPF')
 
 
 Trace = False
@@ -41,6 +42,7 @@ def eval_exp(x, instance):
     if isinstance(x, Exp):
         return x.eval(instance)
     return x
+
 
 class Exp:
     r'''This is the base class of all exp's.  It handles creating bigger exp's out smaller ones.
@@ -155,7 +157,7 @@ class Exp:
         return exp_getattr(self, name)
 
 class exp_I(Exp):
-    r'''Returns the current Instance.
+    r'''Returns the current Drawable instance.
     '''
     prec = 100
 
@@ -167,22 +169,22 @@ class exp_I(Exp):
 
 I = exp_I()
 
-class exp_T(Exp):
-    r'''Returns the current Template (e.g., template param instance).
+class exp_P(Exp):
+    r'''Returns the current Composite (e.g., the current instance's parent).
     '''
     prec = 100
 
     def __repr__(self):
-        return "T"
+        return "P"
 
     def eval(self, instance):
-        assert hasattr(instance, 'template'), f"T used outside of template"
-        ans = instance.template
+        assert hasattr(instance, 'parent'), f"P used outside of Composite"
+        ans = instance.parent
         if Trace or instance.trace:
-            print(f"exp_T got {ans=}, {ans.x_pos=}, {ans.y_pos=}")
+            print(f"exp_P got {ans=}", file=sys.stderr)
         return ans
 
-T = exp_T()
+P = exp_P()
 
 class exp_F(Exp):
     r'''Returns the a global variable (usually a function, hence, F).
@@ -195,6 +197,10 @@ class exp_F(Exp):
 F = exp_F()
 
 class global_getter(Exp):
+    r'''Tries globals().name, then builtins.name.
+
+    Used by exp_F.
+    '''
     prec = 93
     def __init__(self, name):
         self.name = name
@@ -209,6 +215,8 @@ class global_getter(Exp):
             return getattr(builtins, self.name)
 
 class call(Exp):
+    r'''Does a function call.
+    '''
     prec = 90
 
     def __init__(self, fn, args, kwargs):
@@ -231,6 +239,8 @@ class call(Exp):
         return fn(*args, **kwargs)
 
 class unop(Exp):
+    r'''Evaluates an unary operator.
+    '''
     prec = 80
 
     def __init__(self, a, op, sym):
@@ -246,6 +256,8 @@ class unop(Exp):
         return self.op(a_i)
 
 class binop(Exp):
+    r'''Evaluates a binary operator.
+    '''
     def __init__(self, a, b, op, sym, prec):
         self.a = a
         self.b = b
@@ -280,6 +292,8 @@ class binop(Exp):
         return self.op(a_i, b_i)
 
 class exp_getattr(Exp):
+    r'''Gets an attribute off of an object.  The object is another expression.
+    '''
     prec = 93
 
     def __init__(self, obj, name):
@@ -291,25 +305,28 @@ class exp_getattr(Exp):
 
     def eval(self, instance):
         if Trace or instance.trace:
-            print(f"exp_getattr.eval: {self.obj=}, {instance=}")
+            print(f"exp_getattr.eval: {self.obj=}, {self.name=}, {instance=}", file=sys.stderr)
         obj = eval_exp(self.obj, instance)
         if Trace or instance.trace:
-            print(f"... {self.obj=} evals to {obj=}")
+            print(f"... {self.obj=} evals to {obj=}", file=sys.stderr)
         value = getattr(obj, self.name)
         if Trace or instance.trace:
-            print(f"exp_getattr.eval: {self.obj=}, {obj=}, {self.name=}, {value=}")
-        if isinstance(obj, context.Instance):
-            if Trace or instance.trace:
-                print(f"... obj is Instance, calling eval_exp")
-            ans = eval_exp(value, obj)
-            if Trace or instance.trace:
-                print(f"... got {ans=}")
-            return ans
+            print(f"exp_getattr.eval: {self.obj=}, {obj=}, {self.name=}, {value=}", file=sys.stderr)
+
+        # FIX: This is now done in Drawable.__getattribute__
+        #if isinstance(obj, drawable.Drawable):
+        #    if Trace or instance.trace:
+        #        print(f"... obj is Drawable, calling eval_exp", file=sys.stderr)
+        #    ans = eval_exp(value, obj)
+        #    if Trace or instance.trace:
+        #        print(f"... got {ans=}", file=sys.stderr)
+        #    return ans
+
         assert not isinstance(value, Exp), \
                f"unexpected Exp from {self.obj=} in {obj=}.{self.name}, {type(obj)=}"
         return value
 
-import context
+import drawable
 
 
 if __name__ == "__main__":

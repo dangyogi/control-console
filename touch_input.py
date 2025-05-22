@@ -237,6 +237,7 @@ class Touch_generator:
 
 
 if __name__ == "__main__":
+    from collections import Counter
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -251,11 +252,33 @@ if __name__ == "__main__":
         gen = Touch_generator(screen.Touch_device_path, args.width, args.height, Touch_dispatcher(),
                               args.trace)
 
+        last_event = None
         while True:
             # Read events from the device
             for slot_event in gen.gen_slot_events():
                 print(slot_event)
-            print("break")
+                if slot_event.action == 'move':
+                    if last_event is not None:
+                        print("delta x", slot_event.x - last_event.x,
+                              "delta y", slot_event.y - last_event.y)
+                    last_event = slot_event
+                if False:
+                    if slot_event.slot == 0:
+                        match slot_event.action:
+                            case 'touch': 
+                                x_counter = Counter()
+                                y_counter = Counter()
+                            case 'move': 
+                                x_counter[slot_event.x] += 1
+                                y_counter[slot_event.y] += 1
+                            case 'release': 
+                                print("x results:")
+                                for x, count in sorted(x_counter.items(), key=itemgetter(0)):
+                                    print(x, count)
+                                print("y results:")
+                                for y, count in sorted(y_counter.items(), key=itemgetter(0)):
+                                    print(y, count)
+            #print("break")
             time.sleep(0.1)
     finally:
         gen.close()

@@ -41,8 +41,8 @@ class Texture:
 
         If from_scratch is True, it will blank the texture to its fillcolor at the start.
 
-        The draw_to_framebuffer parameter causes the screen's render_template to be drawn to the
-        framebuffer.  This can only be used for the texture containing the screen's render_template.
+        The draw_to_framebuffer parameter causes the screen's render_texture to be drawn to the
+        framebuffer.  This can only be used for the texture containing the screen's render_texture.
         '''
         class texture_mode_cm(ContextDecorator):
             def __init__(self, texture, draw_to_framebuffer, from_scratch, trace):

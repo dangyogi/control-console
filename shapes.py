@@ -1,10 +1,13 @@
 # shapes.py
 
+r'''A set of classes for different kinds of shapes supported by raylib.
+'''
+
 from math import ceil
 import os.path
 from pyray import *
 
-from context import Instance
+from drawable import Drawable
 import screen
 
 
@@ -42,7 +45,7 @@ import screen
 __all__ = ("vline", "hline", "text", "rect", "circle")
 
 
-class line(Instance):
+class line(Drawable):
     width = 3
     color = BLACK
 
@@ -68,9 +71,9 @@ class hline(line):
 
     def draw2(self):
         if self.trace:
-            print(f"hline.draw2: {self.y_pos=}, {self.height=}, {self.y_middle=}")
-        draw_line_ex((self.x_left.i, self.y_middle.i),
-                     (self.x_right.i, self.y_middle.i),
+            print(f"hline.draw2: {self.y_pos=}, {self.height=}, {self.y_mid=}")
+        draw_line_ex((self.x_left.i, self.y_mid.i),
+                     (self.x_right.i, self.y_mid.i),
                      self.height, self.color)
 
 
@@ -105,10 +108,10 @@ class as_dict(dict):
         except AttributeError:
             raise KeyError(key)
 
-class text(Instance):
+class text(Drawable):
     r'''Draw text.
 
-    The text (but not the max_text), has .format_map called on it with the current Instance passed as a
+    The text (but not the max_text), has .format_map called on it with the current instance passed as a
     dict.  If there are no formatting directives ({...}) in the text, no harm done.  This provides a
     way to pass parameters into the text message.
 
@@ -118,6 +121,8 @@ class text(Instance):
     descenders on the chars, even if there're not any.  To make the text appear more lined up with
     other things on the same line, add about 6% of the height to the Y pos, no matter what the Y
     alignment.
+
+    The text and max_text attributes are automatically converted to strings with str().
     '''
     max_text = None
     size = 20
@@ -130,7 +135,7 @@ class text(Instance):
     def init2(self):
         font = Fonts[2 * self.sans + self.bold]
         if self.max_text is not None:
-            msize = measure_text_ex(font, self.max_text, self.size, self.spacing)
+            msize = measure_text_ex(font, str(self.max_text), self.size, self.spacing)
             self.width = int(ceil(msize.x))
             self.height = int(ceil(msize.y))
             print("text.init: width", self.width, "height", self.height)
@@ -140,18 +145,17 @@ class text(Instance):
     def draw2(self):
         font = Fonts[2 * self.sans + self.bold]
         attrs_as_dict = as_dict(self)
-        text = self.text.format_map(attrs_as_dict)
+        text = str(self.text).format_map(attrs_as_dict)
         if self.max_text is not None:
             width = self.width
             height = self.height
         else:
             # FIX: not needed if x_pos and y_pos are S types.
-            mtext = self.text.format_map(attrs_as_dict)
-            msize = measure_text_ex(font, mtext, self.size, self.spacing)
+            msize = measure_text_ex(font, text, self.size, self.spacing)
             width = int(ceil(msize.x))
             height = int(ceil(msize.y))
 
-        # FIX: How does this work for the sprite call in Instance.draw?
+        # FIX: How does this work for the sprite call in Drawable.draw?
         # x, y for draw is upper left
         x = self.x_pos.S(width).i
         y = self.y_pos.S(height).i
@@ -159,7 +163,7 @@ class text(Instance):
         draw_text_ex(font, text, (x, y), self.size, self.spacing, self.color)
 
 
-class rect(Instance):
+class rect(Drawable):
     color = WHITE
 
     def draw2(self):
@@ -173,7 +177,7 @@ class rect(Instance):
 # possibly interesting "on" colors for "LED"s: RED, GREEN, BLUE
 # possibly interesting "off" colors for "LED"s: GRAY, DARKGRAY, BROWN, BLACK
 # see test_3
-class circle(Instance):
+class circle(Drawable):
     diameter = 21
     color = WHITE
 

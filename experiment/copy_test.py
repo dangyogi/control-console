@@ -15,6 +15,10 @@ class foo:
     #    print("foo.__deepcopy__", self.a)
     #    return foo(deepcopy(self.a, memo))
 
+    def __deepcopy__(self, memo):    # takes precedence over copyreg
+        print("foo.__deepcopy__", self.a)
+        return super().__deepcopy__(memo)
+
 def pickle_foo(f):
     print("pickle_foo", f)
     return foo, (f.a,)

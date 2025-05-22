@@ -2,13 +2,16 @@
 
 r'''The screen everything is displayed on.
 
-Use screen.register_init(init_fn) to have your init_fn called when the screen is initialized.  Your
+Use screen.register_init(init_fn) to have your init_fn called after the screen is initialized.  Your
 function will be passed the new screen object.
 
 Use screen.register_quit(quit_fn) to register your quit_fn (shutdown fn) when the screen is shutdown.
 Your function will not be passed any arguments.
 
 Use the screen object as a context manager to close the screen at the end of the with statement.
+
+This module also serves as a top level module that can be safely imported into all of the other modules
+and used to get to shared global values.
 '''
 
 from pyray import *

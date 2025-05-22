@@ -5,20 +5,20 @@ The alignment module is not dependent on any other module here.  So it is always
 
     from alignment import *
 
-areas have x_left, x_center, x_right and y_upper, y_middle, y_lower
+areas have x_left, x_center, x_right and y_upper, y_mid, y_lower
 
-    >>> width = 9
+    >>> width = 9                  # odd numbers put the center on a pixel (not between two).
     >>> x_left = S(10)
     >>> x_left                     # x_left is always marked as S (start).
     S(10)
     >>> x_left.i                   # get the integer
     10
-    >>> x_center = x_left.C(width) # Use C to convert the S to a C.
+    >>> x_center = x_left.C(width) # Use C to convert whatever you have to a C.
     >>> x_center                   # x_center is always marked as C (center)
     C(14)
     >>> x_center.i                 # get the integer
     14
-    >>> x_right = x_left.E(width)  # Use E to convert the S to an E.
+    >>> x_right = x_left.E(width)  # Use E to convert whatever you have to an E.
     >>> x_right
     E(18)
     >>> x_center.E(width)          # Or you could have converted the C to an E.
@@ -26,16 +26,16 @@ areas have x_left, x_center, x_right and y_upper, y_middle, y_lower
     >>> x_right.i                  # get the integer
     18
 
-    Do the same things for y_upper (always an S), y_middle (always a C), and y_lower (always an E).
+    Do the same things for y_upper (always an S), y_mid (always a C), and y_lower (always an E).
     This is an exercise left to the reader.
 
 Now we have B with a different width.
 
     >>> width = 5
 
-and we want to link B's x position to A.  We do that by setting B.x_pos.
+and we want to link B's x position to A (the values above).  We do that by setting B.x_pos:
 
-    >>> x_pos    = x_left          # pretending x_pos is B and x_left is A.x_left
+    >>> x_pos = x_left             # pretending x_pos is B and x_left is A.x_left
 
 Once x_pos is set, we can
 calculate B's x_left/center/right from that as follows:
@@ -47,52 +47,52 @@ calculate B's x_left/center/right from that as follows:
     >>> x_pos.E(width)  # x_right
     E(14)
 
-How get different alignments with A by setting B'x x_pos to different things.
+How to get different alignments with A by setting B'x x_pos to different things.
 
     to left align B to A:
 
-        >>> x_left      # remember, x_left will always be an "S" object
+        >>> x_left            # remember, x_left will always be an "S" object
         S(10)
-        >>> x_pos = x_left                   # this is the same as A's x_left, i.e., left aligned!
+        >>> x_pos = x_left    # this is the same as A's x_left, i.e., left aligned!
 
-        >>> x_pos.S(width)  # x_left
+        >>> x_pos.S(width)    # B.x_left based on B's width
         S(10)
-        >>> x_pos.C(width)  # x_center
+        >>> x_pos.C(width)    # B.x_center based on B's width
         C(12)
-        >>> x_pos.E(width)  # x_right
+        >>> x_pos.E(width)    # B.x_right based on B's width
         E(14)
 
     to center align B to A:
 
-        >>> x_center      # remember, x_center will always be a "C" object
+        >>> x_center          # remember, x_center will always be a "C" object
         C(14)
-        >>> x_pos = x_center                 # this is the same as A's x_center, i.e., center aligned!
+        >>> x_pos = x_center  # this is the same as A's x_center, i.e., center aligned!
 
-        >>> x_pos.S(width)  # x_left
+        >>> x_pos.S(width)    # B.x_left based on B's width
         S(12)
-        >>> x_pos.C(width)  # x_center
+        >>> x_pos.C(width)    # B.x_center based on B's width
         C(14)
-        >>> x_pos.E(width)  # x_right
+        >>> x_pos.E(width)    # B.x_right based on B's width
         E(16)
 
     to right align B to A:
 
-        >>> x_right      # remember, x_right will always be an "E" object
+        >>> x_right           # remember, x_right will always be an "E" object
         E(18)
-        >>> x_pos = x_right                 # this is the same as A's x_right, i.e., right aligned!
+        >>> x_pos = x_right   # this is the same as A's x_right, i.e., right aligned!
 
-        >>> x_pos.S(width)  # x_left
+        >>> x_pos.S(width)    # B.x_left based on B's width
         S(14)
-        >>> x_pos.C(width)  # x_center
+        >>> x_pos.C(width)    # B.x_center based on B's width
         C(16)
-        >>> x_pos.E(width)  # x_right
+        >>> x_pos.E(width)    # B.x_right based on B's width
         E(18)
 
 
 Now B can use whichever of these makes sense to it.  And areas downstream of B can link to these values
 just like above.
 
-Do the same thing for the y axis...
+You do the same thing for the y axis...
 '''
 
 import math

@@ -4,7 +4,8 @@ from pyray import *
 
 from exp import *
 from alignment import *
-from templates import Group
+from composite import Composite
+from composites import *
 import screen
 from shapes import *
 
@@ -12,11 +13,11 @@ from shapes import *
 def group():
     #with screen.Screen_class():
         message="Hello gjpqy!"
-        g = Group(text(name='txt', x_pos=T.x_pos, y_pos=T.y_pos, size=80, text=message,
-                       max_text=message),
-                  rect(name='r', x_pos=T.txt.x_next, y_pos=T.y_pos, height=80, width=300),
-                  circle(name='c', x_pos=T.r.x_next, y_pos=T.y_pos, diameter=80),
-                  hline(x_pos=T.c.x_next, y_pos=T.y_pos, length=40))
+        g = Composite(text(name='txt', x_pos=P.x_pos, y_pos=P.y_pos, size=80, text=message,
+                           max_text=message),
+                      rect(name='r', x_pos=P.txt.x_next, y_pos=P.y_pos, height=80, width=300),
+                      circle(name='c', x_pos=P.r.x_next, y_pos=P.y_pos, diameter=80),
+                      hline(x_pos=P.c.x_next, y_pos=P.y_pos, length=40))
         g.init()
         with screen.Screen.update():
             g.draw(x_pos=S(500), y_pos=E(600))
@@ -91,6 +92,73 @@ def circle_colors():
             t2.draw(x_pos=c_x_center, text="BLACK")
         screen.Screen.Touch_generator.run(2)
 
+def lines():
+    #with screen.Screen_class():
+        l1 = hline(width=1, length=50)
+        l1.init()
+        l2 = hline(width=2, length=50)
+        l2.init()
+        l3 = hline(width=3, length=50)
+        l3.init()
+        with screen.Screen.update():
+            for x in range(100, 901, 400):
+                x_pos = S(x)
+                for y in range(100, 901, x // 50):
+                    l1.draw(x_pos=x_pos, y_pos=C(y))
+                    l2.draw(x_pos=x_pos + 100, y_pos=C(y))
+                    l3.draw(x_pos=x_pos + 200, y_pos=C(y))
+        screen.Screen.Touch_generator.run(5)
+
+def scales():
+    #with screen.Screen_class():
+        l1 = hline(width=1, length=15)
+        l1.init()
+        l2 = hline(width=1, length=20)
+        l2.init()
+        l3 = hline(width=1, length=23)
+        l3.init()
+        l4 = hline(width=1, length=26)
+        l4.init()
+        l5 = hline(width=1, length=29)
+        l5.init()
+        with screen.Screen.update():
+            y_pos = E(1000)
+            for step_size in range(3, 8, 1):
+                x_pos = S(step_size * 100)
+                for y in range(0, 128 * step_size, step_size):
+                    y_target = y_pos - y
+                    if step_size == 7 and y > 100 * step_size:
+                        print(f"{step_size=}, {y=}, {y_target=}")
+                    l1.draw(x_pos=x_pos, y_pos=y_target)
+                for y in range(0, 128 * step_size, step_size * 5):
+                    l2.draw(x_pos=x_pos, y_pos=y_pos-y)
+                for y in range(0, 128 * step_size, step_size * 10):
+                    l3.draw(x_pos=x_pos, y_pos=y_pos-y)
+                for y in range(0, 128 * step_size, step_size * 50):
+                    l4.draw(x_pos=x_pos, y_pos=y_pos-y)
+                for y in range(0, 128 * step_size, step_size * 100):
+                    l5.draw(x_pos=x_pos, y_pos=y_pos-y)
+        screen.Screen.Touch_generator.run(5)
+
+def knob():
+    #with screen.Screen_class():
+        Slider_knob.init()
+        with screen.Screen.update():
+            x_pos = C(900)
+            y_pos = C(500)
+            Slider_knob.draw(x_pos=x_pos, y_pos=y_pos)
+        screen.Screen.Touch_generator.run(4)
+
+def slider():
+    #with screen.Screen_class():
+        sc = Slider_control.copy(label="testing...")
+        sc.init()
+        with screen.Screen.update():
+            x_pos = C(900)
+            y_pos = E(100)
+            sc.draw(x_pos=x_pos, y_pos=y_pos)
+        screen.Screen.Touch_generator.run(15)
+
 
 
 if __name__ == "__main__":
@@ -98,7 +166,9 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("test", nargs='?', choices=("group", "rect_as_sprite", "circle_colors"))
+    parser.add_argument("test", nargs='?',
+                        choices=("group", "rect_as_sprite", "circle_colors", "lines", "scales",
+                                 "knob", "slider"))
 
     args = parser.parse_args()
 
@@ -107,6 +177,10 @@ if __name__ == "__main__":
             case "group": group()
             case "rect_as_sprite": rect_as_sprite()
             case "circle_colors": circle_colors()
+            case "lines": lines()
+            case "scales": scales()
+            case "knob": knob()
+            case "slider": slider()
             case None:
                 group()
                 time.sleep(2)
@@ -115,4 +189,16 @@ if __name__ == "__main__":
                 time.sleep(2)
                 screen.Screen.clear()
                 circle_colors()
+                time.sleep(2)
+                screen.Screen.clear()
+                lines()
+                time.sleep(2)
+                screen.Screen.clear()
+                scales()
+                time.sleep(2)
+                screen.Screen.clear()
+                knob()
+                time.sleep(2)
+                screen.Screen.clear()
+                slider()
 

@@ -2,11 +2,11 @@
 
 r'''A class to add sprite capability to any rectangular image.
 
-First create the sprite to with the width and height to save:
+First create the sprite with the width and height to save:
 
     sprite = Sprite(30, 10)
 
-Then call save_pos each time, just prior to updating the screen's render_texture.
+Then call save_pos each time, just prior to drawing to the screen's render_texture.
 
     sprite.save_pos(30, 30)
 '''
@@ -53,7 +53,7 @@ class Sprite:
                 return
         # not self.texture_saved or self.dynamic_capture
         #
-        # capture current image in screen render_template at x_pos, y_pos
+        # capture current image in screen render_texture at x_pos, y_pos
         x = x_pos.S(texture.width)
         y = y_pos.S(texture.height)
         if self.trace:
