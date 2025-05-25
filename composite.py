@@ -34,21 +34,21 @@ class Composite(Drawable):
     def __init__(self, *components, **kwargs):
         super().__init__(**kwargs)
         if self.trace:
-            print(f"Composite.__init__: {self.trace=}, {self.get_raw('x_pos')=}, "
+            print(f"{self}.__init__: {self.trace=}, {self.get_raw('x_pos')=}, "
                   f"{self.get_raw('y_pos')=}, {kwargs=}")
         self.components = components
         for component in components:
             component.parent = self
-            if hasattr(component, 'name'):
+            if component.has_raw_attr('name'):
                 setattr(self, component.name, component)
     
     def __repr__(self):
-        if hasattr(self, 'aka'):
+        if self.has_raw_attr('aka'):
             return f"<Composite: {self.aka}>"
-        return repr(self)
+        return super().__repr__()
 
     def copy(self, **kwargs):
-        if hasattr(self, 'aka'):
+        if self.has_raw_attr('aka'):
             parts = self.aka.split('.', 1)
             if len(parts) == 2:
                 aka, suffix = parts
@@ -68,17 +68,31 @@ class Composite(Drawable):
     def init_components(self):
         for i, component in enumerate(self.components, 1):
             if self.trace:
-                print("self.init_components calling component.init", i)
+                print(f"{self}.init_components calling {component}.init {i=}")
             component.init() 
 
     def set_width_height(self):
         x_left = 10000000
         x_right = -10000000
+        if self.has_raw_attr('x_pos'):
+            x_pos = self.x_pos
+            if isinstance(x_pos, S):
+                x_left = x_pos.i
+            elif isinstance(x_pos, E):
+                x_right = x_pos.i
         y_upper = 10000000
         y_lower = -10000000
+        if self.has_raw_attr('y_pos'):
+            y_pos = self.y_pos
+            if isinstance(y_pos, S):
+                y_upper = y_pos.i
+            elif isinstance(y_pos, E):
+                y_lower = y_pos.i
         for i, component in enumerate(self.components, 1):
             if self.trace:
-                print("Composite.set_width_height getting pos's from component", i)
+                print(f"{self}.set_width_height getting pos's from component {i} = {component}, "
+                      f"x_left={component.x_left}, x_right={component.x_right}, "
+                      f"y_upper={component.y_upper}, y_lower={component.y_lower}")
             xl = component.x_left.i
             if xl < x_left: 
                 x_left = xl
@@ -98,14 +112,15 @@ class Composite(Drawable):
         assert isinstance(self.height, int), \
                f"Composite.set_width_height got non-integer height {self.height}"
         if self.trace:
-            print(f"{self}.set_width_height: {self.width=}, {self.height=}")
+            print(f"{self}.set_width_height: {x_left=}, {x_right=}, {self.width=}, "
+                  f"{y_upper=}, {y_lower=}, {self.height=}")
 
     def draw2(self):
         if self.trace:
             print(f"{self}.draw2: {self.trace=}, {self.get_raw('x_pos')=}, {self.get_raw('y_pos')=}")
         for i, component in enumerate(self.components, 1):
             if self.trace:
-                print("Composite.draw doing component draw", i)
+                print(f"{self}.draw2 doing {component}.draw {i}")
             component.draw()
 
 

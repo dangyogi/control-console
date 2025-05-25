@@ -38,9 +38,14 @@ __all__ = tuple('IPF')
 Trace = False
 
 
-def eval_exp(x, instance):
+def eval_exp(x, instance, level=0, trace=False):
     if isinstance(x, Exp):
-        return x.eval(instance)
+        if Trace or trace:
+            print(f"{' ' * level}eval_exp: {x}, {instance=}", file=sys.stderr)
+        ans = x.eval(instance, level, trace)
+        if Trace or trace:
+            print(f"{' ' * level}eval_exp: {ans=}", file=sys.stderr)
+        return ans
     return x
 
 
@@ -164,7 +169,7 @@ class exp_I(Exp):
     def __repr__(self):
         return "I"
 
-    def eval(self, instance):
+    def eval(self, instance, level, trace):
         return instance
 
 I = exp_I()
@@ -177,11 +182,11 @@ class exp_P(Exp):
     def __repr__(self):
         return "P"
 
-    def eval(self, instance):
-        assert hasattr(instance, 'parent'), f"P used outside of Composite"
+    def eval(self, instance, level, trace):
+        assert instance.has_raw_attr('parent'), f"P used outside of Composite"
         ans = instance.parent
-        if Trace or instance.trace:
-            print(f"exp_P got {ans=}", file=sys.stderr)
+        #if Trace or trace or instance.exp_trace:
+        #    print(f"{' ' * level}exp_P got {ans=}", file=sys.stderr)
         return ans
 
 P = exp_P()
@@ -208,7 +213,7 @@ class global_getter(Exp):
     def __repr__(self):
         return f"F.{self.name}"
 
-    def eval(self, instance):
+    def eval(self, instance, level, trace):
         try:
             return globals()[self.name]
         except KeyError:
@@ -230,12 +235,12 @@ class call(Exp):
             return head + f", {', '.join((f'{name}={value}' for name, value in self.kwargs.items()))})"
         return head + ')'
 
-    def eval(self, instance):
+    def eval(self, instance, level, trace):
         r'''Doesn't support functions returning Exp's.
         '''
-        fn = eval_exp(self.fn, instance)
-        args = [eval_exp(arg, instance) for arg in self.args]
-        kwargs = {key: eval_exp(value, instance) for key, value in self.kwargs.items()}
+        fn = eval_exp(self.fn, instance, level + 1, trace)
+        args = [eval_exp(arg, instance, level + 1, trace) for arg in self.args]
+        kwargs = {key: eval_exp(value, instance, level + 1, trace) for key, value in self.kwargs.items()}
         return fn(*args, **kwargs)
 
 class unop(Exp):
@@ -251,8 +256,8 @@ class unop(Exp):
     def __repr__(self):
         return f"{self.sym}{self.a}"
 
-    def eval(self, instance):
-        a_i = eval_exp(self.a, instance)
+    def eval(self, instance, level, trace):
+        a_i = eval_exp(self.a, instance, level + 1, trace)
         return self.op(a_i)
 
 class binop(Exp):
@@ -286,9 +291,9 @@ class binop(Exp):
 
         return f"{a_repr} {self.sym} {b_repr}"
 
-    def eval(self, instance):
-        a_i = eval_exp(self.a, instance)
-        b_i = eval_exp(self.b, instance)
+    def eval(self, instance, level, trace):
+        a_i = eval_exp(self.a, instance, level + 1, trace)
+        b_i = eval_exp(self.b, instance, level + 1, trace)
         return self.op(a_i, b_i)
 
 class exp_getattr(Exp):
@@ -303,24 +308,26 @@ class exp_getattr(Exp):
     def __repr__(self):
         return f"{self.obj}.{self.name}"
 
-    def eval(self, instance):
-        if Trace or instance.trace:
-            print(f"exp_getattr.eval: {self.obj=}, {self.name=}, {instance=}", file=sys.stderr)
-        obj = eval_exp(self.obj, instance)
-        if Trace or instance.trace:
-            print(f"... {self.obj=} evals to {obj=}", file=sys.stderr)
-        value = getattr(obj, self.name)
-        if Trace or instance.trace:
-            print(f"exp_getattr.eval: {self.obj=}, {obj=}, {self.name=}, {value=}", file=sys.stderr)
+    def eval(self, instance, level, trace):
+        if Trace or trace or instance.exp_trace:
+            print(f"{' ' * level}exp_getattr: {self.obj=}, {self.name=}, {instance=} "
+                  "-> eval_exp(self.obj)",
+                  file=sys.stderr)
+        obj = eval_exp(self.obj, instance, level + 1, trace)
+        #if Trace or trace or instance.exp_trace:
+        #    print(f"{' ' * level} {self.obj=} evals to {obj=}", file=sys.stderr)
+        if isinstance(obj, drawable.Drawable):
+            raw_value = obj.get_raw(self.name)
+            if Trace or trace or instance.exp_trace:
+                print(f"{' ' * level}obj is Drawable, {raw_value=}, calling eval_exp", file=sys.stderr)
+            ans = eval_exp(raw_value, obj, level + 1, trace)
+            if Trace or trace or instance.exp_trace:
+                print(f"{' ' * level}got {ans=}", file=sys.stderr)
+            return ans
 
-        # FIX: This is now done in Drawable.__getattribute__
-        #if isinstance(obj, drawable.Drawable):
-        #    if Trace or instance.trace:
-        #        print(f"... obj is Drawable, calling eval_exp", file=sys.stderr)
-        #    ans = eval_exp(value, obj)
-        #    if Trace or instance.trace:
-        #        print(f"... got {ans=}", file=sys.stderr)
-        #    return ans
+        value = getattr(obj, self.name)
+        if Trace or trace or instance.exp_trace:
+            print(f"{' ' * level}exp_getattr: {obj=}.{self.name} -> {value=}", file=sys.stderr)
 
         assert not isinstance(value, Exp), \
                f"unexpected Exp from {self.obj=} in {obj=}.{self.name}, {type(obj)=}"

@@ -92,39 +92,83 @@ class Box:
 
     @property
     def x_left(self):
-        return self.x_pos.S(self.width)
+        try:
+            if isinstance(self.x_pos, S):
+                return self.x_pos
+            return self.x_pos.S(self.width)
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.x_left')
+            raise
 
     @property
     def x_center(self):
-        return self.x_pos.C(self.width)
+        try:
+            if isinstance(self.x_pos, C):
+                return self.x_pos
+            return self.x_pos.C(self.width)
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.x_center')
+            raise
 
     @property
     def x_right(self):
-        return self.x_pos.E(self.width)
+        try:
+            if isinstance(self.x_pos, E):
+                return self.x_pos
+            return self.x_pos.E(self.width)
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.x_right')
+            raise
 
     @property
     def y_upper(self):
-        return self.y_pos.S(self.height)
+        try:
+            if isinstance(self.y_pos, S):
+                return self.y_pos
+            return self.y_pos.S(self.height)
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.y_upper')
+            raise
 
     @property
     def y_mid(self):
-        return self.y_pos.C(self.height)
+        try:
+            if isinstance(self.y_pos, C):
+                return self.y_pos
+            return self.y_pos.C(self.height)
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.y_mid')
+            raise
 
     @property
     def y_lower(self):
-        return self.y_pos.E(self.height)
+        try:
+            if isinstance(self.y_pos, E):
+                return self.y_pos
+            return self.y_pos.E(self.height)
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.y_lower')
+            raise
 
     @property
     def x_next(self):
-        return self.x_right.as_S()
+        try:
+            return self.x_right.as_S()
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.x_next')
+            raise
 
     @property
     def y_next(self):
-        return self.y_lower.as_S()
+        try:
+            return self.y_lower.as_S()
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.y_next')
+            raise
 
     def contains(self, x, y):
-        return self.x_left <= x <= self.x_right \
-           and self.y_upper <= y <= self.y_lower
+        return self.x_left.i <= x <= self.x_right.i \
+           and self.y_upper.i <= y <= self.y_lower.i
 
 
 class Drawable(Box):
@@ -176,6 +220,8 @@ class Drawable(Box):
     were attributes on the instance.  But we don't want these values to remain on the instance
     after the method call completes.
 
+    # FIX: update this:
+
     The solution to this problem is to use the `push` method push the parameters temporarily to
     the instance in a context manager (with statement), to be restored on exit from the with statement.
 
@@ -187,7 +233,8 @@ class Drawable(Box):
         ...     width = 9
         ...
         ...     def my_method(self, **kwargs):             # generally same arguments to all methods!
-        ...         with self.push(**kwargs) as setattr:   # this line is always the same!
+        ...             self.setkwargs(**kwargs)
+        ...         #with self.push(**kwargs) as setattr:   # this line is always the same!
         ...             # x_pos and width are temporarily set on self.
         ...             print(f"{self.x_pos=}, {self.width=}")
         ...             # and inherited values are evaluated:
@@ -216,7 +263,8 @@ class Drawable(Box):
         ...     num_calls = 0
         ...
         ...     def my_method(self, **kwargs):            # same arguments to all methods!
-        ...         with self.push(**kwargs) as setattr:  # this line is always the same!
+        ...             self.setkwargs(**kwargs)
+        ...         #with self.push(**kwargs) as setattr:  # this line is always the same!
         ...             print(f"{self.one=}, {self.two=}")
         ...             setattr('two', self.two)          # self.two is temporary, this make it
         ...                                               # permanent.
@@ -244,22 +292,38 @@ class Drawable(Box):
     x_pos = S(100)
     y_pos = S(100)
     trace = False
+    exp_trace = False
 
     def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+        self.setkwargs(**kwargs)
         if self.trace:
             print(f"{self}.__init__: {self.trace=}, {self.get_raw('x_pos')=}, "
                   f"{self.get_raw('y_pos')=}, {kwargs=}")
+
+    def setkwargs(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     def get_raw(self, name):
         r'''Gets unevaluated value.
         '''
         return super().__getattribute__(name)
 
+    def has_raw_attr(self, name):
+        try:
+            super().__getattribute__(name)
+            return True
+        except AttributeError:
+            return False
+
     def __getattribute__(self, name):
-        raw = super().__getattribute__(name)
-        return eval_exp(raw, self)
+        try:
+            raw = super().__getattribute__(name)
+            trace = super().__getattribute__('exp_trace')
+        except AttributeError as e:
+            e.add_note(f"while doing {self}.{name}")
+            raise
+        return eval_exp(raw, self, trace=trace)
 
     def init(self):
         if not self.initialized:
@@ -268,7 +332,17 @@ class Drawable(Box):
                 self.sprite = sprite.Sprite(self.width, self.height, self.dynamic_capture)
             self.initialized = True
             if self.trace:
-                print(f"{self}.init: {self.x_pos=}, {self.y_pos=}")
+                width = 'unknown'
+                height = 'unknown'
+                try:
+                    width = self.width
+                except AttributeError:
+                    pass
+                try:
+                    height = self.height
+                except AttributeError:
+                    pass
+                print(f"{self}.init: {self.x_pos=}, {self.y_pos=}, self.{width=}, self.{height=}")
 
     def init2(self):
         pass
@@ -285,34 +359,36 @@ class Drawable(Box):
 
     def copy2(self, **kwargs):
         ans = deepcopy(self)
-        for key, value in kwargs.items():
-            setattr(ans, key, value)
+        ans.setkwargs(**kwargs)
         if self.trace:
             assert ans.trace
-            print(f"copy2: {self=} becomes {ans=}, {ans.x_pos=}, {ans.y_pos=}, {kwargs=}")
+            print(f"copy2: {self=} becomes {ans=}, "
+                  f"{ans.get_raw('x_pos')=}, {ans.get_raw('y_pos')=}, {kwargs=}")
         return ans
 
-    def push(self, **kwargs):
-        return push_cm(self, **kwargs)
+    #def push(self, **kwargs):
+    #    return push_cm(self, **kwargs)
 
     def draw(self, retattr=None, **kwargs):
         if self.trace:
             print(f" = = = = = = = = = = = {self}.draw: {kwargs=}")
-        with self.push(**kwargs) as setattr:
-            if self.trace:
-                print(f"{self}.draw: {self.x_pos=}, {self.y_pos=}")
-            if self.as_sprite:
-                self.sprite.save_pos(self.x_left, self.y_upper)
-            if self.trace:
-                print(f" = = = = = = = = = = = {self}.draw: calling {self}.draw2()")
-            self.draw2()
-            if retattr is not None:
-                return getattr(self, retattr)
+        self.setkwargs(**kwargs)
+        if self.trace:
+            print(f"{self}.draw: {self.x_pos=}, {self.x_left=}, {self.x_right=}, "
+                  f"{self.y_pos=}, {self.y_upper=}, {self.y_lower=}")
+        if self.as_sprite:
+            self.sprite.save_pos(self.x_left, self.y_upper)
+        if self.trace:
+            print(f" = = = = = = = = = = = {self}.draw: calling {self}.draw2()")
+        self.draw2()
+        if retattr is not None:
+            return getattr(self, retattr)
 
     def draw2(self):
         pass
 
 
+# FIX: This can be deleted...
 class push_cm:
     r'''Used by Drawable.push method.
     '''

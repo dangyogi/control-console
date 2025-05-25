@@ -155,7 +155,7 @@ def slider():
         sc.init()
         with screen.Screen.update():
             x_pos = C(900)
-            y_pos = E(100)
+            y_pos = S(100)
             sc.draw(x_pos=x_pos, y_pos=y_pos)
         screen.Screen.Touch_generator.run(15)
 

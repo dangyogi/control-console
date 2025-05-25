@@ -42,7 +42,7 @@ import screen
 #define RAYWHITE   (Color){ 245, 245, 245, 255 }   // My own White (raylib logo)
 
 
-__all__ = ("vline", "hline", "text", "rect", "circle")
+__all__ = ("vline", "hline", "text", "rect", "circle", "gap")
 
 
 class line(Drawable):
@@ -52,7 +52,11 @@ class line(Drawable):
 class vline(line):
     @property
     def height(self):
-        return self.length
+        try:
+            return self.length
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.height')
+            raise
 
     def draw2(self):
         draw_line_ex((self.x_center, self.y_upper),
@@ -138,9 +142,16 @@ class text(Drawable):
             msize = measure_text_ex(font, str(self.max_text), self.size, self.spacing)
             self.width = int(ceil(msize.x))
             self.height = int(ceil(msize.y))
-            print("text.init: width", self.width, "height", self.height)
+            if self.trace:
+                print("text.init: width", self.width, "height", self.height)
         elif self.as_sprite:
             raise AssertionError("text.init2: must specify max_text with as_sprite")
+        elif self.has_raw_attr('text'):
+            msize = measure_text_ex(font, str(self.text), self.size, self.spacing)
+            self.width = int(ceil(msize.x))
+            self.height = int(ceil(msize.y))
+            if self.trace:
+                print("text.init: width", self.width, "height", self.height)
 
     def draw2(self):
         font = Fonts[2 * self.sans + self.bold]
@@ -149,17 +160,22 @@ class text(Drawable):
         if self.max_text is not None:
             width = self.width
             height = self.height
+            if self.trace:
+                print(f"text.draw2: got max_text, {self.width=}, {self.height=}")
         else:
             # FIX: not needed if x_pos and y_pos are S types.
             msize = measure_text_ex(font, text, self.size, self.spacing)
             width = int(ceil(msize.x))
             height = int(ceil(msize.y))
+            if self.trace:
+                print(f"text.draw2: no max_text, {text=}, {self.width=}, {self.height=}")
 
         # FIX: How does this work for the sprite call in Drawable.draw?
         # x, y for draw is upper left
         x = self.x_pos.S(width).i
         y = self.y_pos.S(height).i
-        print("text.draw to", x, y)
+        if self.trace:
+            print(f"text.draw2 to {x=}, {y=}")
         draw_text_ex(font, text, (x, y), self.size, self.spacing, self.color)
 
 
@@ -183,23 +199,45 @@ class circle(Drawable):
 
     @property
     def radius(self):
-        if self.diameter & 1:  # odd
-            return (self.diameter - 1) // 2
-        return (self.diameter - 1) / 2
+        try:
+            if self.diameter & 1:  # odd
+                return (self.diameter - 1) // 2
+            return (self.diameter - 1) / 2
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.radius')
+            raise
     
     @property
     def width(self):
-        return self.diameter
+        try:
+            return self.diameter
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.width')
+            raise
     
     @property
     def height(self):
-        return self.diameter
+        try:
+            return self.diameter
+        except AttributeError as e:
+            e.add_note(f'while doing {self}.height')
+            raise
 
     def draw2(self):
         x = self.x_pos.C(self.width)
         y = self.y_pos.C(self.height)
+        if self.trace:
+            print(f"circle.draw2: {x=}, {y=}, {self.radius=}, {self.color=}")
         draw_circle(x.i, y.i, self.radius, self.color)
 
+
+class gap(Drawable):
+    # 0 could cause confusion because (0 - 1) // 2 == -1
+    height = 3
+    width = 3
+
+    def draw2(self):
+        pass
 
 
 if __name__ == "__main__":
