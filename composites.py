@@ -19,7 +19,7 @@ Slider_knob = Composite(rect(width=49, height=19, x_pos=P.x_center, y_pos=P.y_mi
                         height=19,
                         as_sprite=True,
                         aka='Slider_knob',
-                        trace=True)
+                       )
 
 class Slider(Composite):
     r'''Includes full range of knob.
@@ -33,71 +33,39 @@ class Slider(Composite):
 
     @property
     def width(self):
-        try:
-            return self.knob.width
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.width')
-            raise
+        return self.knob.width
 
     @property
     def slide_height(self):    # default 381 at tick=3, num_ticks=128
-        try:
-            return (self.num_ticks - 1) * self.tick
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.slide_height')
-            raise
+        return (self.num_ticks - 1) * self.tick
 
     @property
     def height(self):          # default 399
-        try:
-            return self.slide_height + self.knob.height - 1
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.height')
-            raise
+        return self.slide_height + self.knob.height - 1
 
     @property
     def slide_y_upper_c(self):
-        try:
-            return (self.y_upper + (self.knob.height - 1) // 2).as_C()
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.slide_y_upper_c')
-            raise
+        return (self.y_upper + (self.knob.height - 1) // 2).as_C()
 
     @property
     def slide_y_lower_c(self):
-        try:
-            return (self.y_lower - (self.knob.height - 1) // 2).as_C()
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.slide_y_lower_c')
-            raise
+        return (self.y_lower - (self.knob.height - 1) // 2).as_C()
 
     @property
     def value(self):
-        try:
-            return self.scale_fn(self.tick_value)
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.value')
-            raise
+        return self.scale_fn(self.tick_value)
 
     @property
     def max_text(self):
-        try:
-            v_0 = self.scale_fn(0)
-            v_max = self.scale_fn(self.num_ticks - 1)
-            if len(str(v_0)) > len(str(v_max)):
-                return v_0
-            return v_max
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.max_text')
-            raise
+        v_0 = self.scale_fn(0)
+        v_max = self.scale_fn(self.num_ticks - 1)
+        if len(str(v_0)) > len(str(v_max)):
+            return v_0
+        return v_max
 
     @property
     def text0(self):
-        try:
-            sf = self.scale_fn
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.text0')
-            raise
+        sf = self.scale_fn
         return sf(0)
 
     def init2(self):
@@ -164,8 +132,7 @@ Slider_track = Composite(
                    Slider(name='slider',
                           knob=Slider_knob.copy(x_pos=P.x_center),
                           text_display=P.text_display,
-                          x_pos=P.x_center, y_pos=P.y_upper,
-                          trace=True),
+                          x_pos=P.x_center, y_pos=P.y_upper),
 
                    max_text=I.slider.max_text,
                    text0=I.slider.text0,
@@ -175,21 +142,20 @@ Slider_guts = Composite(text(name='label_text', text=P.label,
                              x_pos=P.x_center, y_pos=P.y_upper + P.label_margin),
                         text(name='value_text', max_text=P.max_text, text=P.text0,
                              x_pos=P.x_center, y_pos=P.label_text.y_next + P.value_margin,
-                             as_sprite=True, trace=True),
+                             as_sprite=True),
                         Slider_track.copy(name='slider_track',
                              x_pos=P.x_center, y_pos=P.value_text.y_next + P.centerline_margin,
                              text_display=P.value_text),
-                        gap(height=P.bottom_margin),
+                        gap(height=P.bottom_margin, x_pos=P.x_center, y_pos=P.slider_track.y_next),
 
                         label_margin=5,       # gap between top of outer rect and top of label_text
                         value_margin=3,       # gap between label_text and value_text
                         centerline_margin=5,  # gap between value_text and top of centerline
-                        bottom_margin=5,      # gap between Slider_track and bottom of Slider_guts
+                        bottom_margin=7,      # gap between Slider_track and bottom of Slider_guts
                         text0=I.slider_track.text0,
                         max_text=I.slider_track.max_text,
                         label=P.label,
                         aka='Slider_guts',
-                        trace=True
                        )
 
 Slider_control = Composite(rect(name='box', width=P.guts.width, height=P.guts.height,

@@ -29,7 +29,7 @@ def rect_as_sprite():
         r = rect(y_pos=E(600), height=80, width=300, as_sprite=True)
         r.init()
         for x in range(100, 801, 100):
-            print("drawing x", x)
+            #print("drawing x", x)
             with screen.Screen.update():
                 r.draw(x_pos=S(x))
             screen.Screen.Touch_generator.run(0.5)
@@ -127,8 +127,8 @@ def scales():
                 x_pos = S(step_size * 100)
                 for y in range(0, 128 * step_size, step_size):
                     y_target = y_pos - y
-                    if step_size == 7 and y > 100 * step_size:
-                        print(f"{step_size=}, {y=}, {y_target=}")
+                    #if step_size == 7 and y > 100 * step_size:
+                    #    print(f"{step_size=}, {y=}, {y_target=}")
                     l1.draw(x_pos=x_pos, y_pos=y_target)
                 for y in range(0, 128 * step_size, step_size * 5):
                     l2.draw(x_pos=x_pos, y_pos=y_pos-y)

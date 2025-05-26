@@ -50,13 +50,13 @@ class line(Drawable):
     color = BLACK
 
 class vline(line):
+    r'''The line drawing is flakey in raylib.  Consider using rect instead!
+
+    See experiment/raylib_test.py
+    '''
     @property
     def height(self):
-        try:
-            return self.length
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.height')
-            raise
+        return self.length
 
     def draw2(self):
         draw_line_ex((self.x_center, self.y_upper),
@@ -65,6 +65,10 @@ class vline(line):
 
 
 class hline(line):
+    r'''The line drawing is flakey in raylib.  Consider using rect instead!
+
+    See experiment/raylib_test.py
+    '''
     def __init__(self, length, **kwargs):
         super().__init__(**kwargs)
         width = self.width
@@ -199,29 +203,17 @@ class circle(Drawable):
 
     @property
     def radius(self):
-        try:
-            if self.diameter & 1:  # odd
-                return (self.diameter - 1) // 2
-            return (self.diameter - 1) / 2
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.radius')
-            raise
+        if self.diameter & 1:  # odd
+            return (self.diameter - 1) // 2
+        return (self.diameter - 1) / 2
     
     @property
     def width(self):
-        try:
-            return self.diameter
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.width')
-            raise
+        return self.diameter
     
     @property
     def height(self):
-        try:
-            return self.diameter
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.height')
-            raise
+        return self.diameter
 
     def draw2(self):
         x = self.x_pos.C(self.width)

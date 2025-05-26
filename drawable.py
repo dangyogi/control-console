@@ -92,79 +92,47 @@ class Box:
 
     @property
     def x_left(self):
-        try:
-            if isinstance(self.x_pos, S):
-                return self.x_pos
-            return self.x_pos.S(self.width)
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.x_left')
-            raise
+        if isinstance(self.x_pos, S):
+            return self.x_pos
+        return self.x_pos.S(self.width)
 
     @property
     def x_center(self):
-        try:
-            if isinstance(self.x_pos, C):
-                return self.x_pos
-            return self.x_pos.C(self.width)
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.x_center')
-            raise
+        if isinstance(self.x_pos, C):
+            return self.x_pos
+        return self.x_pos.C(self.width)
 
     @property
     def x_right(self):
-        try:
-            if isinstance(self.x_pos, E):
-                return self.x_pos
-            return self.x_pos.E(self.width)
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.x_right')
-            raise
+        if isinstance(self.x_pos, E):
+            return self.x_pos
+        return self.x_pos.E(self.width)
 
     @property
     def y_upper(self):
-        try:
-            if isinstance(self.y_pos, S):
-                return self.y_pos
-            return self.y_pos.S(self.height)
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.y_upper')
-            raise
+        if isinstance(self.y_pos, S):
+            return self.y_pos
+        return self.y_pos.S(self.height)
 
     @property
     def y_mid(self):
-        try:
-            if isinstance(self.y_pos, C):
-                return self.y_pos
-            return self.y_pos.C(self.height)
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.y_mid')
-            raise
+        if isinstance(self.y_pos, C):
+            return self.y_pos
+        return self.y_pos.C(self.height)
 
     @property
     def y_lower(self):
-        try:
-            if isinstance(self.y_pos, E):
-                return self.y_pos
-            return self.y_pos.E(self.height)
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.y_lower')
-            raise
+        if isinstance(self.y_pos, E):
+            return self.y_pos
+        return self.y_pos.E(self.height)
 
     @property
     def x_next(self):
-        try:
-            return self.x_right.as_S()
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.x_next')
-            raise
+        return self.x_right.as_S()
 
     @property
     def y_next(self):
-        try:
-            return self.y_lower.as_S()
-        except AttributeError as e:
-            e.add_note(f'while doing {self}.y_next')
-            raise
+        return self.y_lower.as_S()
 
     def contains(self, x, y):
         return self.x_left.i <= x <= self.x_right.i \
@@ -208,83 +176,40 @@ class Drawable(Box):
         'foobar'
         >>> my_b.x_right
         E(34)
-        >>> my_b.y_upper
+        >>> my_b.y_lower   # doctest: +ELLIPSIS
         Traceback (most recent call last):
-        ...
+            ...
         AttributeError: 'my_inst' object has no attribute 'height'
 
-    You may want to define methods that allow overriding attributes, like the `draw` method does.
-    But this presents a problem.
-
-    We want the @property attributes to have access to these parameters to the method, as if they
-    were attributes on the instance.  But we don't want these values to remain on the instance
-    after the method call completes.
-
-    # FIX: update this:
-
-    The solution to this problem is to use the `push` method push the parameters temporarily to
-    the instance in a context manager (with statement), to be restored on exit from the with statement.
+    You may want to define methods that allow changing attributes, like the `draw` method does.  This
+    is done with the setkwargs method.
 
         >>> class my_inst(Drawable):
-        ...     @property
-        ...     def x_left(self):
-        ...         return self.x_pos.S(self.width)
-        ...
         ...     width = 9
         ...
         ...     def my_method(self, **kwargs):             # generally same arguments to all methods!
-        ...             self.setkwargs(**kwargs)
-        ...         #with self.push(**kwargs) as setattr:   # this line is always the same!
-        ...             # x_pos and width are temporarily set on self.
-        ...             print(f"{self.x_pos=}, {self.width=}")
-        ...             # and inherited values are evaluated:
-        ...             print(f"{self.x_left=}")
+        ...         self.setkwargs(**kwargs)               # generally always exactly the same!
+        ...         print(f"{self.x_pos=}, {self.width=}")
+        ...         # and @property values see these changes:
+        ...         print(f"{self.x_left=}")
 
         >>> my_a = my_inst()
         >>> my_a.x_pos   # default set in Drawable class
         S(100)
+        >>> my_a.x_left  # @property value in Drawable class
+        S(100)
 
-        # note that during the call, x_pos and width are temporarily set on my_a.
+        # This permanently changes x_pos and width on my_a.
         >>> my_a.my_method(x_pos=C(200), width=51)
         self.x_pos=C(200), self.width=51
         self.x_left=S(175)
 
         # after the call...
-        >>> my_a.width   # still the default value
-        9
-        >>> my_a.x_pos   # still old value
-        S(100)
+        >>> my_a.width
+        51
+        >>> my_a.x_pos
+        C(200)
 
-    To store permanent values on the instance, call the setattr created in the with statement:
-
-        >>> class my_inst(Drawable):
-        ...     one = 1
-        ...     two = 2
-        ...     num_calls = 0
-        ...
-        ...     def my_method(self, **kwargs):            # same arguments to all methods!
-        ...             self.setkwargs(**kwargs)
-        ...         #with self.push(**kwargs) as setattr:  # this line is always the same!
-        ...             print(f"{self.one=}, {self.two=}")
-        ...             setattr('two', self.two)          # self.two is temporary, this make it
-        ...                                               # permanent.
-        ...             setattr('num_calls', self.num_calls + 1)
-
-        >>> my_a = my_inst()
-        >>> my_a.one
-        1
-        >>> my_a.two
-        2
-        >>> my_a.num_calls
-        0
-        >>> my_a.my_method(one=7, two=8)
-        self.one=7, self.two=8
-        >>> my_a.one
-        1
-        >>> my_a.two
-        8
-        >>> my_a.num_calls
-        1
     '''
     as_sprite = False
     dynamic_capture = False
@@ -299,6 +224,13 @@ class Drawable(Box):
         if self.trace:
             print(f"{self}.__init__: {self.trace=}, {self.get_raw('x_pos')=}, "
                   f"{self.get_raw('y_pos')=}, {kwargs=}")
+
+    def __repr__(self):
+        if self.has_raw_attr('aka'):
+            return f"<{self.__class__.__name__}: {self.aka}@{hex(id(self))}>"
+        if self.has_raw_attr('name'):
+            return f"<{self.__class__.__name__}: {self.name}@{hex(id(self))}>"
+        return super().__repr__()
 
     def setkwargs(self, **kwargs):
         for key, value in kwargs.items():
@@ -317,19 +249,15 @@ class Drawable(Box):
             return False
 
     def __getattribute__(self, name):
-        try:
-            raw = super().__getattribute__(name)
-            trace = super().__getattribute__('exp_trace')
-        except AttributeError as e:
-            e.add_note(f"while doing {self}.{name}")
-            raise
+        raw = super().__getattribute__(name)
+        trace = super().__getattribute__('exp_trace')
         return eval_exp(raw, self, trace=trace)
 
     def init(self):
         if not self.initialized:
             self.init2()
             if self.as_sprite:
-                self.sprite = sprite.Sprite(self.width, self.height, self.dynamic_capture)
+                self.sprite = sprite.Sprite(self.width, self.height, self.dynamic_capture, self.trace)
             self.initialized = True
             if self.trace:
                 width = 'unknown'

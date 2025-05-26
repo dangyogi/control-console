@@ -22,6 +22,8 @@ class Sprite:
     def __init__(self, width, height, dynamic_capture=False, trace=False):
         r'''Captures and restores the original screen image before its changed by the user of the class.
         '''
+        if trace:
+            print(f"{self}.__init__, {width=}, {height=}, {dynamic_capture=}")
         self.saved_texture = texture.Texture("Sprite", width, height, fillcolor=None, trace=trace)
         self.texture_saved = False
         self.dynamic_capture = dynamic_capture
@@ -29,7 +31,15 @@ class Sprite:
 
     def __deepcopy__(self, memo):
         texture = self.saved_texture.texture.texture
-        return Sprite(texture.width, texture.height, self.dynamic_capture)
+        ans = Sprite(texture.width, texture.height, self.dynamic_capture, self.trace)
+        if self.trace:
+            print(f"{self}.__deepcopy__ -> {ans=}")
+        return ans
+
+    def close(self):
+        if self.saved_texture is not None:
+            self.saved_texture.close()
+            self.saved_texture = None
 
     def save_pos(self, x_pos=0, y_pos=0):
         r'''Captures the screen image at x, y.
@@ -40,32 +50,34 @@ class Sprite:
 
         This needs to be called outside of begin_drawing/end_drawing.
         '''
+        if self.trace:
+            print(f"{self}.save_pos({x_pos=}, {y_pos=})")
         texture = self.saved_texture.texture.texture
         if self.texture_saved:
             # restore the saved image to the screen
             if self.trace:
-                print(f"Sprite.save_pos calling draw_to_screen({self.last_x=}, {self.last_y=})")
+                print(f"{self}.save_pos texture_saved, "
+                      f"calling draw_to_screen({self.last_x=}, {self.last_y=})")
             self.saved_texture.draw_to_screen(self.last_x, self.last_y)
             if not self.dynamic_capture:
                 # already have the saved_texture loaded
-                self.last_x = x_pos.S(texture.width)
-                self.last_y = y_pos.S(texture.height)
+                self.last_x = x_pos
+                self.last_y = y_pos
                 return
         # not self.texture_saved or self.dynamic_capture
         #
         # capture current image in screen render_texture at x_pos, y_pos
-        x = x_pos.S(texture.width)
-        y = y_pos.S(texture.height)
+        x_left = x_pos.S(texture.width).i
+        y_lower = y_pos.E(texture.height).i
         if self.trace:
-            print(f"Sprite dynamic_capture, calling saved_texture.draw_on_texture")
+            print(f"{self} doing capture, calling saved_texture.draw_on_texture")
         with self.saved_texture.draw_on_texture():
             if self.trace:
-                print(f"Sprite dynamic_capture, copying screen render_texture "
-                      f"({x=}, {y=}, {texture.width=}, {texture.height=})")
-            draw_texture_rec(screen.Screen.render_texture.texture.texture,
-                             (x.i, y.i, texture.width, texture.height), (0, 0), WHITE)
-        self.last_x = x
-        self.last_y = y
+                print(f"{self} doing capture, copying screen render_texture "
+                      f"({x_left=}, {y_lower=}, {texture.width=}, {texture.height=})")
+            screen.Screen.render_texture.draw(x_left, y_lower, texture.width, texture.height)
+        self.last_x = x_pos
+        self.last_y = y_pos
         self.texture_saved = True
 
 

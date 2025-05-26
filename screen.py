@@ -81,6 +81,8 @@ Colors = dict(
     RAYWHITE=RAYWHITE,
 )
 
+Color_names = dict((value, key) for key, value in Colors.items())
+
 
 # For touch_device.py
 # Find the input touch device file path
@@ -138,6 +140,9 @@ class Screen_class:
     def close(self):
         for quit_fn in Quits:
             quit_fn()
+        if self.render_texture is not None:
+            self.render_texture.close()
+            self.render_texture = None
         close_window()
 
     def __enter__(self):

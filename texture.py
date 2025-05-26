@@ -28,11 +28,20 @@ class Texture:
             clear_background(fillcolor)
             end_texture_mode()
         self.as_sprite = as_sprite
+        if trace:
+            fillcolor = screen.Color_names.get(fillcolor, fillcolor)
+            print(f"{self}.__init__: {name=}, {width=}, {height=}, {fillcolor=}, "
+                  f"{as_sprite=}, {is_screen=}")
         if as_sprite:
-            self.sprite = sprite.Sprite(width, height)
+            self.sprite = sprite.Sprite(width, height, trace=trace)
 
     def __deepcopy__(self, memo):
         raise AssertionError("Texture.__deepcopy__ called!!")
+
+    def close(self):
+        if self.texture is not None:
+            unload_render_texture(self.texture)
+            self.texture = None
 
     def draw_on_texture(self, draw_to_framebuffer=False, from_scratch=False):
         r'''Directs all raylib draw_x commands to draw on the texture.
@@ -70,7 +79,7 @@ class Texture:
                     self.previous_texture = Current_texture
                     if Current_texture is not None:
                         if self.trace:
-                            print(f"{self.texture.name}.draw_on_texture.__enter__, Cur_Tex not None"
+                            print(f"{self.texture.name}.draw_on_texture.__enter__, Cur_Tex not None, "
                                   "end_texture_mode")
                         end_texture_mode()  # for Current_texture (previoius texture)
                     Current_texture = self.texture
@@ -102,6 +111,8 @@ class Texture:
                     # begin_texture_mode is active, or when this is not the screen's render_texture.
                     screen.Screen.draw_to_framebuffer()
                 return False
+        if self.trace:
+            print(f"{self}.draw_on_texture: {draw_to_framebuffer=}, {from_scratch=}")
         return texture_mode_cm(self, draw_to_framebuffer, from_scratch, self.trace)
 
     def draw_to_screen(self, x_pos=0, y_pos=0):
@@ -124,6 +135,28 @@ class Texture:
             if self.trace:
                 print(f"{self.name}.draw_to_screen({x=}, {y=})")
             draw_texture(texture, x, y, WHITE)
+
+    def draw(self, x_left, y_lower, width, height, dest_from_left=0, dest_from_bottom=0):
+        r'''Draw a rect from self to another draw_on_texture.
+
+        The copied rectangle is identified by its lower-left corner and width x height.
+
+        The lower-left corner of the copied rectangle is placed dest_from_left from the left
+        edge of the receiving texture, and dest_from_bottom from the bottom edge.  These default to the
+        lower-left corner of the receiving texture.  With these defaults, using the receiving texture's
+        width and height will completely fill the receiving texture.
+
+        All parameters must be simple ints, not alignment objects.
+        '''
+        texture = self.texture.texture
+        draw_texture_rec(texture,
+                         (x_left, self.invert_y(y_lower), width, height),
+                         (dest_from_left, dest_from_bottom),
+                         WHITE)
+
+    def invert_y(self, y):
+        return self.texture.texture.height - 1 - y
+
 
 def name(x):
     if x is None:
