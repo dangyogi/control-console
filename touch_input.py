@@ -18,6 +18,7 @@ import time
 from operator import itemgetter
 import libevdev
 import screen
+import traffic_cop
 
 #for type in libevdev.types:
 #    print(type)
@@ -66,7 +67,7 @@ class Touch_dispatcher:
         self.widgets.remove(widget)
 
     def dispatch(self, event):
-        getattr(self, event.action)(event)
+        return getattr(self, event.action)(event)
 
     def touch(self, event):
         if event.slot in self.ignore:
@@ -74,35 +75,39 @@ class Touch_dispatcher:
         if event.slot in self.assignments:
             print("Missed release for slot", event.slot)
             self.assignments[event.slot].release()
+            del self.assignments[event.slot]
         for widget in self.widgets:
             if widget.contains(event.x, event.y):
                 self.assignments[event.slot] = widget
-                widget.touch(event.x, event.y)
-                break
-        else:
-            self.ignore.add(event.slot)
+                return widget.touch(event.x, event.y)
+        self.ignore.add(event.slot)
+        return 0
 
     def move(self, event):
         if event.slot in self.assignments:
             if event.slot in self.ignore:
                 print("Slot", event.slot, "both assigned and ignored!")
                 self.ignore.remove(event.slot)
-            self.assignments[event.slot].move_to(event.x, event.y)
+            return self.assignments[event.slot].move_to(event.x, event.y)
         elif event.slot not in self.ignore:
             print("Missed touch for slot", event.slot)
             self.ignore.add(event.slot)
+        return 0
 
     def release(self, event):
         if event.slot in self.assignments:
             if event.slot in self.ignore:
                 print("Slot", event.slot, "both assigned and ignored!")
                 self.ignore.remove(event.slot)
-            self.assignments[event.slot].release()
+            widget = self.assignments[event.slot]
+            del self.assignments[event.slot]
+            return widget.release()
         elif event.slot not in self.ignore:
             print("Missed touch for slot", event.slot)
+        return 0
 
 
-@screen.register_init
+@screen.register_init2
 def init_event_generator(screen_obj):
     screen_obj.Touch_generator = \
       Touch_generator(screen.Touch_device_path, screen_obj.width, screen_obj.height,
@@ -125,38 +130,16 @@ class Touch_generator:
         self.slot = self.x = self.y = self.sec = None
         self.action = 'move'
         self.touch_dispatch = touch_dispatch
+        traffic_cop.register_read(self.device_fd, self.process_events)
         screen.register_quit(self.close)
-        self.timers = []
 
     def close(self):
+        traffic_cop.unregister_read(self.device_fd)
         self.device_fd.close()
 
-    def add_timer(self, delay, fn):
-        trigger_time = time.time() + delay
-        self.timers.append((trigger_time, fn))
-        self.timers.sort(key=itemgetter(0), reverse=True)
-
-    def run(self, secs=None):
-        r'''Runs for secs seconds, or forever if secs is None.
-        '''
-        if secs is not None:
-            end = time.time() + secs
-        while secs is None or time.time() < end:
-            with screen.Screen.update(draw_to_framebuffer=True):
-                saw_events = 0
-                while True:
-                    for event in self.gen_slot_events():
-                        self.touch_dispatch.dispatch(event)
-                        saw_events += 1
-                    while self.timers and time.time() >= self.timers[-1][0]:
-                        fn = self.timers.pop()[1]
-                        if self.trace:
-                            print("run got timer", fn)
-                        fn()
-                        saw_events += 1
-                    if saw_events or (secs is not None and time.time() > end - 0.1):
-                        break  # break out of with to draw_to_framebuffer and re-enter with
-                    time.sleep(0.1)
+    def process_events(self):
+        for event in self.gen_slot_events():
+            self.touch_dispatch.dispatch(event)
 
     def gen_slot_events(self):
         for event in self.device.events():
@@ -248,15 +231,21 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
+        traffic_cop.init(None)
+
         # Open the device
         gen = Touch_generator(screen.Touch_device_path, args.width, args.height, Touch_dispatcher(),
                               args.trace)
 
+        last_time = time.time()
         last_event = None
         while True:
             # Read events from the device
             for slot_event in gen.gen_slot_events():
-                print(slot_event)
+                now = time.time()
+                print(f"{slot_event.action}(x={slot_event.x}, y={slot_event.y}), "
+                      f"delta_t={(now - last_time)*1000} ms")
+                last_time = now
                 if slot_event.action == 'move':
                     if last_event is not None:
                         print("delta x", slot_event.x - last_event.x,
@@ -282,4 +271,5 @@ if __name__ == "__main__":
             time.sleep(0.1)
     finally:
         gen.close()
+        traffic_cop.close()
 

@@ -115,28 +115,25 @@ class Texture:
             print(f"{self}.draw_on_texture: {draw_to_framebuffer=}, {from_scratch=}")
         return texture_mode_cm(self, draw_to_framebuffer, from_scratch, self.trace)
 
-    def draw_to_screen(self, x_pos=0, y_pos=0):
+    def draw(self, x_pos=0, y_pos=0):
         r'''Draws texture to the screen's render_texture at x, y.
 
         x, y are integers for the upper left corner of where to place this on the screen; or it can be
         positions to specify where to place the left/center/right and/or upper/middle/lower rather
         than the upper left (see alignment.py).
         '''
-        assert not self.is_screen, "Texture.draw_to_screen called for screen's render_texture"
+        assert not self.is_screen, "Texture.draw called for screen's render_texture"
         texture = self.texture.texture
         x = Si(x_pos, texture.width)
         y = Si(y_pos, texture.height)
         if self.as_sprite:
             self.sprite.save_pos(x, y)
+        # draw texture into screen's render_texture at x, y
         if self.trace:
-            print(f"Texture({self.name}).draw_to_screen calling Screen.update")
-        with screen.Screen.update(draw_to_framebuffer=False):
-            # draw texture into screen's render_texture at x, y
-            if self.trace:
-                print(f"{self.name}.draw_to_screen({x=}, {y=})")
-            draw_texture(texture, x, y, WHITE)
+            print(f"{self.name}.draw({x=}, {y=})")
+        draw_texture(texture, x, y, WHITE)
 
-    def draw(self, x_left, y_lower, width, height, dest_from_left=0, dest_from_bottom=0):
+    def draw_rect(self, x_left, y_lower, width, height, dest_from_left=0, dest_from_bottom=0):
         r'''Draw a rect from self to another draw_on_texture.
 
         The copied rectangle is identified by its lower-left corner and width x height.

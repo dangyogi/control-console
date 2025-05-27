@@ -294,9 +294,6 @@ class Drawable(Box):
                   f"{ans.get_raw('x_pos')=}, {ans.get_raw('y_pos')=}, {kwargs=}")
         return ans
 
-    #def push(self, **kwargs):
-    #    return push_cm(self, **kwargs)
-
     def draw(self, retattr=None, **kwargs):
         if self.trace:
             print(f" = = = = = = = = = = = {self}.draw: {kwargs=}")
@@ -314,43 +311,6 @@ class Drawable(Box):
 
     def draw2(self):
         pass
-
-
-# FIX: This can be deleted...
-class push_cm:
-    r'''Used by Drawable.push method.
-    '''
-    def __init__(self, inst, **kwargs):
-        self.inst = inst
-        self.kwargs = kwargs
-
-    def __enter__(self):
-        self.deletes = set()
-        self.resets = []
-
-        d = self.inst.__dict__
-        for key, value in self.kwargs.items():
-            if key in d:
-                self.resets[key] = d[key]     # save old value to restore at __exit__
-            else:
-                self.deletes.add(key)         # set of keys to delete at __exit__
-            setattr(self.inst, key, value)
-        return self.setattr
-
-    def setattr(self, key, value):
-        if key in self.deletes:
-            self.deletes.remove(key)
-        if key in self.resets:
-            del self.resets[key]
-        setattr(self.inst, key, value)
-
-    def __exit__(self, *excs):
-        for key, old_value in self.resets:
-            setattr(self.inst, key, old_value)
-        for key in self.deletes:
-            delattr(self.inst, key)
-        return False
-
 
 import sprite
 

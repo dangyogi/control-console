@@ -14,6 +14,8 @@ This module also serves as a top level module that can be safely imported into a
 and used to get to shared global values.
 '''
 
+from operator import itemgetter
+
 from pyray import *
 
 import texture
@@ -95,14 +97,25 @@ Font_dir = "/usr/share/fonts/truetype/dejavu"
 Inits = []
 Quits = []
 
-def register_init(init_fn):
+def register_init(init_fn, prio=1):
     r'''To get around cyclical imports so that anybody can import this module.
 
     These functions are passed the initialized screen.
 
     Can be used as a function decorator.
     '''
-    Inits.append(init_fn)
+    Inits.append((prio, init_fn))
+    return init_fn
+
+def register_init2(init_fn, prio=2):
+    r'''To get around cyclical imports so that anybody can import this module.
+
+    These functions are passed the initialized screen.
+
+    Can be used as a function decorator.
+    '''
+    Inits.append((prio, init_fn))
+    return init_fn
 
 def register_quit(quit_fn):
     r'''To get around cyclical imports so that anybody can import this module.
@@ -112,6 +125,7 @@ def register_quit(quit_fn):
     Can be used as a function decorator.
     '''
     Quits.append(quit_fn)
+    return quit_fn
 
 
 class Screen_class:
@@ -129,7 +143,9 @@ class Screen_class:
         self.render_texture = texture.Texture("Screen", width, height, background_color, is_screen=True)
         #self.draw_to_framebuffer()
 
-        for init_fn in Inits:
+        Inits.sort(key=itemgetter(0))
+        while Inits:  # So that we call functions added by other init funs.
+            init_fn = Inits.pop(0)[1]
             init_fn(self)
         Screen = self
 
@@ -138,7 +154,8 @@ class Screen_class:
         return self
 
     def close(self):
-        for quit_fn in Quits:
+        while Quits:
+            quit_fn = Quits.pop()
             quit_fn()
         if self.render_texture is not None:
             self.render_texture.close()
@@ -153,7 +170,7 @@ class Screen_class:
         return False
 
     def clear(self):
-        with self.update(from_scratch=True):
+        with self.update(draw_to_framebuffer=False, from_scratch=True):
             pass
 
     def update(self, draw_to_framebuffer=True, from_scratch=False):
@@ -169,6 +186,8 @@ class Screen_class:
 
     def draw_to_framebuffer(self):
         r'''Draws the render_texture to the screen.
+
+        This takes ~26 mSec on rasp pi 3 B+.
         '''
         assert texture.Current_texture is None, "screen.draw_to_framebuffer: Current_texture is not None"
         begin_drawing()

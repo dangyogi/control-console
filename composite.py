@@ -41,12 +41,6 @@ class Composite(Drawable):
             component.parent = self
             if component.has_raw_attr('name'):
                 setattr(self, component.name, component)
-    
-    # FIX: delete, moved to Drawable...
-    #def __repr__(self):
-    #    if self.has_raw_attr('aka'):
-    #        return f"<Composite: {self.aka}>"
-    #    return super().__repr__()
 
     def copy(self, **kwargs):
         if self.has_raw_attr('aka'):

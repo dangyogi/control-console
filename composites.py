@@ -45,10 +45,14 @@ class Slider(Composite):
 
     @property
     def slide_y_upper_c(self):
+        r'''Upper limit of knob movement for knob center.
+        '''
         return (self.y_upper + (self.knob.height - 1) // 2).as_C()
 
     @property
     def slide_y_lower_c(self):
+        r'''Lower limit of knob movement for knob center.
+        '''
         return (self.y_lower - (self.knob.height - 1) // 2).as_C()
 
     @property
@@ -108,7 +112,7 @@ class Slider(Composite):
         if self.trace:
             print(f"{self}.move_to({x=}, {y=})")
         knob_y = y + self.offset
-        # clamp knob_y to [self.slide_y_upper_c, self.slide_y_lower_c]
+        # clamp knob_y to the interval [self.slide_y_upper_c, self.slide_y_lower_c]
         knob_y = min(max(knob_y, self.slide_y_upper_c.i), self.slide_y_lower_c.i)
         pixel_movement = self.knob.y_mid.i - knob_y        # positive up
         _, remainder = divmod(pixel_movement, self.tick)
@@ -116,11 +120,16 @@ class Slider(Composite):
             tick_change = int(pixel_movement / self.tick)
         else:
             tick_change = round(pixel_movement / self.tick)
-        self.tick_value += tick_change
-        if self.trace:
-            print(f"{self}.move_to: {knob_y=}, {pixel_movement=}, {tick_change=}, {self.tick_value=}")
-        self.draw_knob()
-        self.update_text()
+        if tick_change:
+            self.tick_value += tick_change
+            if self.trace:
+                print(f"{self}.move_to: {knob_y=}, {pixel_movement=}, {tick_change=}, "
+                      f"{self.tick_value=}")
+            with screen.Screen.update(draw_to_framebuffer=True):
+                self.draw_knob()
+                self.update_text()
+        elif self.trace:
+            print(f"{self}.move_to: no change, {knob_y=}, {pixel_movement=}")
 
     def release(self):
         pass

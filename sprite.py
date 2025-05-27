@@ -57,8 +57,8 @@ class Sprite:
             # restore the saved image to the screen
             if self.trace:
                 print(f"{self}.save_pos texture_saved, "
-                      f"calling draw_to_screen({self.last_x=}, {self.last_y=})")
-            self.saved_texture.draw_to_screen(self.last_x, self.last_y)
+                      f"calling draw({self.last_x=}, {self.last_y=})")
+            self.saved_texture.draw(self.last_x, self.last_y)
             if not self.dynamic_capture:
                 # already have the saved_texture loaded
                 self.last_x = x_pos
@@ -75,7 +75,7 @@ class Sprite:
             if self.trace:
                 print(f"{self} doing capture, copying screen render_texture "
                       f"({x_left=}, {y_lower=}, {texture.width=}, {texture.height=})")
-            screen.Screen.render_texture.draw(x_left, y_lower, texture.width, texture.height)
+            screen.Screen.render_texture.draw_rect(x_left, y_lower, texture.width, texture.height)
         self.last_x = x_pos
         self.last_y = y_pos
         self.texture_saved = True
