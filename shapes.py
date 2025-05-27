@@ -7,6 +7,7 @@ from math import ceil
 import os.path
 from pyray import *
 
+from alignment import *
 from drawable import Drawable
 import screen
 
@@ -161,22 +162,30 @@ class text(Drawable):
         font = Fonts[2 * self.sans + self.bold]
         attrs_as_dict = as_dict(self)
         text = str(self.text).format_map(attrs_as_dict)
-        if self.max_text is not None:
-            width = self.width
-            height = self.height
-            if self.trace:
-                print(f"text.draw2: got max_text, {self.width=}, {self.height=}")
+        #if self.max_text is not None:
+        #    width = self.width
+        #    height = self.height
+        #    if self.trace:
+        #        print(f"text.draw2: got max_text, {self.width=}, {self.height=}")
+        #else:
+        #    # FIX: not needed if x_pos and y_pos are S types.
+        #    msize = measure_text_ex(font, text, self.size, self.spacing)
+        #    width = int(ceil(msize.x))
+        #    height = int(ceil(msize.y))
+        #    if self.trace:
+        #        print(f"text.draw2: no max_text, {text=}, {self.width=}, {self.height=}")
+
+        # x, y for draw is upper left
+        if isinstance(self.x_pos, S):
+            x = self.x_pos.i
+            height = self.size
         else:
-            # FIX: not needed if x_pos and y_pos are S types.
             msize = measure_text_ex(font, text, self.size, self.spacing)
             width = int(ceil(msize.x))
             height = int(ceil(msize.y))
             if self.trace:
-                print(f"text.draw2: no max_text, {text=}, {self.width=}, {self.height=}")
-
-        # FIX: How does this work for the sprite call in Drawable.draw?
-        # x, y for draw is upper left
-        x = self.x_pos.S(width).i
+                print(f"text.draw2: measuring text {text=} got {self.width=}, {self.height=}")
+            x = self.x_pos.S(width).i
         y = self.y_pos.S(height).i
         if self.trace:
             print(f"text.draw2 to {x=}, {y=}")
