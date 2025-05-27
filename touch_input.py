@@ -142,6 +142,9 @@ class Touch_generator:
             self.touch_dispatch.dispatch(event)
 
     def gen_slot_events(self):
+        last_moves = {} # {slot: move_event}
+        events_generated = 0
+        events_skipped = 0
         for event in self.device.events():
             # event attrs: type, code, value, sec, usec
             if event.code is None:
@@ -153,7 +156,17 @@ class Touch_generator:
                     print("got event", code, event.value)
                 slot_event = self.get_slotevent()
                 if slot_event is not None:
-                    yield slot_event
+                    match slot_event.action:
+                        case "move":
+                            if slot_event.slot in last_moves:
+                                events_skipped += 1
+                            last_moves[slot_event.slot] = slot_event
+                        case _:
+                            if slot_event.slot in last_moves:
+                                yield last_moves.pop(slot_event.slot)
+                                events_generated += 1
+                            yield slot_event
+                            events_generated += 1
                 self.last_slot = self.slot = event.value
                 self.sec = event.sec + event.usec / 1000000
             elif code == 'SYN_REPORT':
@@ -163,7 +176,17 @@ class Touch_generator:
                 if slot_event is not None:
                     if self.trace:
                         print("*************************")
-                    yield slot_event
+                    match slot_event.action:
+                        case "move":
+                            if slot_event.slot in last_moves:
+                                events_skipped += 1
+                            last_moves[slot_event.slot] = slot_event
+                        case _:
+                            if slot_event.slot in last_moves:
+                                yield last_moves.pop(slot_event.slot)
+                                events_generated += 1
+                            yield slot_event
+                            events_generated += 1
             elif code == 'SYN_DROPPED':
                 raise Syn_dropped
             else:
@@ -189,6 +212,9 @@ class Touch_generator:
                     self.slot = self.last_slot
                     self.sec = event.sec + event.usec / 1000000
         assert self.slot is None, "gen_slot_events: expected slot is None on loop exit"
+        events_generated += len(last_moves)
+        yield from last_moves.values()
+        #print(f"gen_slot_events, {events_generated=}, {events_skipped=}")
 
     def get_slotevent(self):
         r'''Checks to see if SlotEvent is soup yet.
