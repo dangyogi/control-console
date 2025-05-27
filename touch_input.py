@@ -134,6 +134,9 @@ class Touch_generator:
         screen.register_quit(self.close)
 
     def close(self):
+        for _ in self.gen_slot_events():
+            # drain the events so the next guy doesn't end up with a SYN_DROPPED
+            pass
         traffic_cop.unregister_read(self.device_fd)
         self.device_fd.close()
 
