@@ -2,6 +2,10 @@
 
 
 class foo:
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
     @property
     def bar(self):    # setting f.bar raises:
                       #   AttributeError: property 'bar' of 'foo' object has no setter
@@ -27,6 +31,15 @@ class foo:
     def bingo(self, value):
         super().__setattr__('bingo', value)
 
+    @property
+    def bob(self):
+        print("getter bob")
+        return self._bob
+
+    @bob.setter
+    def bob(self, value):
+        print("setter bob")
+        self._bob = value
 
 f = foo()
 
@@ -35,13 +48,19 @@ f.baz = 8
 print(f.baz)
 
 #print(f.bogus)
-#f.bogus = 9   # fails
+#f.bogus = 9     # fails
 #print(f.bogus)
 
 #print(f.bar)
-#f.bar = 10    # fails
+#f.bar = 10      # fails
 #print(f.bar)
 
-print(f.bingo)
-f.bingo = 11
-print(f.bingo)
+#print(f.bingo)  # fails
+#f.bingo = 11
+#print(f.bingo)
+
+f.bob = 12
+print(f.bob)
+
+g = foo(bob=77)
+print(g.bob)

@@ -8,6 +8,7 @@ import os.path
 from pyray import *
 
 from alignment import *
+from exp import eval_exp
 from drawable import Drawable
 import screen
 
@@ -61,8 +62,8 @@ class vline(line):
 
     def draw2(self):
         draw_line_ex((self.x_center, self.y_upper),
-                     ({self.x_center}, {self.y_lower}),
-                     {self.width}, {self.color})
+                     (self.x_center, self.y_lower),
+                     self.width, self.color)
 
 
 class hline(line):
@@ -70,13 +71,12 @@ class hline(line):
 
     See experiment/raylib_test.py
     '''
-    def __init__(self, length, **kwargs):
-        super().__init__(**kwargs)
+    def init2(self):
         width = self.width
-        self.width = length
+        self.width = self.length
         self.height = width
         if self.trace:
-            print(f"hline.__init__: {self.get_raw('y_pos')=}, {kwargs=}")
+            print(f"hline.init2: {self.get_raw('y_pos')=}, {kwargs=}")
 
     def draw2(self):
         if self.trace:
@@ -133,12 +133,22 @@ class text(Drawable):
 
     The text and max_text attributes are automatically converted to strings with str().
     '''
+    dynamic_attrs = Drawable.dynamic_attrs + ('text',)
+
     max_text = None
     size = 20
     sans = False
     bold = False
     spacing = 0
     color = BLACK
+
+    @property
+    def text(self):
+        return eval_exp(self._text, self, self.exp_trace)
+
+    @text.setter
+    def text(self, value):
+        self._text = value
 
     # FIX: move to __init__ with screen.Screen.register_init
     def init2(self):

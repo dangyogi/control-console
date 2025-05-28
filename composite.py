@@ -88,6 +88,8 @@ class Composite(Drawable):
                 print(f"{self}.set_width_height getting pos's from component {i} = {component}, "
                       f"x_left={component.x_left}, x_right={component.x_right}, "
                       f"y_upper={component.y_upper}, y_lower={component.y_lower}")
+            #print(f"set_width_height: {i=}, {component=}, {component.x_pos=}, "
+            #      f"{component.__dict__.keys()=}")
             xl = component.x_left.i
             if xl < x_left: 
                 x_left = xl
