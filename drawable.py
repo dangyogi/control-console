@@ -262,13 +262,13 @@ class Drawable(Box):
     def __init__(self, **kwargs):
         self.save_kwargs(**kwargs)
         if self.trace:
-            print(f"{self}.__init__: {self.trace=}, {self.get_raw('x_pos')=}, "
-                  f"{self.get_raw('y_pos')=}, {kwargs=}")
+            print(f"{self}.__init__: {self.trace=}, {self.x_pos=}, "
+                  f"{self.y_pos=}, {kwargs=}")
 
     def __repr__(self):
-        if self.has_raw_attr('aka'):
+        if hasattr(self, 'aka'):
             return f"<{self.__class__.__name__}: {self.aka}@{hex(id(self))}>"
-        if self.has_raw_attr('name'):
+        if hasattr(self, 'name'):
             return f"<{self.__class__.__name__}: {self.name}@{hex(id(self))}>"
         return super().__repr__()
 
@@ -284,18 +284,6 @@ class Drawable(Box):
                 setattr(self, key, value)
             else:
                 setattr(self, key, eval_exp(value, self, self.exp_trace))
-
-    def get_raw(self, name):
-        r'''Gets unevaluated value.
-        '''
-        return super().__getattribute__(name)
-
-    def has_raw_attr(self, name):
-        try:
-            super().__getattribute__(name)
-            return True
-        except AttributeError:
-            return False
 
     #def get_cooked_attr(self, name):
     #    return eval_exp(getattr(self, name), self, trace=self.exp_trace)
@@ -342,7 +330,7 @@ class Drawable(Box):
         if self.trace:
             assert ans.trace
             print(f"copy2: {self=} becomes {ans=}, "
-                  f"{ans.get_raw('x_pos')=}, {ans.get_raw('y_pos')=}, {kwargs=}")
+                  f"{ans.x_pos=}, {ans.y_pos=}, {kwargs=}")
         return ans
 
     def draw(self, retattr=None, **kwargs):

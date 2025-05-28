@@ -34,16 +34,16 @@ class Composite(Drawable):
     def __init__(self, *components, **kwargs):
         super().__init__(**kwargs)
         if self.trace:
-            print(f"{self}.__init__: {self.trace=}, {self.get_raw('x_pos')=}, "
-                  f"{self.get_raw('y_pos')=}, {kwargs=}")
+            print(f"{self}.__init__: {self.trace=}, {self.x_pos=}, "
+                  f"{self.y_pos=}, {kwargs=}")
         self.components = components
         for component in components:
             component.parent = self
-            if component.has_raw_attr('name'):
+            if hasattr(component, 'name'):
                 setattr(self, component.name, component)
 
     def copy(self, **kwargs):
-        if self.has_raw_attr('aka'):
+        if hasattr(self, 'aka'):
             parts = self.aka.split('.', 1)
             if len(parts) == 2:
                 aka, suffix = parts
@@ -56,7 +56,7 @@ class Composite(Drawable):
         r'''Calls component inits and sets self.width and self.height.
         ''' 
         if self.trace:
-            print(f"{self}.init2: {self.get_raw('x_pos')=}, {self.get_raw('y_pos')=}")
+            print(f"{self}.init2: {self.x_pos=}, {self.y_pos=}")
         self.init_components()
         self.set_width_height()
 
@@ -69,7 +69,7 @@ class Composite(Drawable):
     def set_width_height(self):
         x_left = 10000000
         x_right = -10000000
-        if self.has_raw_attr('x_pos'):
+        if hasattr(self, 'x_pos'):
             x_pos = self.x_pos
             if isinstance(x_pos, S):
                 x_left = x_pos.i
@@ -77,7 +77,7 @@ class Composite(Drawable):
                 x_right = x_pos.i
         y_upper = 10000000
         y_lower = -10000000
-        if self.has_raw_attr('y_pos'):
+        if hasattr(self, 'y_pos'):
             y_pos = self.y_pos
             if isinstance(y_pos, S):
                 y_upper = y_pos.i
@@ -114,7 +114,7 @@ class Composite(Drawable):
 
     def draw2(self):
         if self.trace:
-            print(f"{self}.draw2: {self.trace=}, {self.get_raw('x_pos')=}, {self.get_raw('y_pos')=}")
+            print(f"{self}.draw2: {self.trace=}, {self.x_pos=}, {self.y_pos=}")
         for i, component in enumerate(self.components, 1):
             if self.trace:
                 print(f"{self}.draw2 doing {component}.draw {i}")

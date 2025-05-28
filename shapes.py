@@ -76,7 +76,7 @@ class hline(line):
         self.width = self.length
         self.height = width
         if self.trace:
-            print(f"hline.init2: {self.get_raw('y_pos')=}, {kwargs=}")
+            print(f"hline.init2: {self.y_pos=}, {kwargs=}")
 
     def draw2(self):
         if self.trace:
@@ -161,7 +161,7 @@ class text(Drawable):
                 print("text.init: width", self.width, "height", self.height)
         elif self.as_sprite:
             raise AssertionError("text.init2: must specify max_text with as_sprite")
-        elif self.has_raw_attr('text'):
+        elif hasattr(self, 'text'):
             msize = measure_text_ex(font, str(self.text), self.size, self.spacing)
             self.width = int(ceil(msize.x))
             self.height = int(ceil(msize.y))

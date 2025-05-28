@@ -183,7 +183,7 @@ class exp_P(Exp):
         return "P"
 
     def eval(self, instance, level, trace):
-        assert instance.has_raw_attr('parent'), f"P used outside of Composite"
+        assert hasattr(instance, 'parent'), f"P used outside of Composite"
         ans = instance.parent
         #if Trace or trace or instance.exp_trace:
         #    print(f"{' ' * level}exp_P got {ans=}", file=sys.stderr)
@@ -317,7 +317,7 @@ class exp_getattr(Exp):
         #if Trace or trace or instance.exp_trace:
         #    print(f"{' ' * level} {self.obj=} evals to {obj=}", file=sys.stderr)
         if isinstance(obj, drawable.Drawable):
-            raw_value = obj.get_raw(self.name)
+            raw_value = getattr(obj, self.name)
             if Trace or trace or instance.exp_trace:
                 print(f"{' ' * level}obj is Drawable, {raw_value=}, calling eval_exp", file=sys.stderr)
             ans = eval_exp(raw_value, obj, level + 1, trace)
