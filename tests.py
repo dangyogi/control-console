@@ -13,11 +13,11 @@ import traffic_cop
 
 def group():
     message="Hello gjpqy!"
-    g = Composite(text(name='txt', x_pos=P.x_pos, y_pos=P.y_pos, size=80, text=message,
-                       max_text=message),
-                  rect(name='r', x_pos=P.txt.x_next, y_pos=P.y_pos, height=80, width=300),
-                  circle(name='c', x_pos=P.r.x_next, y_pos=P.y_pos, diameter=80),
-                  hline(x_pos=P.c.x_next, y_pos=P.y_pos, length=40))
+    g = Composite(Row(text(name='txt', size=80, text=message, max_text=message),
+                      rect(name='r', height=80, width=300),
+                      circle(name='c', diameter=80),
+                      hline(length=40),
+                      y_align=to_E))
     g.init()
     with screen.Screen.update():
         g.draw(x_pos=S(500), y_pos=E(600))

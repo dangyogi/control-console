@@ -262,8 +262,7 @@ class Drawable(Box):
     def __init__(self, **kwargs):
         self.save_kwargs(**kwargs)
         if self.trace:
-            print(f"{self}.__init__: {self.trace=}, {self.x_pos=}, "
-                  f"{self.y_pos=}, {kwargs=}")
+            print(f"{self}.__init__: {self.trace=}, {kwargs=}")
 
     def __repr__(self):
         if hasattr(self, 'aka'):
@@ -274,16 +273,28 @@ class Drawable(Box):
 
     def save_kwargs(self, **kwargs):
         self._kwargs = kwargs
-        for name in ('name', 'aka', 'trace', 'exp_trace'):
+        for name in ('name', 'aka', 'init_order', 'trace', 'exp_trace'):
             if name in kwargs:
                 setattr(self, name, kwargs[name])
 
     def set_kwargs(self, **kwargs):
-        for key, value in kwargs.items():
-            if key in self.dynamic_attrs:
-                setattr(self, key, value)
-            else:
-                setattr(self, key, eval_exp(value, self, self.exp_trace))
+        args = kwargs.copy()
+        while args:
+            keys = []
+            for key, value in args.items():
+                if key in self.dynamic_attrs or not isinstance(value, Exp):
+                    setattr(self, key, value)
+                    keys.append(key)
+                else:
+                    try:
+                        setattr(self, key, eval_exp(value, self, self.exp_trace))
+                    except AttributeError:
+                        continue
+                    keys.append(key)
+            if not keys:
+                raise ValueError(f"{self}.set_kwargs: could not evaluate {args}")
+            for key in keys:
+                del args[key]
 
     #def get_cooked_attr(self, name):
     #    return eval_exp(getattr(self, name), self, trace=self.exp_trace)
@@ -329,8 +340,7 @@ class Drawable(Box):
         ans.save_kwargs(**(ans._kwargs | kwargs))
         if self.trace:
             assert ans.trace
-            print(f"copy2: {self=} becomes {ans=}, "
-                  f"{ans.x_pos=}, {ans.y_pos=}, {kwargs=}")
+            print(f"copy2: {self=} becomes {ans=}, {kwargs=}")
         return ans
 
     def draw(self, retattr=None, **kwargs):

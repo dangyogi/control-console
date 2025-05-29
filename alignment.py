@@ -98,7 +98,7 @@ You do the same thing for the y axis...
 import math
 
 
-__all__ = ('S', 'C', 'E', 'Si', 'Ci', 'Ei')
+__all__ = ('S', 'C', 'E', 'to_S', 'to_C', 'to_E', 'Si', 'Ci', 'Ei')
 
 
 #              horz    vert
@@ -251,6 +251,16 @@ class E(pos):
 
     def E(self, length):
         return self
+
+
+def to_S(some_pos, length):
+    return some_pos.S(length)
+
+def to_C(some_pos, length):
+    return some_pos.C(length)
+
+def to_E(some_pos, length):
+    return some_pos.E(length)
 
 
 def Si(some_pos, length):

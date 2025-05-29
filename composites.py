@@ -8,20 +8,22 @@ from pyray import *
 from alignment import *
 from exp import *
 from shapes import *
-from composite import Composite
+from drawable import Drawable
+from composite import *
 import screen
 
 
-Slider_knob = Composite(rect(width=49, height=19, x_pos=P.x_center, y_pos=P.y_mid, color=BLACK),
-                        rect(width=61, height=5, x_pos=P.x_center, y_pos=P.y_mid, color=GRAY),
+Slider_knob = Composite(Stack(rect(width=49, height=19, x_pos=P.x_center, y_pos=P.y_mid, color=BLACK),
+                              rect(width=61, height=5, x_pos=P.x_center, y_pos=P.y_mid, color=GRAY)),
 
-                        width=61,
-                        height=19,
+                        #width=61,
+                        #height=19,
                         as_sprite=True,
                         aka='Slider_knob',
+                       #trace=True
                        )
 
-class Slider(Composite):
+class Slider(Drawable):
     r'''Includes full range of knob.
     '''
     tick = 3   # num pixels knob moves per unit change in tick_value
@@ -74,7 +76,6 @@ class Slider(Composite):
 
     def init2(self):
         self.knob.parent = self
-        self.init_components()
         self.knob.init()
         if not self.knob.trace:
             self.knob.trace = self.trace
@@ -135,45 +136,51 @@ class Slider(Composite):
         pass
 
 Slider_track = Composite(
-                   # centerline
-                   rect(name='centerline', width=3, height=P.slider.height,
-                        x_pos=P.x_center, y_pos=P.y_upper, color=BLACK),
-                   Slider(name='slider',
-                          knob=Slider_knob.copy(x_pos=P.x_center),
-                          text_display=P.text_display,
-                          x_pos=P.x_center, y_pos=P.y_upper),
+                   Stack(# centerline
+                         rect(name='centerline', width=3, height=P.slider.height, color=BLACK),
+                         Slider(name='slider',
+                                knob=Slider_knob.copy(x_pos=P.x_center, # trace=True, exp_trace=True
+                                                     ),
+                                text_display=P.text_display,
+                                init_order=1,
+                               #trace=True
+                               ),
+                         y_align=to_S),
 
                    max_text=I.slider.max_text,
                    text0=I.slider.text0,
-                   aka='Slider_track')
+                   aka='Slider_track',
+                  #trace=True
+                  )
 
-Slider_guts = Composite(text(name='label_text', text=P.label,
-                             x_pos=P.x_center, y_pos=P.y_upper + P.label_margin),
-                        text(name='value_text', max_text=P.max_text, text=P.text0,
-                             x_pos=P.x_center, y_pos=P.label_text.y_next + P.value_margin,
-                             as_sprite=True),
-                        Slider_track.copy(name='slider_track',
-                             x_pos=P.x_center, y_pos=P.value_text.y_next + P.centerline_margin,
-                             text_display=P.value_text),
-                        gap(height=P.bottom_margin, x_pos=P.x_center, y_pos=P.slider_track.y_next),
+Slider_guts = Composite(Column(vgap(P.label_margin),
+                               text(name='label_text', text=P.label),
+                               vgap(P.value_margin),
+                               text(name='value_text',
+                                    max_text=P.slider_track.max_text, text=P.slider_track.text0,
+                                    as_sprite=True),
+                               vgap(P.centerline_margin),
+                               Slider_track.copy(name='slider_track', text_display=P.value_text,
+                                                 init_order=1),
+                               vgap(P.bottom_margin)),
 
                         label_margin=5,       # gap between top of outer rect and top of label_text
                         value_margin=3,       # gap between label_text and value_text
                         centerline_margin=5,  # gap between value_text and top of centerline
                         bottom_margin=7,      # gap between Slider_track and bottom of Slider_guts
-                        text0=I.slider_track.text0,
-                        max_text=I.slider_track.max_text,
                         label=P.label,
                         aka='Slider_guts',
+                       #trace=True
                        )
 
-Slider_control = Composite(rect(name='box', width=P.guts.width, height=P.guts.height,
-                                x_pos=P.x_center, y_pos=P.y_upper),
-                           Slider_guts.copy(name='guts', x_pos=P.x_center, y_pos=P.y_upper),
+Slider_control = Composite(Stack(rect(name='box', width=P.guts.width, height=P.guts.height),
+                                 Slider_guts.copy(name='guts', init_order=1),
+                                 y_align=to_S),
 
                            aka='Slider_control',
                            x_pos=C(900),
                            y_pos=S(100),
+                          #trace=True
                           )
 
 

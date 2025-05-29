@@ -44,7 +44,7 @@ import screen
 #define RAYWHITE   (Color){ 245, 245, 245, 255 }   // My own White (raylib logo)
 
 
-__all__ = ("vline", "hline", "text", "rect", "circle", "gap")
+__all__ = ("vline", "hline", "text", "rect", "circle", "hgap", "vgap")
 
 
 class line(Drawable):
@@ -249,6 +249,16 @@ class gap(Drawable):
 
     def draw2(self):
         pass
+
+class vgap(gap):
+    def __init__(self, height):
+        super().__init__(height=height)
+
+class hgap(gap):
+    def __init__(self, width):
+        super().__init__(width=width)
+
+
 
 
 if __name__ == "__main__":
