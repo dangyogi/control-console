@@ -99,15 +99,15 @@ class Slider(Drawable):
             if self.trace:
                 print(f"{self}.touch({x=}, {y=}): sudden jump!")
             self.offset = 0
-            self.move_to(x, y)
-        else:
-            # do incremental moves from this starting position, maintaining the offset of the touch
-            # point to the knob's position.
+            return self.move_to(x, y)
+        # do incremental moves from this starting position, maintaining the offset of the touch
+        # point to the knob's position.
 
-            # self.knob.y_mid = y + self.offset
-            self.offset = self.knob.y_mid.i - y
-            if self.trace:
-                print(f"{self}.touch({x=}, {y=}): incremental movement {self.offset=}")
+        # self.knob.y_mid = y + self.offset
+        self.offset = self.knob.y_mid.i - y
+        if self.trace:
+            print(f"{self}.touch({x=}, {y=}): incremental movement {self.offset=}")
+        return False
 
     def move_to(self, x, y):
         if self.trace:
@@ -126,14 +126,15 @@ class Slider(Drawable):
             if self.trace:
                 print(f"{self}.move_to: {knob_y=}, {pixel_movement=}, {tick_change=}, "
                       f"{self.tick_value=}")
-            with screen.Screen.update(draw_to_framebuffer=True):
-                self.draw_knob()
-                self.update_text()
-        elif self.trace:
+            self.draw_knob()
+            self.update_text()
+            return True
+        if self.trace:
             print(f"{self}.move_to: no change, {knob_y=}, {pixel_movement=}")
+        return False
 
     def release(self):
-        pass
+        return False
 
 Slider_track = Composite(
                    Stack(# centerline

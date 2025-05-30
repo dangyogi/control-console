@@ -9,8 +9,8 @@ for a single widget.
 This opens the file in non-blocking mode so that you can alternate between gen_slot_events and calls to
 other code.
 
-To use, create an Touch_generator and then repeatedly call gen_slot_events with a sleep between calls
-(< 0.5 secs to avoid SYN_DROPPED).
+To use, create an Touch_generator and then repeatedly call gen_slot_events each time the input device
+is readable.
 '''
 
 import os
@@ -81,7 +81,7 @@ class Touch_dispatcher:
                 self.assignments[event.slot] = widget
                 return widget.touch(event.x, event.y)
         self.ignore.add(event.slot)
-        return 0
+        return False
 
     def move(self, event):
         if event.slot in self.assignments:
@@ -92,7 +92,7 @@ class Touch_dispatcher:
         elif event.slot not in self.ignore:
             print("Missed touch for slot", event.slot)
             self.ignore.add(event.slot)
-        return 0
+        return False
 
     def release(self, event):
         if event.slot in self.assignments:
@@ -104,7 +104,7 @@ class Touch_dispatcher:
             return widget.release()
         elif event.slot not in self.ignore:
             print("Missed touch for slot", event.slot)
-        return 0
+        return False
 
 
 @screen.register_init2
@@ -134,17 +134,30 @@ class Touch_generator:
         screen.register_quit(self.close)
 
     def close(self):
-        for _ in self.gen_slot_events():
-            # drain the events so the next guy doesn't end up with a SYN_DROPPED
-            pass
+        self.drain_events()
         traffic_cop.unregister_read(self.device_fd)
         self.device_fd.close()
 
-    def process_events(self):
-        for event in self.gen_slot_events():
-            self.touch_dispatch.dispatch(event)
+    def drain_events(self):
+        r'''Drain all events from the input to avoid SYN_DROPPED for the next guy.
+        '''
+        for _ in self.gen_slot_events(ignore_syn_dropped=True):
+            pass
 
-    def gen_slot_events(self):
+    def process_events(self, file):
+        r'''This is registered with the traffic_cop module as the read_fn for self.device_fd.
+
+        It gets all of the touch events that have come in a sends them to the Touch_dispatcher.
+
+        Returns True if the Touch_dispatcher updated the Screen for any of the events.
+        The traffic_cop uses this to determine whether to call Screen.draw_to_framebuffer().
+        '''
+        change_done = False
+        for event in self.gen_slot_events():
+            change_done |= self.touch_dispatch.dispatch(event)
+        return change_done
+
+    def gen_slot_events(self, ignore_syn_dropped=False):
         last_moves = {} # {slot: move_event}
         events_generated = 0
         events_skipped = 0
@@ -191,7 +204,8 @@ class Touch_generator:
                             yield slot_event
                             events_generated += 1
             elif code == 'SYN_DROPPED':
-                raise Syn_dropped
+                if not ignore_syn_dropped:
+                    raise Syn_dropped
             else:
                 if code == 'ABS_MT_TRACKING_ID':
                     if event.value == -1:
@@ -266,9 +280,9 @@ if __name__ == "__main__":
         gen = Touch_generator(screen.Touch_device_path, args.width, args.height, Touch_dispatcher(),
                               args.trace)
 
-        last_time = time.time()
+        start_time = last_time = time.time()
         last_event = None
-        while True:
+        while time.time() - start_time < 5:
             # Read events from the device
             for slot_event in gen.gen_slot_events():
                 now = time.time()

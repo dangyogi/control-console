@@ -2,12 +2,17 @@
 
 r'''This listens for ready files and dispatches to registered functions.
 
-No arguments are passed to any of the functions.
+Only one write_fn and one read_fn are allowed per file.  But the same write_fn or read_fn may be
+registered against multiple files.
 
-register_read(file, fn)
-register_write(file, fn)
+The registered functions are passed the file, and must return True if they've changed the Screen.
+
+register_read(file, fn)   # calls fn(file) each time the file is readable
+register_write(file, fn)  # calls fn(file) each time the file is writeable
 unregister_read(file)
 unregister_write(file)
+
+Alarm functions are called with no arguments, and must return True if they've changed the Screen.
 
 set_alarm(delay, fn)     # delay in secs.
 
@@ -40,6 +45,14 @@ def close():
     Sel = None
 
 def register_read(file, read_fn):
+    r'''Register a read_fn to be called whenever the select finds the file readable.
+
+    The read_fn is passed the file, and must return True if it has changed the Screen's
+    render_template.
+
+    Only one read_fn may be registered per file, but the same read_fn may be registered against
+    multiple files.
+    '''
     try:
         sk = Sel.get_key(file)
     except KeyError:
@@ -57,6 +70,14 @@ def unregister_read(file):
         Sel.unregister(file)
 
 def register_write(file, write_fn):
+    r'''Register a write_fn to be called whenever the select finds the file writable.
+
+    The write_fn is passed the file, and must return True if it has changed the Screen's
+    render_template.
+
+    Only one write_fn may be registered per file, but the same write_fn may be registered against
+    multiple files.
+    '''
     try:
         sk = Sel.get_key(file)
     except KeyError:
@@ -78,6 +99,9 @@ Alarms = []  # reverse sorted list of (time, fn)
 def set_alarm(delay, fn):
     r'''Set alarm to call fn() in delay secs.
 
+    The fn is not passed any arguments, and must return True if it has changed the Screen's
+    render_template.
+
     Alarms can not be cancelled.
     '''
     Alarms.append((get_time() + delay, fn))
@@ -95,20 +119,26 @@ def run(secs=None):
     if secs is not None:
         end = get_time() + secs
 
+    screen.Screen.Touch_generator.drain_events()
+
     while not Stop and (secs is None or get_time() < end):
-        while Alarms and get_time() >= Alarms[-1][0]:
-            fn = Alarms.pop()[1]
-            fn()
-        waketime = None
-        if Alarms:
-            waketime = Alarms[-1][0]
-        if secs is not None and (waketime is None or waketime > end):
-            waketime = end
-        for sk, event in Sel.select(waketime and waketime - get_time()):
-            if event & selectors.EVENT_READ:
-                sk.data[0]()
-            if event & selectors.EVENT_WRITE:
-                sk.data[1]()
+        screen_changed = False
+        with screen.Screen.update(draw_to_framebuffer=False):
+            while Alarms and get_time() >= Alarms[-1][0]:
+                fn = Alarms.pop()[1]
+                screen_changed |= fn()
+            waketime = None
+            if Alarms:
+                waketime = Alarms[-1][0]
+            if secs is not None and (waketime is None or waketime > end):
+                waketime = end
+            for sk, event in Sel.select(waketime and waketime - get_time()):
+                if event & selectors.EVENT_READ:
+                    screen_changed |= sk.data[0](sk.fileobj)
+                if event & selectors.EVENT_WRITE:
+                    screen_changed |= sk.data[1](sk.fileobj)
+        if screen_changed:
+            screen.Screen.draw_to_framebuffer()
 
 
 
@@ -118,9 +148,7 @@ if __name__ == "__main__":
         print(f"{name=}: adj={info.adjustable}, impl={info.implementation}, "
               f"monotonic={info.monotonic}, resolution={info.resolution}")
 
-    init(None)
+    with screen.Screen_class():
+        print("calling run")
+        run(2)
 
-    print("calling run")
-    run(2)
-
-    close()

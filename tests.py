@@ -157,7 +157,7 @@ def slider(profile=False):
         sc.draw(x_pos=x_pos, y_pos=y_pos)
     if profile:
         pr.enable()
-    traffic_cop.run(15)
+    traffic_cop.run(10)
     if profile:
         pr.disable()
         pr.dump_stats('slider.prof')
