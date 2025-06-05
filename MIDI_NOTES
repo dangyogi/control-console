@@ -1,0 +1,107 @@
+Midi goes through alsa on linux.  Linux alsa supports midi 2.0 in kernel version 6.5.  Debian 12
+(bookworm) uses kernel 6.1.  Debian 13 (trixie) will likely use kernel 6.5 or higher, likely released
+~June, 2025.
+
+See Ted's Linux MIDI Guide: http://tedfelix.com/linux/linux-midi.html for setting everything up.
+See http://www.piano-midi.de/ for free midi files
+
+Alsa midi support commands:
+
+    aconnect -o  # lists midi ports
+    amidi        # read/write from/to raw alsa midi ports.  Can send/recv SysEx messages
+    aplaymidi    # play standard midi files
+    arecordmidi  # record standard midi files
+    aseqdump     # dumps MIDI events received on alsa sequencer port as text
+    aseqnet      # forwards MIDI events to another computer over ethernet, only 1 thread
+      - see also rtpmidi(d)
+    amidiminder  # operates from a set of rules to automatically connect ports when it sees them
+                 # sudo apt-get install amidiminder
+
+Use aseqnet to create a MIDI connection over ethernet:
+
+    raspberrypi $ aseqnet &             # you can only have one of these running at a time.
+                                        # This is called the "server".
+                                        # I don't see a need for giving this a name, since nothing
+                                        # connects to it on this box.
+                                        # Killing the server, kills all connected clients.
+    laptop $ aseqnet raspberrypi &      # you can have multiple of these for the same IP addr
+                                        # they each have their own name/port number.  Might be useful
+                                        # from multiple computers?
+                                        # These are called "clients".  The -n (name) not accepted.
+                                        # Killing the client apparently only kills the server if
+                                        # it's the only client that ever connected.
+    laptop $ aconnect -l
+    client 0: 'System' [type=kernel]
+        0 'Timer           '
+        1 'Announce        '
+    client 14: 'Midi Through' [type=kernel]
+        0 'Midi Through Port-0'
+    client 128: 'Net Client' [type=user,pid=786977]  ###### <================
+        0 'Network         '
+    laptop $ aseqdump -p 128
+    raspberrypi $ python rtmidi_test.py  # automatically connects to Net Client:Network
+
+    killing either aseqnet also terminates the other one.
+
+Python alsa midi libraries:
+
+    alsa_midi
+        - supports async I/O and select
+          - looks like _fd on SequencerClient
+        - precise timestamping of messages sent and received
+        - port connection management
+        - access to non-MIDI events, like announcements about new clients, ports and connections
+    python-alsa-midi
+    alsa-python
+        - import alsaseq; alsa_fd = alsaseq.fd()
+    mido
+        - MIDI 1.0 ports (latest MIDI is 2.0 as of 2020)
+        - supports rtmidi backend
+    rtmidi
+        - used on my prior midi_expression project
+        - had to install python-dev and libasound2-dev before installing rtmidi (running debian 12 -
+          bookworm)
+            - sudo apt-get update
+            - sudo apt-get upgrade
+            - sudo apt-get install python3-dev libasound2-dev
+        - pip install python-rtmidi
+    MIDIUtil
+
+
+FluidSynth
+    - before: systemctl --user stop pulseaudio.socket pulseaudio.service
+    - fluidsynth --audio-driver=alsa -o audio.alsa.device=hw:0 \
+        /usr/share/sounds/sf2/FluidR3_GM.sf2 \
+        bach_prelude_c_major.mid
+    - after: systemctl --user start pulseaudio.socket pulseaudio.service
+
+
+Universal MIDI Packet (UMP) (skip this!)
+
+    - Each UMP shall be 1, 2, 3 or 4 32-bit words long.
+    - Each UMP shall contain one entire MIDI Message, or (in the sole case of Data Messages longer than
+      128 bits) part of one MIDI Message, and no additional data.  (section 1.3 defines transport
+      specs).
+    - A MIDI Message that is longer than a single UMP allows will span multiple UMPs.
+    - Bits are numbered from 0 (least significant) to 31 (most significant)
+
+    - most significant 4 bits are Message Type field (see section 2.1.4)
+      - MT 0x0, 32 bits, Utility Message
+      - MT 0x1, 32 bits, System Real Time and System Common Messages (except System Exclusive)
+        - MT(4), Group(4), status(8), data(16)
+      - MT 0x2, 32 bits, MIDI 1.0 Channel Voice Messages
+        - MT(4), Group(4), status(8) incl 4-bit opcode and a 4-bit Channel number, 16 bits index, data
+          and/or reserved space.
+      - MT 0x3, 64 bits, Data Messages (including System Exclusive)
+      - MT 0x4, 64 bits, MIDI 2.0 Channel Voice Messages
+        - MT(4), Group(4), status(8), index(16), data(32)
+      - MT 0x5, 128 bits, Data Messages
+        - MT(4), Group(4), status(4), data(116)
+      - MT 0x6-0x7, 32 bits, reserved
+      - MT 0x8-0xA, 64 bits, reserved
+      - MT 0xB-0xC, 96 bits, reserved
+      - MT 0xD, 128 bits, Flex Data Messages
+      - MT 0xE, 128 bits, reserved
+      - MT 0xF, 128 bits, UMP Stream Messages
+    - Group field is 4 bits (0-15), (1-16 when presented to users).  Each Group has 16 Channels.
+      - MT 0x0 and 0xF do not have a Group field.

@@ -26,6 +26,7 @@ import time
 import selectors
 from operator import itemgetter
 import screen
+import midi_io
 
 
 def get_time():
@@ -39,7 +40,7 @@ def init(screen):
     Sel = selectors.DefaultSelector()
 
 @screen.register_quit
-def close():
+def close(screen):
     global Sel
     Sel.close()
     Sel = None
@@ -103,6 +104,8 @@ def set_alarm(delay, fn):
     render_template.
 
     Alarms can not be cancelled.
+
+    Alarms are sorted next to fire last.
     '''
     Alarms.append((get_time() + delay, fn))
     Alarms.sort(reverse=True, key=itemgetter(0))
@@ -124,9 +127,6 @@ def run(secs=None):
     while not Stop and (secs is None or get_time() < end):
         screen_changed = False
         with screen.Screen.update(draw_to_framebuffer=False):
-            while Alarms and get_time() >= Alarms[-1][0]:
-                fn = Alarms.pop()[1]
-                screen_changed |= fn()
             waketime = None
             if Alarms:
                 waketime = Alarms[-1][0]
@@ -137,6 +137,10 @@ def run(secs=None):
                     screen_changed |= sk.data[0](sk.fileobj)
                 if event & selectors.EVENT_WRITE:
                     screen_changed |= sk.data[1](sk.fileobj)
+            while Alarms and get_time() >= Alarms[-1][0]:
+                fn = Alarms.pop()[1]
+                screen_changed |= fn()
+        midi_io.drain_output()
         if screen_changed:
             screen.Screen.draw_to_framebuffer()
 

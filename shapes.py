@@ -3,7 +3,7 @@
 r'''A set of classes for different kinds of shapes supported by raylib.
 '''
 
-from math import ceil
+import math
 import os.path
 from pyray import *
 
@@ -155,16 +155,16 @@ class text(Drawable):
         font = Fonts[2 * self.sans + self.bold]
         if self.max_text is not None:
             msize = measure_text_ex(font, str(self.max_text), self.size, self.spacing)
-            self.width = int(ceil(msize.x))
-            self.height = int(ceil(msize.y))
+            self.width = int(math.ceil(msize.x))
+            self.height = int(math.ceil(msize.y))
             if self.trace:
                 print("text.init: width", self.width, "height", self.height)
         elif self.as_sprite:
             raise AssertionError("text.init2: must specify max_text with as_sprite")
         elif hasattr(self, 'text'):
             msize = measure_text_ex(font, str(self.text), self.size, self.spacing)
-            self.width = int(ceil(msize.x))
-            self.height = int(ceil(msize.y))
+            self.width = int(math.ceil(msize.x))
+            self.height = int(math.ceil(msize.y))
             if self.trace:
                 print("text.init: width", self.width, "height", self.height)
 
@@ -180,8 +180,8 @@ class text(Drawable):
         #else:
         #    # FIX: not needed if x_pos and y_pos are S types.
         #    msize = measure_text_ex(font, text, self.size, self.spacing)
-        #    width = int(ceil(msize.x))
-        #    height = int(ceil(msize.y))
+        #    width = int(math.ceil(msize.x))
+        #    height = int(math.ceil(msize.y))
         #    if self.trace:
         #        print(f"text.draw2: no max_text, {text=}, {self.width=}, {self.height=}")
 
@@ -191,8 +191,8 @@ class text(Drawable):
             height = self.size
         else:
             msize = measure_text_ex(font, text, self.size, self.spacing)
-            width = int(ceil(msize.x))
-            height = int(ceil(msize.y))
+            width = int(math.ceil(msize.x))
+            height = int(math.ceil(msize.y))
             if self.trace:
                 print(f"text.draw2: measuring text {text=} got {self.width=}, {self.height=}")
             x = self.x_pos.S(width).i
@@ -217,8 +217,11 @@ class rect(Drawable):
 # possibly interesting "off" colors for "LED"s: GRAY, DARKGRAY, BROWN, BLACK
 # see test_3
 class circle(Drawable):
-    diameter = 21
-    color = WHITE
+    diameter = 21    # of outer border
+    color = WHITE    # if inner circle
+    border_color = BLACK
+    border = False
+    border_width = 5
 
     @property
     def radius(self):
@@ -234,12 +237,28 @@ class circle(Drawable):
     def height(self):
         return self.diameter
 
+    @property
+    def center(self):
+        x = self.x_pos.C(self.width).i
+        y = self.y_pos.C(self.height).i
+        return x, y
+
+    def contains(self, x, y):
+        x0, y0 = self.center
+        dist = math.sqrt((x - x0)**2 + (y - y0)**2)
+        return dist <= self.radius
+
     def draw2(self):
-        x = self.x_pos.C(self.width)
-        y = self.y_pos.C(self.height)
-        if self.trace:
-            print(f"circle.draw2: {x=}, {y=}, {self.radius=}, {self.color=}")
-        draw_circle(x.i, y.i, self.radius, self.color)
+        x, y = self.center
+        if self.border:
+            if self.trace:
+                print(f"circle.draw2: {x=}, {y=}, {self.radius=}, {self.border_color=}")
+            draw_circle(x, y, self.radius, self.border_color)
+            draw_circle(x, y, self.radius - self.border_width, self.color)
+        else:
+            if self.trace:
+                print(f"circle.draw2: {x=}, {y=}, {self.radius=}, {self.color=}")
+            draw_circle(x, y, self.radius, self.color)
 
 
 class gap(Drawable):

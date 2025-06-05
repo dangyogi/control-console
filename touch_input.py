@@ -113,6 +113,10 @@ def init_event_generator(screen_obj):
       Touch_generator(screen.Touch_device_path, screen_obj.width, screen_obj.height,
                       screen_obj.Touch_dispatcher, screen_obj.trace)
 
+@screen.register_quit2
+def close_event_generator(screen_obj):
+    screen_obj.Touch_generator.close()
+
 class Touch_generator:
     r'''width, height in pixels.
 
@@ -131,7 +135,6 @@ class Touch_generator:
         self.action = 'move'
         self.touch_dispatch = touch_dispatch
         traffic_cop.register_read(self.device_fd, self.process_events)
-        screen.register_quit(self.close)
 
     def close(self):
         self.drain_events()

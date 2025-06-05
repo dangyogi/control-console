@@ -94,8 +94,8 @@ Touch_device_path = "/dev/input/by-id/usb-Siliconworks_SiW_HID_Touch_Controller-
 Font_dir = "/usr/share/fonts/truetype/dejavu"
 
 
-Inits = []
-Quits = []
+Inits = []  # Run in ascending prio order
+Quits = []  # Run in descending prio order
 
 def register_init(init_fn, prio=1):
     r'''To get around cyclical imports so that anybody can import this module.
@@ -117,14 +117,24 @@ def register_init2(init_fn, prio=2):
     Inits.append((prio, init_fn))
     return init_fn
 
-def register_quit(quit_fn):
+def register_quit(quit_fn, prio=1):
     r'''To get around cyclical imports so that anybody can import this module.
 
     These functions are not passed any arguments.
 
     Can be used as a function decorator.
     '''
-    Quits.append(quit_fn)
+    Quits.append((prio, quit_fn))
+    return quit_fn
+
+def register_quit2(quit_fn, prio=2):
+    r'''To get around cyclical imports so that anybody can import this module.
+
+    These functions are not passed any arguments.
+
+    Can be used as a function decorator.
+    '''
+    Quits.append((prio, quit_fn))
     return quit_fn
 
 
@@ -154,9 +164,10 @@ class Screen_class:
         return self
 
     def close(self):
+        Quits.sort(key=itemgetter(0))
         while Quits:
-            quit_fn = Quits.pop()
-            quit_fn()
+            quit_fn = Quits.pop()[1]
+            quit_fn(self)
         if self.render_texture is not None:
             self.render_texture.close()
             self.render_texture = None
