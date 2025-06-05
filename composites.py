@@ -13,75 +13,64 @@ from composite import *
 import screen
 
 
-Slider_knob = Composite(Stack(rect(width=49, height=19, x_pos=P.x_center, y_pos=P.y_mid, color=BLACK),
-                              rect(width=61, height=5, x_pos=P.x_center, y_pos=P.y_mid, color=GRAY)),
+Slider_vknob = Composite(Stack(rect(width=49, height=19, x_pos=P.x_center, y_pos=P.y_mid, color=BLACK),
+                               rect(width=61, height=5, x_pos=P.x_center, y_pos=P.y_mid, color=GRAY)),
 
-                        #width=61,
-                        #height=19,
-                        as_sprite=True,
-                        aka='Slider_knob',
-                       #trace=True
-                       )
+                         #width=61,
+                         #height=19,
+                         as_sprite=True,
+                         aka='Slider_vknob',
+                        #trace=True
+                        )
 
 class Slider(Drawable):
     r'''Includes full range of knob.
     '''
     tick = 3   # num pixels knob moves per unit change in tick_value
-    num_ticks = 128
+    low_value = 0
+    high_value = 127
     tick_value = 0
     scale_fn = staticmethod(lambda x: x)
     text_display = None
     aka = 'Slider'
 
     @property
-    def width(self):
-        return self.knob.width
-
-    @property
-    def slide_height(self):    # default 381 at tick=3, num_ticks=128
-        return (self.num_ticks - 1) * self.tick
-
-    @property
-    def height(self):          # default 399
-        return self.slide_height + self.knob.height - 1
-
-    @property
-    def slide_y_upper_c(self):
-        r'''Upper limit of knob movement for knob center.
-        '''
-        return (self.y_upper + (self.knob.height - 1) // 2).as_C()
-
-    @property
-    def slide_y_lower_c(self):
-        r'''Lower limit of knob movement for knob center.
-        '''
-        return (self.y_lower - (self.knob.height - 1) // 2).as_C()
-
-    @property
     def value(self):
         return self.scale_fn(self.tick_value)
 
-    @property
-    def max_text(self):
-        v_0 = self.scale_fn(0)
-        v_max = self.scale_fn(self.num_ticks - 1)
-        if len(str(v_0)) > len(str(v_max)):
-            return v_0
-        return v_max
-
-    @property
-    def text0(self):
-        sf = self.scale_fn
-        return sf(0)
-
     def init2(self):
+        self.num_ticks = (self.high_value - self.low_value) + 1
+        self.slide_height = (self.num_ticks - 1) * self.tick   # default 381 at tick=3, num_ticks=128
+        if len(str(self.scale_fn(self.low_value))) > len(str(self.scale_fn(self.high_value))):
+            self.max_text = str(self.scale_fn(self.low_value))
+        else:
+            self.max_text = str(self.scale_fn(self.high_value))
+        self.text0 = self.scale_fn(self.low_value)
+        if self.trace:
+            print(f"{self}.init2: {self.num_ticks=}, {self.slide_height=}, {self.max_text=}, "
+                  f"{self.text0=}")
+
+        # init self.knob:
         self.knob.parent = self
         self.knob.init()
+        self.height = self.slide_height + self.knob.height - 1 # default 399
+        self.width = self.knob.width
+        if self.trace:
+            print(f"{self}.init2: {self.knob.height=}, {self.knob.width=}")
         if not self.knob.trace:
             self.knob.trace = self.trace
 
+        # create centerline:
+        self.centerline = rect(name='centerline', width=3, height=self.height, color=BLACK)
+        self.centerline.init()
+
     def draw2(self):
         super().draw2()
+        self.slide_y_upper_c = (self.y_upper + (self.knob.height - 1) // 2).as_C()
+        self.slide_y_lower_c = (self.y_lower - (self.knob.height - 1) // 2).as_C()
+        if self.trace:
+            print(f"{self}.draw2: {self.slide_y_upper_c=}, {self.slide_y_lower_c=}")
+        self.centerline.draw(x_pos=self.x_center, y_pos=self.y_upper)
         self.draw_knob()
         self.update_text()
         screen.Screen.Touch_dispatcher.register(self)
@@ -136,51 +125,43 @@ class Slider(Drawable):
     def release(self):
         return False
 
-Slider_track = Composite(
-                   Stack(# centerline
-                         rect(name='centerline', width=3, height=P.slider.height, color=BLACK),
-                         Slider(name='slider',
-                                knob=Slider_knob.copy(x_pos=P.x_center, # trace=True, exp_trace=True
-                                                     ),
-                                text_display=P.text_display,
-                                init_order=1,
-                               #trace=True
-                               ),
-                         y_align=to_S),
-
-                   max_text=I.slider.max_text,
-                   text0=I.slider.text0,
-                   aka='Slider_track',
-                  #trace=True
-                  )
-
+# Add label and value_text on top of Slider.
 Slider_guts = Composite(Column(vgap(P.label_margin),
                                text(name='label_text', text=P.label),
                                vgap(P.value_margin),
                                text(name='value_text',
-                                    max_text=P.slider_track.max_text, text=P.slider_track.text0,
+                                    max_text=P.slider.max_text, text=P.slider.text0,
                                     as_sprite=True),
                                vgap(P.centerline_margin),
-                               Slider_track.copy(name='slider_track', text_display=P.value_text,
-                                                 init_order=1),
+                               Slider(name='slider',
+                                      low_value=P.low_value,
+                                      high_value=P.high_value,
+                                      scale_fn=P.scale_fn,
+                                      knob=Slider_vknob.copy(),
+                                      text_display=P.value_text,
+                                      init_order=1),
                                vgap(P.bottom_margin)),
 
                         label_margin=5,       # gap between top of outer rect and top of label_text
                         value_margin=3,       # gap between label_text and value_text
                         centerline_margin=5,  # gap between value_text and top of centerline
-                        bottom_margin=7,      # gap between Slider_track and bottom of Slider_guts
+                        bottom_margin=7,      # gap between Slider and bottom of Slider_guts
                         label=P.label,
+                        low_value=P.low_value,
+                        high_value=P.high_value,
+                        scale_fn=P.scale_fn,
                         aka='Slider_guts',
                        #trace=True
                        )
 
+# Put box around Slider_guts.
 Slider_control = Composite(Stack(rect(name='box', width=P.guts.width, height=P.guts.height),
-                                 Slider_guts.copy(name='guts', init_order=1),
-                                 y_align=to_S),
+                                 Slider_guts.copy(name='guts', init_order=1)),
 
                            aka='Slider_control',
-                           x_pos=C(900),
-                           y_pos=S(100),
+                           low_value=0,
+                           high_value=127,
+                           scale_fn=lambda x: x,
                           #trace=True
                           )
 

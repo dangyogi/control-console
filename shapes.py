@@ -124,7 +124,9 @@ class text(Drawable):
     dict.  If there are no formatting directives ({...}) in the text, no harm done.  This provides a
     way to pass parameters into the text message.
 
-    If you are using the text in a group, you must specify max_text so that it can calculate a width.
+    If you are using the text in a group where the text varies, you must specify max_text so that
+    it can calculate a height and width to make size for itself.  Max_text must also be used
+    for as_sprite.
 
     The calculated height of the text comes out the same as the size.  This includes room for
     descenders on the chars, even if there're not any.  To make the text appear more lined up with
