@@ -115,6 +115,8 @@ def init_event_generator(screen_obj):
 
 @screen.register_quit2
 def close_event_generator(screen_obj):
+    if screen_obj.trace:
+        print("register_quit2: close_event_generator")
     screen_obj.Touch_generator.close()
 
 class Touch_generator:
@@ -135,11 +137,16 @@ class Touch_generator:
         self.action = 'move'
         self.touch_dispatch = touch_dispatch
         traffic_cop.register_read(self.device_fd, self.process_events)
+        self.closed = False
 
     def close(self):
-        self.drain_events()
-        traffic_cop.unregister_read(self.device_fd)
-        self.device_fd.close()
+        if not self.closed:
+            if self.trace:
+                print("Touch_generator.close")
+            self.drain_events()
+            traffic_cop.unregister_read(self.device_fd)
+            self.device_fd.close()
+            self.closed = True
 
     def drain_events(self):
         r'''Drain all events from the input to avoid SYN_DROPPED for the next guy.
@@ -269,6 +276,10 @@ if __name__ == "__main__":
     from collections import Counter
     import argparse
 
+    from alignment import *
+    from shapes import *
+    from shapes import gap
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--trace', '-t', action='store_true', default=False)
     parser.add_argument('width', nargs='?', type=int, default=1920)
@@ -276,6 +287,29 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    class touch(gap):
+        def touch(self, x, y):
+            print(f"{x=}({abs(x-900)}), {y=}({abs(y-500)})")
+            return False
+
+        def move_to(self, x, y):
+            return False
+
+        def release(self):
+            return False
+
+    with screen.Screen_class():
+        print("Screen_class created")
+        t = touch(width=500, height=500, x_pos=C(900), y_pos=C(500)).init()
+        screen.Screen.Touch_dispatcher.register(t)
+        with screen.Screen.update():
+            vline = rect(width=1, height=300).init()
+            hline = rect(width=300, height=1).init()
+            vline.draw(x_pos=C(900), y_pos=C(500))
+            hline.draw(x_pos=C(900), y_pos=C(500))
+        traffic_cop.run(5)
+
+    '''
     try:
         traffic_cop.init(None)
 
@@ -318,4 +352,5 @@ if __name__ == "__main__":
     finally:
         gen.close()
         traffic_cop.close()
+    '''
 

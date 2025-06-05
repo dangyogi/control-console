@@ -320,6 +320,7 @@ class Drawable(Box):
                 except AttributeError:
                     pass
                 print(f"{self}.init: {self.x_pos=}, {self.y_pos=}, self.{width=}, self.{height=}")
+        return self
 
     def init2(self):
         pass

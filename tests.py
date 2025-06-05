@@ -48,27 +48,37 @@ def circle_colors():
         r.draw(x_pos=S(50), y_pos=S(300))
 
         # LED on:
-        c_x_center = cir1.draw('x_center', x_pos=C(100), color=WHITE)
+        c_x_center = cir1.draw('x_center', x_pos=C(100), color=WHITE,
+                               border=True, border_width=10, diameter=41)
         t1.draw(x_pos=c_x_center, text="WHITE")
-        c_x_center = cir1.draw('x_center', x_pos=C(200), color=YELLOW)
+        c_x_center = cir1.draw('x_center', x_pos=C(200), color=YELLOW,
+                               border=True, border_width=9, diameter=39)
         t1.draw(x_pos=c_x_center, text="YELLOW")
-        c_x_center = cir1.draw('x_center', x_pos=C(300), color=ORANGE)
+        c_x_center = cir1.draw('x_center', x_pos=C(300), color=ORANGE,
+                               border=True, border_width=8, diameter=37)
         t1.draw(x_pos=c_x_center, text="ORANGE")
-        c_x_center = cir1.draw('x_center', x_pos=C(400), color=PINK)
+        c_x_center = cir1.draw('x_center', x_pos=C(400), color=PINK,
+                               border=True, border_width=7, diameter=35)
         t1.draw(x_pos=c_x_center, text="PINK")
-        c_x_center = cir1.draw('x_center', x_pos=C(500), color=RED)
+        c_x_center = cir1.draw('x_center', x_pos=C(500), color=RED,
+                               border=True, border_width=6, diameter=33)
         t1.draw(x_pos=c_x_center, text="RED")
-        c_x_center = cir1.draw('x_center', x_pos=C(600), color=GREEN)
+        c_x_center = cir1.draw('x_center', x_pos=C(600), color=GREEN,
+                               border=True, border_width=5, diameter=31)
         t1.draw(x_pos=c_x_center, text="GREEN")
-        c_x_center = cir1.draw('x_center', x_pos=C(700), color=LIME)
+        c_x_center = cir1.draw('x_center', x_pos=C(700), color=LIME,
+                               border=True, border_width=4, diameter=29)
         t1.draw(x_pos=c_x_center, text="LIME")
-        c_x_center = cir1.draw('x_center', x_pos=C(800), color=SKYBLUE)
+        c_x_center = cir1.draw('x_center', x_pos=C(800), color=SKYBLUE,
+                               border=True, border_width=3, diameter=27)
         t1.draw(x_pos=c_x_center, text="SKYBLUE")
-        c_x_center = cir1.draw('x_center', x_pos=C(900), color=BLUE)
+        c_x_center = cir1.draw('x_center', x_pos=C(900), color=BLUE,
+                               border=True, border_width=2, diameter=25)
         t1.draw(x_pos=c_x_center, text="BLUE")
-        c_x_center = cir1.draw('x_center', x_pos=C(1000), color=PURPLE)
+        c_x_center = cir1.draw('x_center', x_pos=C(1000), color=PURPLE,
+                               border=True, border_width=1, diameter=23)
         t1.draw(x_pos=c_x_center, text="PURPLE")
-        c_x_center = cir1.draw('x_center', x_pos=C(1100), color=VIOLET)
+        c_x_center = cir1.draw('x_center', x_pos=C(1100), border=False, color=VIOLET)
         t1.draw(x_pos=c_x_center, text="VIOLET")
         c_x_center = cir1.draw('x_center', x_pos=C(1200), color=MAGENTA)
         t1.draw(x_pos=c_x_center, text="MAGENTA")
@@ -88,7 +98,7 @@ def circle_colors():
         t2.draw(x_pos=c_x_center, text="DARKBROWN")
         c_x_center = cir2.draw('x_center', x_pos=C(700), color=BLACK)
         t2.draw(x_pos=c_x_center, text="BLACK")
-    traffic_cop.run(2)
+    traffic_cop.run(8)
 
 def lines():
     l1 = hline(width=1, length=50)

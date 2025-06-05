@@ -217,13 +217,15 @@ class rect(Drawable):
 
 # possibly interesting "on" colors for "LED"s: RED, GREEN, BLUE
 # possibly interesting "off" colors for "LED"s: GRAY, DARKGRAY, BROWN, BLACK
-# see test_3
+# see: python tests.py circle_colors
 class circle(Drawable):
-    diameter = 21    # of outer border
-    color = WHITE    # if inner circle
+    #diameter = 21          # of outer border
+    diameter = 31          # of outer border, 57 to make it touchable, so we cheat with touch_radius...
+    touch_border = 13      # added to radius for "contains" (~1/8")
+    color = WHITE          # if inner circle
     border_color = BLACK
     border = False
-    border_width = 5
+    border_width = 2       # 2, or maybe 3
 
     @property
     def radius(self):
@@ -248,7 +250,7 @@ class circle(Drawable):
     def contains(self, x, y):
         x0, y0 = self.center
         dist = math.sqrt((x - x0)**2 + (y - y0)**2)
-        return dist <= self.radius
+        return dist <= self.radius + self.touch_border
 
     def draw2(self):
         x, y = self.center

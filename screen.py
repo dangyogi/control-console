@@ -134,6 +134,7 @@ def register_quit2(quit_fn, prio=2):
 
     Can be used as a function decorator.
     '''
+    print("register_quit2:", quit_fn)
     Quits.append((prio, quit_fn))
     return quit_fn
 
@@ -164,9 +165,13 @@ class Screen_class:
         return self
 
     def close(self):
+        if self.trace:
+            print("Screen.close")
         Quits.sort(key=itemgetter(0))
         while Quits:
             quit_fn = Quits.pop()[1]
+            if self.trace:
+                print(f"Screen_class.close running {quit_fn=}")
             quit_fn(self)
         if self.render_texture is not None:
             self.render_texture.close()
