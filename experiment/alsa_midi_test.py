@@ -57,6 +57,8 @@ def get_midi_events():
 stdin_buffer = ''
 os.set_blocking(sys.stdin.fileno(), False)
 
+prompt = "port channel param value"
+
 def get_stdin():
     global stdin_buffer
     stdin_buffer += sys.stdin.read()
@@ -70,12 +72,13 @@ def get_stdin():
         client.event_output(cc_event, port=port)
 
         client.drain_output()
+    print(prompt)
 
 Sel = selectors.DefaultSelector()
 Sel.register(client._fd, selectors.EVENT_READ, get_midi_events)
 Sel.register(sys.stdin, selectors.EVENT_READ, get_stdin)
 
-print("channel param value")
+print(prompt)
 
 try:
     last_select_time = None

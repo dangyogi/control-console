@@ -134,7 +134,6 @@ def register_quit2(quit_fn, prio=2):
 
     Can be used as a function decorator.
     '''
-    print("register_quit2:", quit_fn)
     Quits.append((prio, quit_fn))
     return quit_fn
 

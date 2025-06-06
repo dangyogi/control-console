@@ -1,0 +1,6 @@
+#!/bin/sh
+
+aconnect player_stub:0 "Exp Console:0"
+aconnect "Exp Console:0" player_stub:0
+
+aconnect -l

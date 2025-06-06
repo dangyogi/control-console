@@ -12,6 +12,7 @@ from alsa_midi import (SequencerClient, PortCaps, EventType,
 import screen
 import traffic_cop
 
+Trace = False
 
 client = SequencerClient("Exp Console")
 Ports = [
@@ -44,9 +45,13 @@ Port_commands = {}   # port, type, param_num: command
 
 @screen.register_init2
 def init(screen):
+    if Trace:
+        print("midi_io.init")
     traffic_cop.register_read(client._fd, get_midi_events)
 
 def register_command(command):
+    if Trace:
+        print(f"midi_io.register_command({command}): key={command.key()}")
     Port_commands[command.key()] = command
 
 Control_change_types = frozenset((EventType.CONTROLLER, EventType.NONREGPARAM, EventType.REGPARAM))
@@ -54,9 +59,12 @@ Control_change_types = frozenset((EventType.CONTROLLER, EventType.NONREGPARAM, E
 def get_midi_events(_fd):
     # w/false, often 0, but there's still an event.
     # w/True, always at least 1, but often more
+    if Trace:
+        print("midi_io.get_midi_events")
+    start_time = time.time()
     num_pending = client.event_input_pending(True)
     pending_time = time.time()
-    print("pending", pending_time - select_time)
+    print("pending", pending_time - start_time)
     print(f"{num_pending=}")
     screen_changed = False
     for i in range(1, num_pending + 1):
@@ -67,8 +75,10 @@ def get_midi_events(_fd):
         print(event.dest.port_id, event)
         if event.type in Control_change_types: 
             key = event.dest.port_id, event.type, event.param
+            if Trace:
+                print(f"midi_io.get_midi_events got {key=} in Port_commands: {key in Port_commands}")
             if key in Port_commands:
-                screen_changed |= Port_commands[key].remote_value_change(event.channel, event.value)
+                screen_changed |= Port_commands[key].remote_change(event.channel, event.value)
     return screen_changed
 
 

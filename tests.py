@@ -9,6 +9,8 @@ from composites import *
 import screen
 from shapes import *
 import traffic_cop
+from midi_commands import ControlChange, Channels
+import midi_io
 
 
 def group():
@@ -161,13 +163,15 @@ def slider(profile=False):
         pr = cProfile.Profile(time.perf_counter)
     sc = Slider_control.copy(label="testing...")
     sc.init()
+    midi_io.Trace = True
+    ControlChange(0, 0x10, Channels(1,3,5), sc.guts.slider, trace=True)
     with screen.Screen.update():
         x_pos = C(900)
         y_pos = S(100)
         sc.draw(x_pos=x_pos, y_pos=y_pos)
     if profile:
         pr.enable()
-    traffic_cop.run(10)
+    traffic_cop.run(30)
     if profile:
         pr.disable()
         pr.dump_stats('slider.prof')

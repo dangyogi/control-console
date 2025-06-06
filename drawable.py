@@ -30,8 +30,8 @@ First step, building individual reusable shapes, like "line":
 3. Because no P expressions were used in any of this, this can be used without a Composite:
 
     >>> a_line = vline(x_pos=S(10), y_pos=S(30), length=20)
-    >>> a_line.init()            # safest to do this after the screen (pyray) has been initialized,
-    ...                          # but we'll cheat here...
+    >>> _ = a_line.init()            # safest to do this after the screen (pyray) has been initialized,
+    ...                              # but we'll cheat here...
     >>> a_line.draw()
     draw vert line from (11, 30) to (11, 49), width 3 and color BLACK
 
@@ -41,7 +41,7 @@ First step, building individual reusable shapes, like "line":
 
     >>> a_line = vline(x_pos=S(10), y_pos=S(30), length=20)
     >>> b_line = a_line.copy(length=30, width=5)
-    >>> b_line.init()
+    >>> _ = b_line.init()
     >>> b_line.draw()
     draw vert line from (12, 30) to (12, 59), width 5 and color BLACK
 
@@ -192,7 +192,7 @@ class Drawable(Box):
 
         # box with x_center at 20, and y_lower at 200
         >>> my_a = my_inst(x_pos=C(20), y_pos=E(200), height=19)
-        >>> my_a.init()
+        >>> _ = my_a.init()
 
         All instances are boxes with x_left/center/right:
         >>> my_a.x_left
@@ -212,7 +212,7 @@ class Drawable(Box):
 
         All attributes are set using keyword arguments:
         >>> my_b = my_inst(x_pos=S(20), width=15, bogus="foobar")
-        >>> my_b.init()
+        >>> _ = my_b.init()
         >>> my_b.width
         15
         >>> my_b.bogus
@@ -237,7 +237,7 @@ class Drawable(Box):
         ...         print(f"{self.x_left=}")
 
         >>> my_a = my_inst()
-        >>> my_a.init()
+        >>> _ = my_a.init()
         >>> my_a.x_pos   # default set in Drawable class
         S(100)
         >>> my_a.x_left  # @property value in Drawable class

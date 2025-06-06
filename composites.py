@@ -32,6 +32,7 @@ class Slider(Drawable):
     tick_value = 0
     scale_fn = staticmethod(lambda x: x)
     text_display = None
+    midi_command = None
     aka = 'Slider'
 
     @property
@@ -115,6 +116,8 @@ class Slider(Drawable):
             if self.trace:
                 print(f"{self}.move_to: {knob_y=}, {pixel_movement=}, {tick_change=}, "
                       f"{self.tick_value=}")
+            if self.midi_command is not None:
+                self.midi_command.local_change()
             self.draw_knob()
             self.update_text()
             return True
@@ -124,6 +127,30 @@ class Slider(Drawable):
 
     def release(self):
         return False
+
+    def get_raw_value(self):
+        if self.trace:
+            print(f"Slider.get_raw_value {self.tick_value=}")
+        return self.tick_value
+
+    def remote_change(self, channel, new_value):
+        r'''Called when a MIDI command is received updating the Slider's value.
+
+        The new_value is the raw value, i.e., tick_value.
+
+        Returns True if the screen changed and needs a Screen.draw_to_framebuffer() done.
+        '''
+        if self.trace:
+            print(f"Slider.remote_change {channel=}, {new_value=}")
+        if new_value != self.tick_value:
+            self.tick_value = new_value
+            if self.midi_command is not None:
+                self.midi_command.local_change(channel)
+            self.draw_knob()
+            self.update_text()
+            return True
+
+
 
 # Add label and value_text on top of Slider.
 Slider_guts = Composite(Column(vgap(P.label_margin),
@@ -139,6 +166,7 @@ Slider_guts = Composite(Column(vgap(P.label_margin),
                                       scale_fn=P.scale_fn,
                                       knob=Slider_vknob.copy(),
                                       text_display=P.value_text,
+                                     #trace=True,
                                       init_order=1),
                                vgap(P.bottom_margin)),
 
