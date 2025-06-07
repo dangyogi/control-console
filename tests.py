@@ -167,8 +167,7 @@ def slider(profile=False):
         import cProfile
         import time
         pr = cProfile.Profile(time.perf_counter)
-    sc = Slider_control.copy(label="testing...")
-    sc.init()
+    sc = Slider_control.copy(label="testing...").init()
     midi_io.Trace = True
     ControlChange(0, 0x10, Channels(1,3,5), sc.guts.slider, trace=True)
     with screen.Screen.update():
@@ -182,6 +181,36 @@ def slider(profile=False):
         pr.disable()
         pr.dump_stats('slider.prof')
 
+def buttons():
+    re = rect(width=200, height=100).init()
+    radio = text(text="radio").init()
+    r1 = button(type="radio", border=True).init()
+    r2 = button(type="radio", border=True).init()
+    r3 = button(type="radio", border=True).init()
+    toggle = text(text="toggle").init()
+    t = button(type="toggle", border=True).init()
+    mom = text(text="mom").init()
+    m = button(type="mom", border=True).init()
+    start_stop = text(text="start-stop").init()
+    ss = button(type="start-stop", border=True).init()
+    with screen.Screen.update():
+        x_pos = C(300)
+        text_y = E(140)
+        b_y_pos = S(160)
+        re_y_pos = S(110)
+        re.draw(x_pos=x_pos, y_pos=re_y_pos)
+        radio.draw(x_pos=x_pos, y_pos=text_y)
+        r1.draw(x_pos=x_pos-60, y_pos=b_y_pos)
+        r2.draw(x_pos=x_pos, y_pos=b_y_pos)
+        r3.draw(x_pos=x_pos+60, y_pos=b_y_pos)
+        toggle.draw(x_pos=C(500), y_pos=text_y)
+        t.draw(x_pos=C(500), y_pos=b_y_pos)
+        mom.draw(x_pos=C(600), y_pos=text_y)
+        m.draw(x_pos=C(600), y_pos=b_y_pos)
+        start_stop.draw(x_pos=C(700), y_pos=text_y)
+        ss.draw(x_pos=C(700), y_pos=b_y_pos)
+    traffic_cop.run(10)
+
 
 
 if __name__ == "__main__":
@@ -192,7 +221,7 @@ if __name__ == "__main__":
     parser.add_argument("--profile", "-p", default=False, action="store_true")
     parser.add_argument("test", nargs='?',
                         choices=("group", "rect_as_sprite", "circle_colors", "lines", "scales",
-                                 "knob", "slider"))
+                                 "knob", "slider", "buttons"))
 
     args = parser.parse_args()
 
@@ -205,6 +234,7 @@ if __name__ == "__main__":
             case "scales": scales()
             case "knob": knob()
             case "slider": slider(args.profile)
+            case "buttons": buttons()
             case None:
                 group()
                 time.sleep(2)
@@ -225,4 +255,7 @@ if __name__ == "__main__":
                 time.sleep(2)
                 screen.Screen.clear()
                 slider()
+                time.sleep(2)
+                screen.Screen.clear()
+                buttons()
 

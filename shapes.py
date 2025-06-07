@@ -45,7 +45,7 @@ import traffic_cop
 #define RAYWHITE   (Color){ 245, 245, 245, 255 }   // My own White (raylib logo)
 
 
-__all__ = ("vline", "hline", "text", "rect", "circle", "hgap", "vgap")
+__all__ = ("vline", "hline", "text", "rect", "circle", "button", "hgap", "vgap")
 
 
 class line(Drawable):
@@ -287,6 +287,19 @@ class button(circle):
     command = None
     blink_time = 0.3    # for 'mom' button
 
+    def init2(self):
+        super().init2()
+        assert self.type in "radio toggle mom start-stop".split(), \
+               f"button: illegal type, expected, radio toggle mom start-stop, got {self.type}"
+        if self.state:
+            self.color = self.on_color
+        else:
+            self.color = self.off_color
+
+    def draw2(self):
+        super().draw2()
+        screen.Screen.Touch_dispatcher.register(self)
+
     def touch(self, x, y):
         match self.type, self.state:
             case 'radio', True:
@@ -323,10 +336,10 @@ class button(circle):
 
     def release(self):
         match self.type, self.state:
-            case 'start=stop', True:
+            case 'start-stop', True:
                 self.state = False
                 self.color = self.off_color
-            case 'start=stop', False:
+            case 'start-stop', False:
                 # This could happen if the player changes the state to False while the user is touching
                 # the button.
                 return False
