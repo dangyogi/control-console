@@ -27,13 +27,19 @@ def group():
 
 def rect_as_sprite():
     message="Hello gjpqy!"
-    r = rect(y_pos=E(600), height=80, width=300, as_sprite=True)
-    r.init()
-    for x in range(100, 801, 100):
+    r1 = rect(y_pos=E(300), height=80, width=200, as_sprite=True).init()
+    r2 = rect(y_pos=E(700), height=200, width=80).init()
+    border = False
+    border_width = 0
+    for x in range(100, 1701, 100):
         #print("drawing x", x)
         with screen.Screen.update():
-            r.draw(x_pos=S(x))
-        traffic_cop.run(0.5)
+            r1.draw(x_pos=S(x), border=border, border_width=border_width)
+            r2.draw(x_pos=S(x), border=border, border_width=border_width)
+        border = True
+        border_width += 1
+        traffic_cop.run(1)
+    traffic_cop.run(5)
 
 def circle_colors():
     t1 = text(y_pos=E(350))
@@ -149,11 +155,11 @@ def scales():
     traffic_cop.run(2)
 
 def knob():
-    Slider_knob.init()
+    Slider_vknob.init()
     with screen.Screen.update():
         x_pos = C(900)
         y_pos = C(500)
-        Slider_knob.draw(x_pos=x_pos, y_pos=y_pos)
+        Slider_vknob.draw(x_pos=x_pos, y_pos=y_pos)
     traffic_cop.run(1)
 
 def slider(profile=False):
@@ -171,7 +177,7 @@ def slider(profile=False):
         sc.draw(x_pos=x_pos, y_pos=y_pos)
     if profile:
         pr.enable()
-    traffic_cop.run(30)
+    traffic_cop.run(10)
     if profile:
         pr.disable()
         pr.dump_stats('slider.prof')

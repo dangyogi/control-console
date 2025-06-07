@@ -149,6 +149,7 @@ class Slider(Drawable):
             self.draw_knob()
             self.update_text()
             return True
+        return False
 
 
 
@@ -183,10 +184,17 @@ Slider_guts = Composite(Column(vgap(P.label_margin),
                        )
 
 # Put box around Slider_guts.
-Slider_control = Composite(Stack(rect(name='box', width=P.guts.width, height=P.guts.height),
+Slider_control = Composite(Stack(rect(name='box',
+                                      width=P.guts.width + P.extra_width + 2 * P.border_width,
+                                      height=P.guts.height + 2 * P.border_width,
+                                      border=P.border, border_width=P.border_width),
                                  Slider_guts.copy(name='guts', init_order=1)),
 
                            aka='Slider_control',
+                          #border=True,
+                           border=False,
+                           border_width=2,
+                           extra_width=14,
                            low_value=0,
                            high_value=127,
                            scale_fn=lambda x: x,

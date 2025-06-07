@@ -11,6 +11,7 @@ from alignment import *
 from exp import eval_exp
 from drawable import Drawable
 import screen
+import traffic_cop
 
 
 # raylib colors:
@@ -206,13 +207,26 @@ class text(Drawable):
 
 class rect(Drawable):
     color = WHITE
+    border_color = BLACK
+    border = False
+    border_width = 6       # 6-12
 
     def draw2(self):
-        x = self.x_left
-        y = self.y_upper
+        x = self.x_left.i
+        y = self.y_upper.i
+        width = self.width
+        height = self.height
+        if self.border:
+            if self.trace:
+                print(f"{self=}.draw2, {x=}, {y=}, {width=}, {height=}, {self.border_color=}")
+            draw_rectangle(x, y, width, height, self.border_color)
+            x += self.border_width
+            y += self.border_width
+            width -= 2 * self.border_width
+            height -= 2 * self.border_width
         if self.trace:
-            print(f"{self=}.draw2, {x=}, {y=}, {self.width=}, {self.height=}, {self.color=}")
-        draw_rectangle(x.i, y.i, self.width, self.height, self.color)
+            print(f"{self=}.draw2, {x=}, {y=}, {width=}, {height=}, {self.color=}")
+        draw_rectangle(x, y, width, height, self.color)
 
 
 # possibly interesting "on" colors for "LED"s: RED, GREEN, BLUE
@@ -263,6 +277,88 @@ class circle(Drawable):
             if self.trace:
                 print(f"circle.draw2: {x=}, {y=}, {self.radius=}, {self.color=}")
             draw_circle(x, y, self.radius, self.color)
+
+
+class button(circle):
+    type = 'toggle'     # radio, toggle, mom, start-stop
+    on_color = GREEN    # suggest: RED, GREEN, BLUE
+    off_color = BROWN   # suggest: GRAY, DARKGRAY, BROWN, BLACK
+    state = False       # True/False for on/off
+    midi_command = None
+    blink_time = 0.3    # for 'mom' button
+
+    def touch(self, x, y):
+        match self.type, self.state:
+            case 'radio', True:
+                return False
+            case 'radio', False:
+                self.state = True
+                self.color = self.on_color
+            case 'toggle', True:
+                self.state = False
+                self.color = self.off_color
+            case 'toggle', False:
+                self.state = True
+                self.color = self.on_color
+            case 'mom', True:
+                return False
+            case 'mom', False:
+                self.state = True
+                self.color = self.on_color
+                traffic_cop.set_alarm(self.blink_time, self.off)
+            case 'start-stop', True:
+                # This could happen if the player changes the state to True and the user wants to
+                # shut it down.  In that case, the user has to touch it first.
+                return False
+            case 'start-stop', False:
+                self.state = True
+                self.color = self.on_color
+        if self.midi_command is not None:
+            self.midi_command.local_change()
+        self.draw()
+        return True
+
+    def move_to(self, x, y):
+        return False
+
+    def release(self):
+        match self.type, self.state:
+            case 'start=stop', True:
+                self.state = False
+                self.color = self.off_color
+            case 'start=stop', False:
+                # This could happen if the player changes the state to False while the user is touching
+                # the button.
+                return False
+            case _:
+                return False
+        if self.midi_command is not None:
+            self.midi_command.local_change()
+        self.draw()
+        return True
+
+    def off(self):
+        r'''Alarm function to turn off 'mom' button.
+
+        Also used to turn off other radio buttons by midi_command.
+        '''
+        self.state = False
+        self.color = self.off_color
+        self.draw()
+        return True
+
+    def get_raw_value(self):
+        return self.state
+
+    def remote_change(self, channel, new_value):
+        new_value = bool(new_value)
+        if new_value != self.state:
+            self.state = new_value
+            if self.midi_command is not None:
+                self.midi_command.local_change(channel)
+            self.draw()
+            return True
+        return False
 
 
 class gap(Drawable):
