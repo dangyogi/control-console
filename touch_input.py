@@ -39,85 +39,108 @@ class SlotEvent:
                               # This combines the touch sec and usec as a float with microsec
                               # resolution.
 
-    def __str__(self):
+    def __repr__(self):
         return f"SlotEvent({self.slot}, {self.action}, {self.x}, {self.y}, {self.sec})"
                #+ ', '.join(f"{name}={getattr(self, name)}" for name in sorted(self._attrs)) \
                #+ ")"
 
 
-@screen.register_init
-def init_touch_dispatcher(screen_obj):
-    screen_obj.Touch_dispatcher = Touch_dispatcher()
+if __name__ != "__main__":
+    @screen.register_init
+    def init_touch_dispatcher(screen_obj):
+        screen_obj.Touch_dispatcher = Touch_dispatcher(trace=screen_obj.trace)
+
+    @screen.register_init2
+    def init_event_generator(screen_obj):
+        screen_obj.Touch_generator = \
+          Touch_generator(screen.Touch_device_path, screen_obj.width, screen_obj.height,
+                          screen_obj.Touch_dispatcher, screen_obj.trace)
+
+    @screen.register_quit2
+    def close_event_generator(screen_obj):
+        if screen_obj.trace:
+            print("register_quit2: close_event_generator")
+        screen_obj.Touch_generator.close()
+
 
 class Touch_dispatcher:
-    def __init__(self):
+    def __init__(self, trace=False):
         self.ignore = set()
         self.widgets = []
         self.assignments = {}
+        self.trace = trace
 
     def reset(self):
+        if self.trace:
+            print("Touch_dispatcher.reset")
         self.ignore = set(self.assignments.keys())
         self.assignments = {}
         self.widgets = []
 
     def register(self, widget):
+        if self.trace:
+            print(f"Touch_dispatcher.register({widget=})")
         self.widgets.append(widget)
 
     def unregister(self, widget):
+        if self.trace:
+            print(f"Touch_dispatcher.unregister({widget=})")
         self.widgets.remove(widget)
 
     def dispatch(self, event):
+        if self.trace:
+            print(f"Touch_dispatcher.dispatch({event=})")
         return getattr(self, event.action)(event)
 
     def touch(self, event):
+        if self.trace:
+            print(f"Touch_dispatcher.touch({event=})")
         if event.slot in self.ignore:
             self.ignore.remove(event.slot)
         if event.slot in self.assignments:
-            print("Missed release for slot", event.slot)
+            print("touch: Missed release for slot", event.slot)
             self.assignments[event.slot].release()
             del self.assignments[event.slot]
         for widget in self.widgets:
             if widget.contains(event.x, event.y):
+                if self.trace:
+                    print(f"touch: assigning {widget=} to slot={event.slot}")
                 self.assignments[event.slot] = widget
                 return widget.touch(event.x, event.y)
+        if self.trace:
+            print(f"touch: adding slot={event.slot} to ignore list")
         self.ignore.add(event.slot)
         return False
 
     def move(self, event):
+        if self.trace:
+            print(f"Touch_dispatcher.move({event=})")
         if event.slot in self.assignments:
             if event.slot in self.ignore:
                 print("Slot", event.slot, "both assigned and ignored!")
                 self.ignore.remove(event.slot)
+            if self.trace:
+                print(f"move: slot={event.slot} in assignments, calling move_to")
             return self.assignments[event.slot].move_to(event.x, event.y)
         elif event.slot not in self.ignore:
-            print("Missed touch for slot", event.slot)
+            print("move: Missed touch for slot", event.slot)
             self.ignore.add(event.slot)
         return False
 
     def release(self, event):
+        if self.trace:
+            print(f"Touch_dispatcher.release({event=})")
         if event.slot in self.assignments:
             if event.slot in self.ignore:
-                print("Slot", event.slot, "both assigned and ignored!")
+                print("release: Slot", event.slot, "both assigned and ignored!")
                 self.ignore.remove(event.slot)
             widget = self.assignments[event.slot]
             del self.assignments[event.slot]
             return widget.release()
         elif event.slot not in self.ignore:
-            print("Missed touch for slot", event.slot)
+            print("release: Missed touch for slot", event.slot)
         return False
 
-
-@screen.register_init2
-def init_event_generator(screen_obj):
-    screen_obj.Touch_generator = \
-      Touch_generator(screen.Touch_device_path, screen_obj.width, screen_obj.height,
-                      screen_obj.Touch_dispatcher, screen_obj.trace)
-
-@screen.register_quit2
-def close_event_generator(screen_obj):
-    if screen_obj.trace:
-        print("register_quit2: close_event_generator")
-    screen_obj.Touch_generator.close()
 
 class Touch_generator:
     r'''width, height in pixels.
@@ -126,6 +149,8 @@ class Touch_generator:
     SYN_DROPPED messages.
     '''
     def __init__(self, path, width, height, touch_dispatch, trace=False):
+        if trace:
+            print(f"{self}.__init__")
         self.device_fd = open(path, "rb")
         os.set_blocking(self.device_fd.fileno(), False)
         self.device = libevdev.Device(self.device_fd)
@@ -196,6 +221,8 @@ class Touch_generator:
                 self.last_slot = self.slot = event.value
                 self.sec = event.sec + event.usec / 1000000
             elif code == 'SYN_REPORT':
+                if self.trace:
+                    print("got event", code, event.value)
                 if event.value != 0:
                     print(f"Expected value == 0 on SYN_REPORT, got {event.value}")
                 slot_event = self.get_slotevent()
@@ -214,6 +241,8 @@ class Touch_generator:
                             yield slot_event
                             events_generated += 1
             elif code == 'SYN_DROPPED':
+                if self.trace:
+                    print("got event", code, event.value)
                 if not ignore_syn_dropped:
                     raise Syn_dropped
             else:
@@ -250,7 +279,7 @@ class Touch_generator:
         '''
         if self.slot is not None:
             if self.sec is None:
-                print("!!!!!!!!! missing sec: Internal Error!")
+                raise AssertionError("!!!!!!!!! missing sec: Internal Error!")
             if self.action == 'release':
                 slot_event = SlotEvent(self.slot, self.action, None, None, self.sec)
             else:
@@ -265,8 +294,10 @@ class Touch_generator:
             self.slot = self.sec = None
             self.action = 'move'
             if self.trace:
-                print("get_slotevent -> slotevent")
+                print(f"get_slotevent -> {slot_event=}")
             return slot_event
+        if self.trace:
+            print("get_slotevent -> None")
         return None
 
 

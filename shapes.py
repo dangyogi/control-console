@@ -284,7 +284,7 @@ class button(circle):
     on_color = GREEN    # suggest: RED, GREEN, BLUE
     off_color = BROWN   # suggest: GRAY, DARKGRAY, BROWN, BLACK
     state = False       # True/False for on/off
-    midi_command = None
+    command = None
     blink_time = 0.3    # for 'mom' button
 
     def touch(self, x, y):
@@ -313,8 +313,8 @@ class button(circle):
             case 'start-stop', False:
                 self.state = True
                 self.color = self.on_color
-        if self.midi_command is not None:
-            self.midi_command.local_change()
+        if self.command is not None:
+            self.command.local_change()
         self.draw()
         return True
 
@@ -332,15 +332,15 @@ class button(circle):
                 return False
             case _:
                 return False
-        if self.midi_command is not None:
-            self.midi_command.local_change()
+        if self.command is not None:
+            self.command.local_change()
         self.draw()
         return True
 
     def off(self):
         r'''Alarm function to turn off 'mom' button.
 
-        Also used to turn off other radio buttons by midi_command.
+        Also used to turn off other radio buttons by radio_command.
         '''
         self.state = False
         self.color = self.off_color
@@ -354,8 +354,8 @@ class button(circle):
         new_value = bool(new_value)
         if new_value != self.state:
             self.state = new_value
-            if self.midi_command is not None:
-                self.midi_command.local_change(channel)
+            if self.command is not None:
+                self.command.local_change(channel)
             self.draw()
             return True
         return False

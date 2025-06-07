@@ -9,7 +9,7 @@ from composites import *
 import screen
 from shapes import *
 import traffic_cop
-from midi_commands import ControlChange, Channels
+from commands import ControlChange, Channels
 import midi_io
 
 

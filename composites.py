@@ -32,7 +32,7 @@ class Slider(Drawable):
     tick_value = 0
     scale_fn = staticmethod(lambda x: x)
     text_display = None
-    midi_command = None
+    command = None
     aka = 'Slider'
 
     @property
@@ -116,8 +116,8 @@ class Slider(Drawable):
             if self.trace:
                 print(f"{self}.move_to: {knob_y=}, {pixel_movement=}, {tick_change=}, "
                       f"{self.tick_value=}")
-            if self.midi_command is not None:
-                self.midi_command.local_change()
+            if self.command is not None:
+                self.command.local_change()
             self.draw_knob()
             self.update_text()
             return True
@@ -144,8 +144,8 @@ class Slider(Drawable):
             print(f"Slider.remote_change {channel=}, {new_value=}")
         if new_value != self.tick_value:
             self.tick_value = new_value
-            if self.midi_command is not None:
-                self.midi_command.local_change(channel)
+            if self.command is not None:
+                self.command.local_change(channel)
             self.draw_knob()
             self.update_text()
             return True

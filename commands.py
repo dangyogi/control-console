@@ -1,4 +1,4 @@
-# midi_commands.py
+# commands.py
 
 from midi_io import register_command, send_midi_event, ControlChangeEvent
 
@@ -30,7 +30,7 @@ class ControlChange:
         self.param = param
         self.channels = channels
         self.user_control = user_control
-        user_control.midi_command = self
+        user_control.command = self
         self.trace = trace
         register_command(self)
 
