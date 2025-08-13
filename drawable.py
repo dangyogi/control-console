@@ -30,19 +30,19 @@ First step, building individual reusable shapes, like "line":
 3. Because no P expressions were used in any of this, this can be used without a Composite:
 
     >>> a_line = vline(x_pos=S(10), y_pos=S(30), length=20)
-    >>> _ = a_line.init()            # safest to do this after the screen (pyray) has been initialized,
+    >>> a_line2 = a_line.init()      # safest to do this after the screen (pyray) has been initialized,
     ...                              # but we'll cheat here...
-    >>> a_line.draw()
+    >>> a_line2.draw()
     draw vert line from (11, 30) to (11, 49), width 3 and color BLACK
 
-4. Using the same shape in multiple locations is done by copying it.  This should always be done, even
-   though you don't need to change any of its attributes in case sprites are involved.  The copy must
-   be done before the object's init method is run.
+4. Using the same shape in multiple locations is done by calling init on it for each location.
+   This should always be done, even though you don't need to change any of its attributes
+   in case sprites are involved.  
 
     >>> a_line = vline(x_pos=S(10), y_pos=S(30), length=20)
-    >>> b_line = a_line.copy(length=30, width=5)
-    >>> _ = b_line.init()
-    >>> b_line.draw()
+    >>> b_line = a_line.refine(length=30, width=5)
+    >>> b_line2 = b_line.init()
+    >>> b_line2.draw()
     draw vert line from (12, 30) to (12, 59), width 5 and color BLACK
 
 5.  See the composite module for combining several shapes into one drawable.
@@ -52,7 +52,8 @@ The `shapes` module defines a set of subclasses of Drawable for general use.
 
 '''
 
-from copy import copy, deepcopy
+from collections import ChainMap
+
 from alignment import *
 from exp import Exp, eval_exp
 
@@ -101,12 +102,14 @@ class Box:
     def x_pos(self):
         raw = self._x_pos
         ans = eval_exp(raw, self, self.exp_trace)
-        #print(f"{self}.getter.x_pos: {raw=}, {ans=}")
+        if self.trace:
+            print(f"{self}.getter.x_pos: {raw=}, {ans=}")
         return ans
 
     @x_pos.setter
     def x_pos(self, value):
-        #print(f"{self}.setter.x_pos got {value=}")
+        if self.trace:
+            print(f"{self}.setter.x_pos got {value=}")
         self._x_pos = value
 
     @property
@@ -192,34 +195,34 @@ class Drawable(Box):
 
         # box with x_center at 20, and y_lower at 200
         >>> my_a = my_inst(x_pos=C(20), y_pos=E(200), height=19)
-        >>> _ = my_a.init()
+        >>> my_a2 = my_a.init()
 
         All instances are boxes with x_left/center/right:
-        >>> my_a.x_left
+        >>> my_a2.x_left
         S(16)
-        >>> my_a.x_center
+        >>> my_a2.x_center
         C(20)
-        >>> my_a.x_right
+        >>> my_a2.x_right
         E(24)
 
         And y_upper/mid/lower:
-        >>> my_a.y_upper
+        >>> my_a2.y_upper
         S(182)
-        >>> my_a.y_mid
+        >>> my_a2.y_mid
         C(191)
-        >>> my_a.y_lower
+        >>> my_a2.y_lower
         E(200)
 
         All attributes are set using keyword arguments:
         >>> my_b = my_inst(x_pos=S(20), width=15, bogus="foobar")
-        >>> _ = my_b.init()
-        >>> my_b.width
+        >>> my_b2 = my_b.init()
+        >>> my_b2.width
         15
-        >>> my_b.bogus
+        >>> my_b2.bogus
         'foobar'
-        >>> my_b.x_right
+        >>> my_b2.x_right
         E(34)
-        >>> my_b.y_lower   # doctest: +ELLIPSIS
+        >>> my_b2.y_lower   # doctest: +ELLIPSIS
         Traceback (most recent call last):
             ...
         AttributeError: 'my_inst' object has no attribute 'height'
@@ -237,26 +240,27 @@ class Drawable(Box):
         ...         print(f"{self.x_left=}")
 
         >>> my_a = my_inst()
-        >>> _ = my_a.init()
-        >>> my_a.x_pos   # default set in Drawable class
+        >>> my_a2 = my_a.init()
+        >>> my_a2.x_pos   # default set in Drawable class
         S(100)
-        >>> my_a.x_left  # @property value in Drawable class
+        >>> my_a2.x_left  # @property value in Drawable class
         S(100)
 
         # This permanently changes x_pos and width on my_a.
-        >>> my_a.my_method(x_pos=C(200), width=51)
+        >>> my_a2.my_method(x_pos=C(200), width=51)
         self.x_pos=C(200), self.width=51
         self.x_left=S(175)
 
         # after the call...
-        >>> my_a.width
+        >>> my_a2.width
         51
-        >>> my_a.x_pos
+        >>> my_a2.x_pos
         C(200)
 
     '''
     as_sprite = False
     dynamic_capture = False
+    parent = None
     initialized = False
 
     def __init__(self, **kwargs):
@@ -264,18 +268,26 @@ class Drawable(Box):
         if self.trace:
             print(f"{self}.__init__: {self.trace=}, {kwargs=}")
 
+    def save_kwargs(self, **kwargs):
+        self._kwargs = kwargs
+        for name in ('name', 'init_order', 'trace', 'exp_trace'):
+            if name in kwargs:
+                setattr(self, name, kwargs[name])
+
     def __repr__(self):
-        if hasattr(self, 'aka'):
-            return f"<{self.__class__.__name__}: {self.aka}@{hex(id(self))}>"
         if hasattr(self, 'name'):
             return f"<{self.__class__.__name__}: {self.name}@{hex(id(self))}>"
         return super().__repr__()
 
-    def save_kwargs(self, **kwargs):
-        self._kwargs = kwargs
-        for name in ('name', 'aka', 'init_order', 'trace', 'exp_trace'):
-            if name in kwargs:
-                setattr(self, name, kwargs[name])
+    def refine(self, **kwargs):
+        r'''Make a refined copy of this instance.
+
+        Please note that assigning to the copy does not affect the original inst.
+        '''
+        ans = self.__class__(**ChainMap(kwargs, self._kwargs))
+        if self.trace:
+            print(f"{self}.refine({kwargs=}) -> {ans}")
+        return ans
 
     def set_kwargs(self, **kwargs):
         args = kwargs.copy()
@@ -288,61 +300,61 @@ class Drawable(Box):
                 else:
                     try:
                         setattr(self, key, eval_exp(value, self, self.exp_trace))
-                    except AttributeError:
-                        continue
-                    keys.append(key)
+                        keys.append(key)
+                    except AttributeError as e:
+                        last_error = e
             if not keys:
-                raise ValueError(f"{self}.set_kwargs: could not evaluate {args}")
+                raise ValueError(f"{self}.set_kwargs: could not evaluate {args}, {last_error=}")
             for key in keys:
                 del args[key]
 
     #def get_cooked_attr(self, name):
     #    return eval_exp(getattr(self, name), self, trace=self.exp_trace)
 
-    def init(self):
-        if not self.initialized:
-            self.x_pos = S(100)
-            self.y_pos = S(100)
-            self.set_kwargs(**self._kwargs)
-            self.init2()
-            if self.as_sprite:
-                self.sprite = sprite.Sprite(self.width, self.height, self.dynamic_capture, self.trace)
-            self.initialized = True
-            if self.trace:
-                width = 'unknown'
-                height = 'unknown'
-                try:
-                    width = self.width
-                except AttributeError:
-                    pass
-                try:
-                    height = self.height
-                except AttributeError:
-                    pass
-                print(f"{self}.init: {self.x_pos=}, {self.y_pos=}, self.{width=}, self.{height=}")
-        return self
+    def init(self, parent=None):
+        r'''This is where the actual initialization happens (what normally happens in __init__).
+
+        This does not change (or initialize) self, instead it returns a new (initialized) object.
+        '''
+        new_obj = self.copy()
+        new_obj.init1(parent)
+        return new_obj
+
+    def copy(self):
+        assert not self.initialized, f"{self}.init: already done!"
+        new_obj = self.__class__(**self._kwargs)
+        if self.trace:
+            print(f"{self}.copy -> {new_obj} kwargs={self._kwargs}")
+        return new_obj
+
+    def init1(self, parent=None):
+        assert not self.initialized, f"{self}.init: already done!"
+        if parent is not None:
+            self.parent = parent
+        self.x_pos = S(100)
+        self.y_pos = S(100)
+        self.set_kwargs(**self._kwargs)
+        self.init2()
+        if self.as_sprite:
+            self.sprite = sprite.Sprite(self.width, self.height, self.dynamic_capture,
+                                           self.trace)
+        self.initialized = True
+        if self.trace:
+            width = 'unknown'
+            height = 'unknown'
+            try:
+                width = self.width
+            except AttributeError:
+                pass
+            try:
+                height = self.height
+            except AttributeError:
+                pass
+            print(f"{self}.init: {self.x_pos=}, {self.y_pos=}, "
+                  f"self.{width=}, self.{height=}")
 
     def init2(self):
         pass
-
-    def copy(self, **kwargs):
-        r'''Make a copy of this instance.
-
-        Please note that assigning to the copy does not affect the original inst.
-        '''
-        if not kwargs and not self.as_sprite:
-            # copy generally not necessary (but different for composites)
-            return self
-        return self.copy2(**kwargs)
-
-    def copy2(self, **kwargs):
-        assert not self.initialized, f"{self}.copy2: init done before copy"
-        ans = deepcopy(self)
-        ans.save_kwargs(**(ans._kwargs | kwargs))
-        if self.trace:
-            assert ans.trace
-            print(f"copy2: {self=} becomes {ans=}, {kwargs=}")
-        return ans
 
     def draw(self, retattr=None, **kwargs):
         if self.trace:

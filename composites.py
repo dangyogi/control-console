@@ -13,13 +13,11 @@ from composite import *
 import screen
 
 
-Slider_vknob = Composite(Stack(rect(width=49, height=19, x_pos=P.x_center, y_pos=P.y_mid, color=BLACK),
-                               rect(width=61, height=5, x_pos=P.x_center, y_pos=P.y_mid, color=GRAY)),
-
+Slider_vknob = Composite(Stack(rect(width=49, height=19, color=BLACK),
+                               rect(width=61, height=5, color=GRAY)),
                          #width=61,
                          #height=19,
                          as_sprite=True,
-                         aka='Slider_vknob',
                         #trace=True
                         )
 
@@ -33,13 +31,13 @@ class Slider(Drawable):
     scale_fn = staticmethod(lambda x: x)
     text_display = None
     command = None
-    aka = 'Slider'
 
     @property
     def value(self):
         return self.scale_fn(self.tick_value)
 
     def init2(self):
+        super().init2()
         self.num_ticks = (self.high_value - self.low_value) + 1
         self.slide_height = (self.num_ticks - 1) * self.tick   # default 381 at tick=3, num_ticks=128
         if len(str(self.scale_fn(self.low_value))) > len(str(self.scale_fn(self.high_value))):
@@ -52,8 +50,7 @@ class Slider(Drawable):
                   f"{self.text0=}")
 
         # init self.knob:
-        self.knob.parent = self
-        self.knob.init()
+        self.knob = self.knob.init(self)
         self.height = self.slide_height + self.knob.height - 1 # default 399
         self.width = self.knob.width
         if self.trace:
@@ -62,8 +59,7 @@ class Slider(Drawable):
             self.knob.trace = self.trace
 
         # create centerline:
-        self.centerline = rect(name='centerline', width=3, height=self.height, color=BLACK)
-        self.centerline.init()
+        self.centerline = rect(name='centerline', width=3, height=self.height, color=BLACK).init()
 
     def draw2(self):
         super().draw2()
@@ -154,50 +150,37 @@ class Slider(Drawable):
 
 
 # Add label and value_text on top of Slider.
-Slider_guts = Composite(Column(vgap(P.label_margin),
+Slider_guts = Composite(Column(vgap(name="top"),
                                text(name='label_text', text=P.label),
-                               vgap(P.value_margin),
+                               vgap(name="value"),
                                text(name='value_text',
                                     max_text=P.slider.max_text, text=P.slider.text0,
+                                   #trace=True,
                                     as_sprite=True),
-                               vgap(P.centerline_margin),
+                               vgap(name="centerline"),
                                Slider(name='slider',
-                                      low_value=P.low_value,
-                                      high_value=P.high_value,
-                                      scale_fn=P.scale_fn,
-                                      knob=Slider_vknob.copy(),
-                                      text_display=P.value_text,
+                                      knob=Slider_vknob,
+                                     #text_display=P.value_text,
                                      #trace=True,
                                       init_order=1),
-                               vgap(P.bottom_margin)),
-
-                        label_margin=5,       # gap between top of outer rect and top of label_text
-                        value_margin=3,       # gap between label_text and value_text
-                        centerline_margin=5,  # gap between value_text and top of centerline
-                        bottom_margin=7,      # gap between Slider and bottom of Slider_guts
-                        label=P.label,
-                        low_value=P.low_value,
-                        high_value=P.high_value,
-                        scale_fn=P.scale_fn,
-                        aka='Slider_guts',
+                               vgap(name="bottom")),
+                        top__margin=5,         # gap between top of outer rect and top of label_text
+                        value__margin=3,       # gap between label_text and value_text
+                        centerline__margin=5,  # gap between value_text and top of centerline
+                        bottom__margin=7,      # gap between Slider and bottom of Slider_guts
+                        slider__text_display=I.value_text,
                        #trace=True
                        )
 
 # Put box around Slider_guts.
 Slider_control = Composite(Stack(rect(name='box',
-                                      width=P.guts.width + P.extra_width + 2 * P.border_width,
-                                      height=P.guts.height + 2 * P.border_width,
-                                      border=P.border, border_width=P.border_width),
-                                 Slider_guts.copy(name='guts', init_order=1)),
-
-                           aka='Slider_control',
-                          #border=True,
-                           border=False,
-                           border_width=2,
+                                      width=P.guts.width + P.extra_width + 2 * I.border_width,
+                                      height=P.guts.height + 2 * I.border_width),
+                                 Slider_guts.refine(name='guts', init_order=1)),
+                           #box__border=True,
+                           box__border_width=2,
                            extra_width=14,
-                           low_value=0,
-                           high_value=127,
-                           scale_fn=lambda x: x,
+                           guts__label=I.label,
                           #trace=True
                           )
 

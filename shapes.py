@@ -45,10 +45,14 @@ import traffic_cop
 #define RAYWHITE   (Color){ 245, 245, 245, 255 }   // My own White (raylib logo)
 
 
-__all__ = ("vline", "hline", "text", "rect", "circle", "button", "hgap", "vgap")
+__all__ = ("vline", "hline", "text", "rect", "circle", "button", "radio_control", "hgap", "vgap")
 
 
 class line(Drawable):
+    r'''The line drawing is flakey in raylib.  Consider using rect instead!
+
+    See experiment/raylib_test.py
+    '''
     width = 3
     color = BLACK
 
@@ -66,13 +70,13 @@ class vline(line):
                      (self.x_center, self.y_lower),
                      self.width, self.color)
 
-
 class hline(line):
     r'''The line drawing is flakey in raylib.  Consider using rect instead!
 
     See experiment/raylib_test.py
     '''
     def init2(self):
+        super().init2()
         width = self.width
         self.width = self.length
         self.height = width
@@ -135,6 +139,8 @@ class text(Drawable):
     alignment.
 
     The text and max_text attributes are automatically converted to strings with str().
+
+    Text width per char is roughly 43% of size, e.g. 8.6 for size 20.
     '''
     dynamic_attrs = Drawable.dynamic_attrs + ('text',)
 
@@ -155,13 +161,14 @@ class text(Drawable):
 
     # FIX: move to __init__ with screen.Screen.register_init
     def init2(self):
+        super().init2()
         font = Fonts[2 * self.sans + self.bold]
         if self.max_text is not None:
             msize = measure_text_ex(font, str(self.max_text), self.size, self.spacing)
             self.width = int(math.ceil(msize.x))
             self.height = int(math.ceil(msize.y))
             if self.trace:
-                print("text.init: width", self.width, "height", self.height)
+                print(f"text.init: {self.max_text!r} width={self.width}, height={self.height}")
         elif self.as_sprite:
             raise AssertionError("text.init2: must specify max_text with as_sprite")
         elif hasattr(self, 'text'):
@@ -169,7 +176,7 @@ class text(Drawable):
             self.width = int(math.ceil(msize.x))
             self.height = int(math.ceil(msize.y))
             if self.trace:
-                print("text.init: width", self.width, "height", self.height)
+                print(f"text.init: {self.text!r} width={self.width}, height={self.height}")
 
     def draw2(self):
         font = Fonts[2 * self.sans + self.bold]
@@ -279,6 +286,15 @@ class circle(Drawable):
             draw_circle(x, y, self.radius, self.color)
 
 
+class radio_control:
+    def __init__(self):
+        self.on_button = None
+
+    def on(self, button):
+        if self.on_button is not None:
+            self.on_button.off()
+        self.on_button = button
+
 class button(circle):
     type = 'toggle'     # radio, toggle, mom, start-stop
     on_color = GREEN    # suggest: RED, GREEN, BLUE
@@ -307,6 +323,7 @@ class button(circle):
             case 'radio', False:
                 self.state = True
                 self.color = self.on_color
+                self.radio_control.on(self)
             case 'toggle', True:
                 self.state = False
                 self.color = self.off_color
@@ -383,13 +400,14 @@ class gap(Drawable):
         pass
 
 class vgap(gap):
-    def __init__(self, height):
-        super().__init__(height=height)
+    def init2(self):
+        if hasattr(self, "margin"):
+            self.height = self.margin
 
 class hgap(gap):
-    def __init__(self, width):
-        super().__init__(width=width)
-
+    def init2(self):
+        if hasattr(self, "margin"):
+            self.width = self.margin
 
 
 

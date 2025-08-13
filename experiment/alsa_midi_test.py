@@ -66,7 +66,7 @@ def get_stdin():
         line, stdin_buffer = stdin_buffer.split('\n', 1)
         print("stdin got line", repr(line))
         port, *params = [int(x) for x in line.split()]
-        cc_event = ControlChangeEvent(*params)
+        cc_event = ControlChangeEvent(*params, tick=1234)
 
         # specifying the port here still gets copied into the event at some point as it's dest
         client.event_output(cc_event, port=port)

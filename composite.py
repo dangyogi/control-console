@@ -35,76 +35,41 @@ __all__ = ("Composite", "Column", "Row", "Stack")
 
 class Composite(Drawable):
     def __init__(self, components, **kwargs):
-        super().__init__(**kwargs)
-        self.components = components
-        for component in components:
-            component.parent = self
-            if hasattr(component, 'name'):
-                setattr(self, component.name, component)
+        super().__init__(components=components, **kwargs)
 
-    def copy(self, **kwargs):
-        if hasattr(self, 'aka'):
-            parts = self.aka.split('.', 1)
-            if len(parts) == 2:
-                aka, suffix = parts
-                if suffix.isdigit():
-                    return self.copy2(aka=f"{aka}.{int(suffix)+1}", **kwargs)
-            return self.copy2(aka=f"{self.aka}.1", **kwargs)
-        return self.copy2(**kwargs)
+    def copy(self):
+        new_kwargs = self._kwargs.copy()
+        components = new_kwargs['components'].copy(new_kwargs)
+        new_kwargs['components'] = components
+        new_obj = self.__class__(**new_kwargs)
+        for component in components:
+            component.parent = new_obj
+        return new_obj
 
     def init2(self):
         r'''Calls component inits and sets self.width and self.height.
         ''' 
         if self.trace:
             print(f"{self}.init2")
+        self.push_overrides()
         self.components.init_components()
         self.set_width_height()
 
+    def push_overrides(self):
+        for name, value in self._kwargs.items():
+            if "__" in name:
+                obj_name, root = name.split("__", 1)
+                value = eval_exp(value, self, self.exp_trace)
+                if self.trace:
+                    print(f"push_overrides: {obj_name=}, {root=}, {value=}")
+                if hasattr(self, obj_name):
+                    obj = getattr(self, obj_name)
+                else:
+                    obj = self.components.find_by_class(obj_name)
+                obj._kwargs[root] = value
+
     def set_width_height(self):
         self.width, self.height = self.components.size()
-
-        #x_left = 10000000
-        #x_right = -10000000
-        #if hasattr(self, 'x_pos'):
-        #    x_pos = self.x_pos
-        #    if isinstance(x_pos, S):
-        #        x_left = x_pos.i
-        #    elif isinstance(x_pos, E):
-        #        x_right = x_pos.i
-        #y_upper = 10000000
-        #y_lower = -10000000
-        #if hasattr(self, 'y_pos'):
-        #    y_pos = self.y_pos
-        #    if isinstance(y_pos, S):
-        #        y_upper = y_pos.i
-        #    elif isinstance(y_pos, E):
-        #        y_lower = y_pos.i
-        #for i, component in enumerate(self.components, 1):
-        #    if self.trace:
-        #        print(f"{self}.set_width_height getting pos's from component {i} = {component}")
-        #    #print(f"set_width_height: {i=}, {component=}, {component.x_pos=}, "
-        #    #      f"{component.__dict__.keys()=}")
-        #    xl = component.x_left.i
-        #    if xl < x_left: 
-        #        x_left = xl
-        #    xr = component.x_right.i
-        #    if xr > x_right:
-        #        x_right = xr
-        #    yu = component.y_upper.i
-        #    if yu < y_upper:
-        #        y_upper = yu
-        #    yl = component.y_lower.i
-        #    if yl > y_lower:
-        #        y_lower = yl
-        #self.width = x_right - x_left + 1
-        #assert isinstance(self.width, int), \
-        #       f"Composite.set_width_height got non-integer width {self.width}"
-        #self.height = y_lower - y_upper + 1
-        #assert isinstance(self.height, int), \
-        #       f"Composite.set_width_height got non-integer height {self.height}"
-        #if self.trace:
-        #    print(f"{self}.set_width_height: {x_left=}, {x_right=}, {self.width=}, "
-        #          f"{y_upper=}, {y_lower=}, {self.height=}")
 
     def draw2(self):
         if self.trace:
@@ -118,7 +83,7 @@ class Components:
     The x/y_align should be to_S/to_C/to_E to control alignment where all components share the same
     x/y_pos.  See comments on subclasses.
 
-    Three subclasses: Column, Row, Stacked.
+    Three subclasses: Column, Row, Stack.
 
     These may not be nested.
     '''
@@ -131,28 +96,68 @@ class Components:
     def __iter__(self):
         return iter(self.components)
 
+    def copy(self, new_kwargs):
+        components = [x.copy() for x in self.components]
+        new_obj = self.__class__(*components,
+                                 x_align=self.x_align, y_align=self.y_align, trace=self.trace)
+        new_obj.assign_named_components(new_kwargs)
+        return new_obj
+
+    def assign_named_components(self, new_kwargs):
+        for component in self.components:
+            if hasattr(component, "name"):
+                if self.trace:
+                    print(f"assign_named_components({new_kwargs=}): name={component.name}, {component=}")
+                new_kwargs[component.name] = component
+
+    def find_by_class(self, class_name):
+        obj_found = None
+        for obj in self.components:
+            if class_name == obj.__class__.__name__:
+                if obj_found is not None:
+                    raise AssertionError(f"find_by_class({class_name=}): multiple matches")
+                obj_found = obj
+        if obj_found is None:
+            raise AssertionError(f"find_by_class({class_name=}): not found")
+        return obj_found
+
     def init_components(self):
-        # first do all components with an init_order:
         if self.trace:
             print(f"{self}.init_components with", len(self.components), "components")
-        first = []
-        for i, component in enumerate(self.components, 1):
+        # identify first and last
+        first = []  # (index, component), those with init_order < 100
+        last = []   # (index, component), those with init_order >= 100
+        for i, component in enumerate(self.components):
             if hasattr(component, 'init_order'):
-                first.append((i, component))
+                if component.init_order >= 100:
+                    last.append((i, component))
+                else:
+                    first.append((i, component))
+
+        # first do components with init_order < 100:
         if self.trace:
             print(f"{self}.init_components: first", first)
         for i, component in sorted(first, key=lambda x: x[1].init_order):
             if self.trace:
                 print(f"{self}.init_components calling {component}.init {i=} with init_order",
                       component.init_order)
-            component.init() 
+            component.init1() 
 
         # then the ones without an init_order:
-        for i, component in enumerate(self.components, 1):
+        for i, component in enumerate(self.components):
             if not hasattr(component, 'init_order'):
                 if self.trace:
                     print(f"{self}.init_components calling {component}.init {i=}")
-                component.init() 
+                component.init1() 
+
+        # then the ones an init_order >= 100:
+        if self.trace:
+            print(f"{self}.init_components: first", first)
+        for i, component in sorted(last, key=lambda x: x[1].init_order):
+            if self.trace:
+                print(f"{self}.init_components calling {component}.init {i=} with init_order",
+                      component.init_order)
+            component.init1() 
 
 class Column(Components):
     r'''Components are arranged vertically in a column.
@@ -163,8 +168,12 @@ class Column(Components):
         width = 0
         height = 0
         for i, component in enumerate(self.components, 1):
-            width = max(width, component.width)
-            height += component.height
+            try:
+                width = max(width, component.width)
+                height += component.height
+            except AttributeError as e:
+                print(f"Column.size: {e} on {component=}")
+                raise
         self.width = width
         self.height = height
         return width, height

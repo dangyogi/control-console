@@ -5,7 +5,7 @@ r'''Expressions.
 Expressions start with one of the following three special letters:
 
     I - refers to the current Drawable instance.  Much like "self" within a method.
-    P - refers to the surrounding Template instance.  Much like the module containing the function.
+    P - refers to the surrounding Composite instance.  Much like the module containing the function.
     F - refers to standard python functions, e.g, F.str
 
 After seeing any of these, any of the these things following it are baked into an expression object for
@@ -32,7 +32,7 @@ import builtins
 from alignment import *   # so F can find these in globals()
 
 
-__all__ = tuple('IPF')
+__all__ = "I P F eval_exp".split()
 
 
 Trace = False
@@ -183,11 +183,12 @@ class exp_P(Exp):
         return "P"
 
     def eval(self, instance, level, trace):
-        assert hasattr(instance, 'parent'), f"P used outside of Composite"
-        ans = instance.parent
+        parent = instance.parent
+        if parent is None:
+            raise AttributeError(f"P used outside of Composite")
         #if Trace or trace or instance.exp_trace:
-        #    print(f"{' ' * level}exp_P got {ans=}", file=sys.stderr)
-        return ans
+        #    print(f"{' ' * level}exp_P got {parent=}", file=sys.stderr)
+        return parent
 
 P = exp_P()
 

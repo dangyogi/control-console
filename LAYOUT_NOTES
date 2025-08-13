@@ -1,0 +1,78 @@
+Screen size: width=1920, height=1080
+Slider size: width=92, height=463 (slider height + 82)
+
+So ~20.9 Sliders would fit left to right (probably less with padding)
+~2.3 Sliders would fit stacked vertically (this is with 128 choices)
+
+Normally 3 pixels/tick.  Slider height == (num_ticks - 1) * tick, so 381 for num_ticks 128
+
+A quarter note at 60 bpm has a duration of 1 sec.  1% is 10mSec.
+Note On % (+/- 50 step 3-5, so 35-21 == height 184-142)
+Note Velocity (+/- 63 step ?)
+Note Off % (+/- 50 step 3-5, so 35-21)
+
+Buttons are 31, but need to be treated like 57 when next to another button.  Text could be in this
+area.
+
+Text: height 20
+
+
+Global settings:
+    legend: >row row<
+            |column|
+            |column|
+
+    max_text for SPP display is "888-8.8" (7 chars)
+
+    "Globals" H:20 W:60
+    >Tempo Volume< H:463 W:194
+    >Channel Transpose< H:154 W:194
+
+    "SPP"  12 texts, 7 buttons H:20*12+7*31+11*5=512 W:70
+    "Current"
+    SPP
+    "Start"
+    SPP
+    Mark button
+    "End"
+    SPP
+    Mark button
+    "Repeat"
+    Repeat button
+    "Loop"
+    Loop button
+    "Stop"
+    Stop button
+    "Continue"
+    Continue button
+    "Start"
+    Start button
+    
+    Tempo (128)
+        def data_to_bpm(data):
+            r'''result bpm is rounded to a sensible number of decimals.
+            '''
+            raw = 30 * math.exp(Log_1_01506*data)
+            if raw >= 67:
+                return int(round(raw))
+            return round(raw, 1)
+
+    Volume (128)
+    Transpose (25 +/-12 and 0, height 154)
+    Channel (16, height 127)
+    Current SPP display
+    Start SPP display/Mark Start/End SPP display/Mark End/Repeat/Loop (* 2-3)
+    Stop/Continue/Start
+
+
+Chord (up to 6 notes, up or down)
+    - column of 6 multi-selection toggle buttons for which note with 0-5 labels on one side and 5-0 on
+      the other side
+    - 2 radio buttons for up/down positioned at the top of the two lable columns
+
+
+Slur (start, mid, stop)
+    3 multi-selection toggle buttons for start/mid/stop
+
+
+Strong-accent

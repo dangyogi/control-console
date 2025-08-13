@@ -14,10 +14,10 @@ import traffic_cop
 
 Trace = False
 
-client = SequencerClient("Exp Console")
+client = SequencerClient("Exp Console")  # FIX: Should close
 Ports = [
   client.create_port("Player Control",
-    PortCaps.READ | PortCaps.SUBS_READ | PortCaps.WRITE | PortCaps.SUBS_WRITE),
+    PortCaps.READ | PortCaps.SUBS_READ | PortCaps.WRITE | PortCaps.SUBS_WRITE),  # FIX: close?
   client.create_port("Synth1 Control",
     PortCaps.READ | PortCaps.SUBS_READ | PortCaps.WRITE | PortCaps.SUBS_WRITE),
 ]

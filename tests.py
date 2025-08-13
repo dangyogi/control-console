@@ -15,18 +15,17 @@ import midi_io
 
 def group():
     message="Hello gjpqy!"
-    g = Composite(Row(text(name='txt', size=80, text=message, max_text=message),
+    g = Composite(Row(text(name='txt', size=80, text=message, max_text=message, trace=True),
                       rect(name='r', height=80, width=300),
                       circle(name='c', diameter=80),
                       hline(length=40),
-                      y_align=to_E))
-    g.init()
+                      y_align=to_E)) \
+          .init()
     with screen.Screen.update():
         g.draw(x_pos=S(500), y_pos=E(600))
     traffic_cop.run(2)
 
 def rect_as_sprite():
-    message="Hello gjpqy!"
     r1 = rect(y_pos=E(300), height=80, width=200, as_sprite=True).init()
     r2 = rect(y_pos=E(700), height=200, width=80).init()
     border = False
@@ -42,16 +41,11 @@ def rect_as_sprite():
     traffic_cop.run(5)
 
 def circle_colors():
-    t1 = text(y_pos=E(350))
-    cir1 = circle(y_pos=C(400))
-    t2 = text(y_pos=E(550))
-    cir2 = circle(y_pos=C(600))
-    r = rect(width=1200, height=350)
-    cir1.init()
-    t1.init()
-    cir2.init()
-    t2.init()
-    r.init()
+    t1 = text(y_pos=E(350)).init()
+    cir1 = circle(y_pos=C(400)).init()
+    t2 = text(y_pos=E(550)).init()
+    cir2 = circle(y_pos=C(600)).init()
+    r = rect(width=1200, height=350).init()
     with screen.Screen.update():
         r.draw(x_pos=S(50), y_pos=S(300))
 
@@ -109,12 +103,9 @@ def circle_colors():
     traffic_cop.run(8)
 
 def lines():
-    l1 = hline(width=1, length=50)
-    l1.init()
-    l2 = hline(width=2, length=50)
-    l2.init()
-    l3 = hline(width=3, length=50)
-    l3.init()
+    l1 = hline(width=1, length=50).init()
+    l2 = hline(width=2, length=50).init()
+    l3 = hline(width=3, length=50).init()
     with screen.Screen.update():
         for x in range(100, 901, 400):
             x_pos = S(x)
@@ -125,16 +116,11 @@ def lines():
     traffic_cop.run(2)
 
 def scales():
-    l1 = hline(width=1, length=15)
-    l1.init()
-    l2 = hline(width=1, length=20)
-    l2.init()
-    l3 = hline(width=1, length=23)
-    l3.init()
-    l4 = hline(width=1, length=26)
-    l4.init()
-    l5 = hline(width=1, length=29)
-    l5.init()
+    l1 = hline(width=1, length=15).init()
+    l2 = hline(width=1, length=20).init()
+    l3 = hline(width=1, length=23).init()
+    l4 = hline(width=1, length=26).init()
+    l5 = hline(width=1, length=29).init()
     with screen.Screen.update():
         y_pos = E(1000)
         for step_size in range(3, 8, 1):
@@ -155,11 +141,11 @@ def scales():
     traffic_cop.run(2)
 
 def knob():
-    Slider_vknob.init()
+    vknob = Slider_vknob.init()
     with screen.Screen.update():
         x_pos = C(900)
         y_pos = C(500)
-        Slider_vknob.draw(x_pos=x_pos, y_pos=y_pos)
+        vknob.draw(x_pos=x_pos, y_pos=y_pos)
     traffic_cop.run(1)
 
 def slider(profile=False):
@@ -167,7 +153,8 @@ def slider(profile=False):
         import cProfile
         import time
         pr = cProfile.Profile(time.perf_counter)
-    sc = Slider_control.copy(label="testing...").init()
+    sc = Slider_control.refine(label="testing...").init()
+    print(f"{sc.width=}, {sc.height=}")
     midi_io.Trace = True
     ControlChange(0, 0x10, Channels(1,3,5), sc.guts.slider, trace=True)
     with screen.Screen.update():
@@ -183,10 +170,11 @@ def slider(profile=False):
 
 def buttons():
     re = rect(width=200, height=100).init()
+    rc = radio_control()
     radio = text(text="radio").init()
-    r1 = button(type="radio", border=True).init()
-    r2 = button(type="radio", border=True).init()
-    r3 = button(type="radio", border=True).init()
+    r1 = button(type="radio", radio_control=rc, border=True).init()
+    r2 = button(type="radio", radio_control=rc, border=True).init()
+    r3 = button(type="radio", radio_control=rc, border=True).init()
     toggle = text(text="toggle").init()
     t = button(type="toggle", border=True).init()
     mom = text(text="mom").init()
@@ -226,6 +214,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     with screen.Screen_class():
+        print(f"{screen.Screen.width=}, {screen.Screen.height=}")
         match args.test:
             case "group": group()
             case "rect_as_sprite": rect_as_sprite()
