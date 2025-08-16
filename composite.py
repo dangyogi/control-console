@@ -36,11 +36,15 @@ __all__ = ("Composite", "Column", "Row", "Stack")
 class Composite(Drawable):
     def __init__(self, components, **kwargs):
         super().__init__(components=components, **kwargs)
+        if self.trace:
+            print(f"{self}.__init__, {components=}, {kwargs=}, {self._kwargs=}")
 
     def copy(self):
         new_kwargs = self._kwargs.copy()
         components = new_kwargs['components'].copy(new_kwargs)
         new_kwargs['components'] = components
+        if self.trace:
+            print(f"{self}.copy, {new_kwargs=}")
         new_obj = self.__class__(**new_kwargs)
         for component in components:
             component.parent = new_obj

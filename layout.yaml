@@ -1,0 +1,385 @@
+# layout.yaml
+
+---
+
+display:
+    widgets:
+        size_and_appearance:
+            output: [max_width, max_height]
+
+        drawing:
+            input: [x_left, y_top]
+
+        combination: [column, row, stacked]
+    panels: loaded into panes (replacing what was there before -- must restore background)
+    screen:
+        panes:
+            load_panel:
+                steps:
+                    - unloads current panel first
+                    - register touch
+                    - draw panel
+                    - save as current panel
+            unload_panel:
+                steps:
+                    - set pane back to background color to erase panel
+                    - unregister touch
+                    - mark panel as hidden to prevent display updates
+
+touch:
+    needs:
+        - contains(x, y)
+        - touch(x, y)
+        - move_to(x, y)
+        - release
+
+operation:  # overall operation of program
+    data:
+        read: nothing special
+        write: [who, value]  # who may be None if it's not a listener.
+        listen: who  # may have multiple listeners.  Listener not activated when it writes.
+        examples:
+            cc_param:
+                channel: may be int or channels object
+                param: int
+                value: this is the data
+                to_text: fn to generate text for display
+                listeners:
+                    midi: send CC MIDI command for each channel
+                    display: update display (text or slide position)
+                updaters:
+                    midi: on received CC MIDI command
+                    display: on user input
+            change_spp: sends MIDI STOP & SPP commands
+            stop: sends MIDI STOP command
+            start: sends MIDI START command
+            continue: sends MIDI CONTINUE command
+            channels:
+                values: 0-15
+                multivalued: true
+                humans: add one
+            chord_nums:
+                values: 0-5
+                multivalued: true
+            slur_position:  # factors into CC param
+                values: [start, end]
+                multivalued: true
+            spp:
+                updated_by: MIDI CLOCK
+                read_only: true
+                to_text: fn to generate text for display
+    action:
+        - update display values
+        - change display layout, load_panel (registers for touch), unload_panel (clears touch)
+        - change player CC params
+        - change SPP
+        - stop
+        - start
+        - continue
+
+---
+
+# rules for layout, appearance, computed, shortcuts:
+#
+#     - no dotted names
+#     - in exp:
+#         - don't use self. prefixes 
+#         - use obj.attr rather than obj__attr
+
+# for layout:
+#     max_width and max_height are used.  They default to width and height.
+#
+# for drawing:
+#     width and height are used.
+#
+# for touch:
+#     touch_width and touch_height are used.  They default to width and height.
+
+module: foobar
+
+text:
+    raylib_call:
+        name: draw_text_ex
+        args: [font, cooked_text, position, size, spacing, color]
+    layout:
+        size: 20
+        spacing: 0
+        sans: false
+        bold: false
+        max_text: null
+    appearance:
+        color: BLACK
+        text: null
+    computed:
+        init:
+            font: Fonts[2 * sans + bold]
+            max_msize: measure_text_ex(font, max_text or text, size, spacing)
+            max_width: int(math.ceil(max_msize.x))
+            max_height: int(math.ceil(max_msize.y))
+        draw:
+            cooked_text: str(text).format_map(as_dict(self))
+           #x_left = x_pos.S(width).i
+           #y_top = y_pos.S(height).i
+            position: x_left, y_top
+            msize: measure_text_ex(font, cooked_text, size, spacing)
+            width: int(math.ceil(msize.x))
+            height: int(math.ceil(msize.y))
+
+rect:
+    trace_init: true
+    raylib_call:
+        name: draw_rectangle
+
+        # nice if width and height are odd, gives integer center
+        args: [x_left, y_top, width, height, color]
+    layout:
+        width: null
+        height: null
+    appearance:
+        color: WHITE
+
+circle:
+    raylib_call:
+        name: draw_circle
+        args: [x_center, y_middle, radius, color]
+    layout:
+        diameter: 31  # nice if this is odd, gives integer radius
+    appearance:
+        color: WHITE
+    computed:
+        init:
+            radius: half(diameter)
+            width: diameter
+            height: diameter
+    generates: |
+        class circle:
+            def __init__(self, name="a circle", as_sprite=False, dynamic_capture=False, diameter=31,
+                         color=WHITE, trace=False):
+                self.trace = trace
+                self.name = name
+                self.as_sprite = as_sprite
+                self.dynamic_capture = dynamic_capture
+                self.diameter = diameter
+                self.color = color
+                self.radius = half(diameter)
+                self.width = diameter
+                self.height = diameter
+                self.max_width = self.width
+                self.max_height = self.height
+                if trace:
+                    print(f"circle({name}).__init__: {diameter=}, {color=}")
+                if self.as_sprite:
+                    self.sprite = sprite.Sprite(self.max_width, self.max_height, dynamic_capture, self.trace)
+
+            def __repr__(self):
+                return f"<circle {self.name} @ {self.id}>"
+
+            def draw(self, x_pos=None, y_pos=None, color=None):
+                if x_pos is None:
+                    x_pos = self.x_pos
+                else:
+                    self.x_pos = x_pos
+                if y_pos is None:
+                    y_pos = self.y_pos
+                else:
+                    self.y_pos = y_pos
+                if color is None:
+                    color = self.color
+                else:
+                    self.color = color
+                x_center = self.x_pos.C(self.width).i
+                y_middle = self.y_pos.C(self.height).i
+                if trace:
+                    print(f"circle({self.name}).draw({x_pos=}, {y_pos=}, {color=})")
+                if self.as_sprite:
+                    self.sprite.save_pos(self.x_pos, self.y_pos)
+                draw_circle(x_center, y_middle, self.radius, color)
+
+bordered_circle:
+    stacked:
+        elements:
+            border: circle
+            body: circle
+    layout:
+        diameter: 31
+        border_width: 2         # ok even or odd
+        min_touch_radius: 28
+        #min_touch_diameter: 57
+    appearance:
+        color: WHITE
+        border.color: BLACK
+    shortcuts:
+        diameter: border.diameter
+        color: body.color
+    computed:
+        init:
+            radius: half(border.diameter)
+            body.diameter: border.diameter - 2*border_width
+            touch_radius: max(radius, min_touch_radius)
+    contains(x, y): |4
+        dist = math.sqrt((x - x_center)**2 + (y - y_middle)**2)
+        return dist <= self.touch_radius
+    generates: |
+        class bordered_circle:
+            def __init__(self, diameter=31, border_width=2, min_touch_radius=28, color=WHITE,
+                         border__color=BLACK):
+                self.border_width = border_width
+                self.min_touch_radius = min_touch_radius
+                self.border = circle(diameter=diameter, color=border__color)
+                self.body = circle(diameter=diameter - 2*border_width, color=color)
+                self.radius = half(diameter)
+                self.touch_radius = max(self.radius, min_touch_radius)
+                self.width = max(self.border.width, self.body.width)
+                self.height = max(self.border.height, self.body.height)
+            def contains(self, x, y):
+                dist = math.sqrt((x - self.x_center)**2 + (y - self.y_middle)**2)
+                return dist <= self.touch_radius
+            def draw(self, x_center, y_middle, color=None, border__color=None):
+                self.x_center = x_center
+                self.y_center = y_center
+                if color is None:
+                    color = self.color
+                if border__color is None:
+                    border__color = self.border__color
+                self.border.draw(x_center, y_middle, color=border__color)
+                self.body.draw(x_center, y_middle, color=color)
+
+
+gap:
+    layout:
+        height: 0
+        width: 0
+    generates: |
+        class gap:
+            def __init__(self, height=0, width=0):
+                self.height = height
+                self.width = width
+
+vgap:
+    refines: gap
+    shortcuts:
+        margin: height
+    generates: |
+        def vgap(margin):
+            return gap(height=margin)
+
+hgap:
+    refines: gap
+    shortcuts:
+        margin: width
+
+titled:
+    column:
+        elements:
+            top: vgap
+            title: text
+            middle: vgap
+            body: body
+            bottom: vgap
+    parameters: [body]
+    shortcuts:
+        title: title.text
+    layout:
+        top.margin: 5     # above title
+        middle.margin: 3  # between title and body
+        bottom.margin: 7
+
+boxed:
+    stacked:
+        elements:
+            border: rect
+            background: rect
+            body: body
+    parameters: [body]
+    layout:
+        border_width: 2
+        horz_margin: border_width
+        vert_margin: border_width
+    appearance:
+        border.color: BLACK
+        background.color: WHITE
+    computed:
+        init:
+            border.width: background.width + 2*border_width
+            background.width: body.width + 2*horz_margin
+            border.height: background.height + 2*border_width
+            background.height: body.height + 2*vert_margin
+
+boxed_titled:
+    template: boxed
+    body: titled
+    # titled body parameter becomes boxed_titled parameter
+
+spp_text:
+    refines: text
+    layout:
+        max_text="888-8.8"
+    appearance:
+        text: "1.1"
+    generates: |
+        def spp_text(size=20, spacing=0, sans=False, bold=False, max_text="888-8.8",
+                     color=BLACK, text="1.1"):
+            return text(size=size, spacing=spacing, sans=sans, bold=bold, max_text=max_text,
+                        color=color, text=text)
+
+spp_display:
+    template: boxed_titled
+    body: spp_text
+    generates: |
+        class spp_display:
+            def __init__(self,
+
+                         # boxed
+                         border_width=2, horz_margin=None, vert_margin=None,
+                         border__color=BLACK, background__color=WHITE,
+
+                         # titled:
+                         top__margin=5, middle__margin=3, bottom__margin=7,
+
+                         # spp_text:
+                         spp_text__size=20, spp_text__spacing=0, spp_text__sans=False,
+                         spp_text__bold=False, spp_text__max_text="888-8.8",
+                         spp_text__color=BLACK, spp_text__text="1.1"):
+
+                # titled elements:
+                self.top = vgap(...)
+                self.title = text(...)
+                self.middle = vgap(...)
+                self.spp_text = spp_text(...)
+                self.bottom = vgap(...)
+                body_width = max(x.width for x in self.title, self.spp_text)
+                body_height = sum(x.height for x in self.top, self.title, self.middle, self.spp_text,
+                                                    self.bottom)
+
+                # boxed elements:
+                background_width = body_width + 2*horz_margin
+                background_height = body_height + 2*vert_margin
+                self.background = rect(...)
+                border_width = background_width + 2*border_width
+                border_height = background_height + 2*border_width
+                self.border = rect(...)
+                boxed_width = max(self.border.width + self.background.width)
+                boxed_height = max(self.border.height + self.background.height)
+
+                self.width = max(body_width, boxed_width)
+                self.height = max(body_height, boxed_height)
+            def draw(self, x_center, y_top, ...):
+                self.border.draw(x_center - half(self.border.width), y_top, ...)
+                self.background.draw(x_center - half(self.background.width), y_top, ...)
+                y_top += max(self.border.height, self.background.height)
+                y_top += self.top.height
+                self.title.draw(x_center - half(self.title.width), y_top, ...)
+                y_top += self.title.height
+                y_top += self.middle.height
+                self.spp_text.draw(x_center - half(self.spp_text.width), y_top, ...)
+
+spp_mark:
+    column:
+        spp_text: spp_text
+        mark: button
+    #...
+
+spp_boxed_mark:
+    template: boxed_titled
+    body: spp_mark
+
