@@ -69,11 +69,19 @@ def process(document):
             output = indenter(out_file)
             output.print("#", filename)
             output.print()
+            if 'import' in document:
+                for imp in document['import']:
+                    output.print(imp)
+                output.print()
+            if 'include' in document:
+                text = document['include'].rstrip()
+                output.print(text)
+                output.print()
             compile(document, output)
 
 def compile(document, output):
     for name in document.keys():
-        if name != 'module':
+        if name not in 'module import include'.split():
             spec = document[name]
             if 'raylib_call' in spec:
                 compile_raylib_call(name, spec, output)
@@ -115,11 +123,6 @@ class generator:
     def generate(self, name, history):
         if self.trace:
             print(f"{self.name()}.generate: {name=}, {history=}")
-        # FIX: delete
-        #if name in self.computed.either_vars:
-        #    locals, exp = self.computed.either_vars[name]
-        #    self.generate2(name, locals, exp, history)
-        #    return
         if name in self.computed:
             locals, exp = self.computed[name]
             self.generate2(name, locals, exp, history)
@@ -278,7 +281,6 @@ class init_method(method):
             print(f"init_method({self.widget.name}): {have=}")
         self.computed_init.generate(have, ('max_width', 'max_height'), self.trace)
         #self.computed_draw.generate(have, ('max_width', 'max_height'), self.trace)
-        # FIX: how is max_height/width set automatically?
 
     def end(self):
         self.output.print("if trace:")
@@ -363,6 +365,12 @@ class widget:
     def generate_widget(self):
         self.start_class()
         init_method(self, self.trace_init).generate()
+        template = Template("""
+            def __repr__(self):
+                return f"<$name {self.name} @ {self.id()}>"
+
+        """)
+        self.output.print_block(template.substitute(name=self.name))
         draw_method(self, self.trace_draw).generate()
         self.end_class()
 
@@ -411,7 +419,6 @@ class widget:
 
     def end_class(self):
         self.output.deindent()
-        self.output.print()
 
     def init_calls(self):
         pass
@@ -432,167 +439,6 @@ class raylib_call(widget):
 def compile_raylib_call(name, spec, output):
     widget = raylib_call(name, spec, output)
     widget.generate_widget()
-    return
-
-    '''
-    raylib_call = spec['raylib_call']
-    raylib_fn = raylib_call['name']
-    args = raylib_call['args']
-    def dunder(n):
-        if isinstance(n, re.Match):
-            n = n.group(0)
-        if '.' not in n:
-            return n
-        names = n.split('.', 1)
-        if names[0] not in element_names:
-            return n
-        return f"{names[0]}__{names[1]}"
-    layout = fix_dot_refs(spec.get('layout', {}), dunder)
-    appearance = fix_dot_refs(spec.get('appearance', {}), dunder)
-    computed = fix_dot_refs(spec.get('computed', {}), dunder, with_locals=True)
-    print("computed:")
-    for comp_name, (needed, exp) in computed.items():
-        print(f"  {comp_name}: {needed}, {exp}")
-    init_args = layout.copy()
-    init_args.update(appearance)
-    output(0, "class", f"{name}:")
-    output(4, "def __init__(self,",
-           ', '.join(make_arg(*item) for item in chain(layout.items(), appearance.items())), end='')
-    output(0, '):')
-    for layout_name in layout.keys():
-        output(8, f"self.{layout_name} = {layout_name}")
-    for app_name in appearance.keys():
-        output(8, f"self.{app_name} = {app_name}")
-    seen = set(layout.keys())
-    #seen.update(appearance.keys())
-    x_arg = y_arg = None
-    draw_names = set()
-    needed_names = set(("max_width", "max_height"))
-
-    init_names = computed.keys()
-    needed_done = False
-    while init_names:
-        new_names = set()
-        added_needed = False
-        for init_name in init_names:
-            needed, exp = computed[init_name]
-            fail = False
-            retry = True
-            for n in needed:
-                if n.startswith('x_'):
-                    x_arg = n
-                    draw_names.add(init_name)
-                    print(f"{n=} failed for {init_name}: is x_ name; {init_name} moved to draw_names")
-                    fail = True
-                    retry = False
-                elif n.startswith('y_'):
-                    y_arg = n
-                    draw_names.add(init_name)
-                    print(f"{n=} failed for {init_name}: is y_ name; {init_name} moved to draw_names")
-                    fail = True
-                    retry = False
-                elif n in appearance:
-                    print(f"{n=} failed for {init_name}: is appearance; {init_name} added to draw_names")
-                    draw_names.add(init_name)
-                    if init_name not in needed_names:
-                        print(f"compile_raylib_call({name}): {n} for {init_name} in appearance, "
-                              f"{init_name} not needed")
-                        print(f"{n=} failed for {init_name}: {init_name} not needed")
-                        if needed_done:
-                            retry = False
-                        fail = True
-                    else:
-                        print(f"compile_raylib_call({name}): {n} for {init_name} in appearance, "
-                              f"{init_name} needed, continuing")
-                elif n not in seen:
-                    fail = True
-                    if n in draw_names and needed_done and init_name not in needed_names:
-                        draw_names.add(init_name)
-                        print(f"{n=} failed for {init_name}: not seen; {init_name} added to draw_names")
-                        retry = False
-                    elif init_name in needed_names:
-                        if n not in needed_names:
-                            needed_names.add(n)
-                            print(f"compile_raylib_call({name}): "
-                                  f"added {n} to needed_names for {init_name}")
-                            added_needed = True
-                    print(f"{n=} failed for {init_name}: {n} not in seen")
-            else:
-                if fail:
-                    #if not needed_done or init_name in needed_names:
-                    if retry:
-                        print(f"{init_name} failed, {needed_done=}, "
-                              f"adding {init_name} to new_names")
-                        new_names.add(init_name)
-                    else:
-                        assert init_name in draw_names, f"{init_name=} not in draw_names"
-                        print(f"{init_name} failed, {needed_done=}, {init_name} SKIPPED !!!!!!!!!")
-                else:
-                    print(f"compile_raylib_call({name}): adding initialization for self.{init_name}")
-                    output(8, f"self.{init_name} = {exp}")
-                    seen.add(init_name)
-        assert added_needed or len(new_names) < len(init_names), \
-               f"compile_raylib_call({name}): precedence loop in computed amoung {init_names}, " \
-               f"{added_needed=}"
-        init_names = new_names
-        if not added_needed:
-            needed_done = True
-
-    if 'max_width' not in seen:
-        output(8, "self.max_width = self.width")
-    if 'max_height' not in seen:
-        output(8, "self.max_height = self.height")
-
-    print(f"{x_arg=}, {y_arg=}")
-    if x_arg is None:
-        for arg in args:
-            if arg.startswith('x_'):
-                x_arg = arg
-                break
-        else:
-            raise AssertionError(f"compile_raylib_call({name}): "
-                                 f"missing x_ argument in raylib_call.args, {args=}")
-    if y_arg is None:
-        for arg in args:
-            if arg.startswith('y_'):
-                y_arg = arg
-                break
-        else:
-            raise AssertionError(f"compile_raylib_call({name}): "
-                                 f"missing y_ argument in raylib_call.args, {args=}")
-    output(4, f"def draw(self, {x_arg}, {y_arg},",
-              ', '.join(f"{app_name}={exp}" for app_name, exp in appearance.items()),
-              end='):\n')
-    for app_name in appearance.keys():
-        output(8, f"if {app_name} is None:")
-        output(12, f"{app_name} = self.{app_name}")
-
-    draw_seen = set()
-    while draw_names:
-        new_names = []
-        add_self = []
-        for draw_name in draw_names:
-            needed, exp = computed[draw_name]
-            for n in needed:
-                if n.startswith('x_') or n.startswith('y_') or n in appearance or n in draw_seen:
-                    continue
-                if n in draw_seen:
-                    add_self.append(draw_name)
-                    continue
-                break
-            else:
-                for self_name in add_self:
-                    exp = re.sub(fr'\b{self_name}\b', r'self.\0', exp)
-                output(8, f"{draw_name} = {exp}")
-                draw_seen.add(draw_name)
-        assert len(new_names) < len(draw_names), \
-               f"compile_raylib_call({name}): precedence loop in computed amoung {names}"
-        draw_names = new_names
-    output(8, f"{raylib_fn}(",
-              ', '.join(n if n not in layout and n not in seen else f"self.{n}" for n in args),
-              ')', sep='')
-    output(0)
-    '''
 
 def fix_dot_refs(var_dict, dunder, with_locals=False):
     ans = {}

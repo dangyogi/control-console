@@ -97,6 +97,43 @@ operation:  # overall operation of program
 
 module: foobar
 
+import:
+    - import math
+    - import os.path
+    - from pyray import *
+    - import screen
+
+include: |
+    Fonts = []   # Serif, Serif-Bold, Sans, Sans-Bold
+    Font_names = []
+
+    @screen.register_init
+    def init_fonts(screen_obj):
+        # This must run _after_ init_window is called!
+
+        global Fonts, Font_names
+        # Load Fonts:
+        for name in 'Serif', 'Sans':
+            for bold in False, True:
+                font_name = "DejaVu" + name
+                if bold:
+                    font_name += '-Bold'
+                path = os.path.join(screen.Font_dir, font_name + ".ttf")
+                Font_names.append(font_name)
+                font = load_font(path)
+                #print(f"{font=}, {is_font_valid(font)=}")
+                Fonts.append(font)
+
+    class as_dict(dict):
+        def __init__(self, attrs):
+            self.attrs = attrs
+
+        def __getitem__(self, key):
+            try:
+                return getattr(self.attrs, key)
+            except AttributeError:
+                raise KeyError(key)
+
 text:
     raylib_call:
         name: draw_text_ex
@@ -151,49 +188,6 @@ circle:
             radius: half(diameter)
             width: diameter
             height: diameter
-    generates: |
-        class circle:
-            def __init__(self, name="a circle", as_sprite=False, dynamic_capture=False, diameter=31,
-                         color=WHITE, trace=False):
-                self.trace = trace
-                self.name = name
-                self.as_sprite = as_sprite
-                self.dynamic_capture = dynamic_capture
-                self.diameter = diameter
-                self.color = color
-                self.radius = half(diameter)
-                self.width = diameter
-                self.height = diameter
-                self.max_width = self.width
-                self.max_height = self.height
-                if trace:
-                    print(f"circle({name}).__init__: {diameter=}, {color=}")
-                if self.as_sprite:
-                    self.sprite = sprite.Sprite(self.max_width, self.max_height, dynamic_capture, self.trace)
-
-            def __repr__(self):
-                return f"<circle {self.name} @ {self.id}>"
-
-            def draw(self, x_pos=None, y_pos=None, color=None):
-                if x_pos is None:
-                    x_pos = self.x_pos
-                else:
-                    self.x_pos = x_pos
-                if y_pos is None:
-                    y_pos = self.y_pos
-                else:
-                    self.y_pos = y_pos
-                if color is None:
-                    color = self.color
-                else:
-                    self.color = color
-                x_center = self.x_pos.C(self.width).i
-                y_middle = self.y_pos.C(self.height).i
-                if trace:
-                    print(f"circle({self.name}).draw({x_pos=}, {y_pos=}, {color=})")
-                if self.as_sprite:
-                    self.sprite.save_pos(self.x_pos, self.y_pos)
-                draw_circle(x_center, y_middle, self.radius, color)
 
 bordered_circle:
     stacked:
