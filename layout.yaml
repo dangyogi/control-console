@@ -81,13 +81,29 @@ operation:  # overall operation of program
 
 # rules for layout, appearance, computed, shortcuts:
 #
-#     - no dotted names
+#     - name:
+#       - no self. prefix
+#       - use shortcut name rather than real name
 #     - in exp:
-#         - don't use self. prefixes 
-#         - use obj.attr rather than obj__attr
+#       - don't use self. prefixes 
+#       - use obj.attr rather than obj__attr
+#       - can use shortcut names
 
-# for layout:
+
+# layout:
+#     layout defines argument defaults for layout arguments.  These are only passed to __init__ and
+#     never change.  The defaults end up as parameter defaults, so must be legal in that context.
+#
 #     max_width and max_height are used.  They default to width and height.
+#
+# appearance:
+#     appearance defines argument defaults for appearance arguments.  These are passed to both
+#     __init__ and draw, so may change (by draw).
+#     The defaults end up as parameter defaults, so must be legal in that context.
+#
+# shortcuts:
+#     defines shortcut names that are used for parameter names to make it easier for callers to set
+#     important parameters.
 #
 # for drawing:
 #     width and height are used.
@@ -134,7 +150,30 @@ include: |
             except AttributeError:
                 raise KeyError(key)
 
-add_to_all: [Fonts, Font_names]
+    class gap:
+        def __init__(self, name="a gap", height=0, width=0):
+            self.name = name
+            self.height = height
+            self.width = width
+
+        def draw(x_pos=None, y_pos=None):
+            pass
+
+    class vgap(gap):
+        def __init__(self, name="a vgap", margin):
+            super.__init__(self, name, height=margin)
+
+        def __repr__(self):
+            return f"vgap({self.name})={self.height}"
+
+    class hgap(gap):
+        def __init__(self, name="an hgap", margin):
+            super.__init__(self, name, width=margin)
+
+        def __repr__(self):
+            return f"hgap({self.name})={self.width}"
+
+add_to_all: [Fonts, Font_names, vgap, hgap]
 
 
 text:
@@ -254,7 +293,7 @@ titled:
             middle: vgap
             body: body
             bottom: vgap
-    parameters: [body]
+    placeholders: [body]
     shortcuts:
         title: title.text
     layout:
@@ -268,7 +307,7 @@ boxed:
             border: rect
             background: rect
             body: body
-    parameters: [body]
+    placeholders: [body]
     layout:
         border_width: 2
         horz_margin: border_width
@@ -287,37 +326,6 @@ boxed_titled:
     template: boxed
     body: titled
     # titled body parameter becomes boxed_titled parameter
-
-gap:
-    layout:
-        height: 0
-        width: 0
-    generates: |
-        class gap:
-            def __init__(self, name="a gap", height=0, width=0):
-                self.name = name
-                self.height = height
-                self.width = width
-
-            def __repr__(self):
-                return f"{self.__class__.__name__}({self.name})"
-
-vgap:
-    refines: gap
-    layout:
-        name: a vgap
-    shortcuts:
-        margin: height
-    generates: |
-        def vgap(name="a vgap", margin):
-            return gap(name=name, height=margin)
-
-hgap:
-    refines: gap
-    layout:
-        name: an hgap
-    shortcuts:
-        margin: width
 
 spp_text:
     refines: text

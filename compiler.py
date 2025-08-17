@@ -65,7 +65,7 @@ class indenter:
 def process(document):
     if 'module' in document:
         filename = document['module'] + '.py'
-        with open(filename, 'x') as out_file:
+        with open(filename, 'w') as out_file:
             output = indenter(out_file)
             output.print("#", filename)
             output.print()
@@ -89,16 +89,26 @@ def compile(document, output):
         if name not in 'module import include add_to_all'.split():
             spec = document[name]
             words.append(name)
-            if 'raylib_call' in spec:
-                compile_raylib_call(name, spec, output)
-            elif 'stacked' in spec or 'column' in spec or 'row' in spec:
-                compile_composite(name, spec, output)
+            for cls in raylib_call, template, refines:
+                cls_name = cls.__name__
+                if cls_name in spec:
+                    widget = cls(name, spec, output)
+                    break
             else:
-                compile_placeholder(name, spec, output)
+                for cls in stacked, column, row:
+                    cls_name = cls.__name__
+                    if cls_name in spec:
+                        widget = cls(name, spec, spec[cls_name], output)
+                        break
+                else:
+                    raise ValueError(f"compile: unknown spec type for {name=}")
+            widget.generate_widget()
     return words
 
 class generator:
     r'''Generates needed computed values.
+
+    Used by computed.generate()
     '''
     def __init__(self, computed, have, needed, trace=False):
         self.trace = trace
@@ -165,12 +175,14 @@ class vars:
     r'''This encapsulates {name: exp} dicts in the yaml file.
 
     The dicts are the raw yaml data.  They have not been processed or converted.
+
+    Created by widget.__init__.
     '''
-    def __init__(self, vars, widget, output, trace=False):
+    def __init__(self, vars, widget, trace=False):
         self.trace = trace
         self.vars = vars
         self.widget = widget
-        self.output = output
+        self.output = widget.output
         self.init()
 
     def __contains__(self, name):
@@ -357,13 +369,13 @@ class widget:
         self.locals = None
         for section, trace in (layout, False), (appearance, False), (shortcuts, False):
             name = section.__name__
-            setattr(self, name, section(spec.get(name, {}), self, output, trace))
+            setattr(self, name, section(spec.get(name, {}), self, trace))
         computed = spec.get('computed', {})
         for section, trace in (computed_init, False), (computed_draw, False):
             name = section.__name__
             subname = name[9:]
             #print(f"{self.__class__.__name__}({self.name}).__init__: {name=}, {subname=}")
-            setattr(self, name, section(computed.get(subname, {}), self, output, trace))
+            setattr(self, name, section(computed.get(subname, {}), self, trace))
         self.init()
 
     def init(self):
@@ -443,33 +455,30 @@ class raylib_call(widget):
     def draw_needed(self):
         return self.raylib_args
 
-def compile_raylib_call(name, spec, output):
-    widget = raylib_call(name, spec, output)
-    widget.generate_widget()
+class composite(widget):
+    def __init__(self, name, spec, elements, output):
+        super().__init__(name, spec, output)
+        self.elements = elements
 
-def fix_dot_refs(var_dict, dunder, with_locals=False):
-    ans = {}
-    for name, exp in var_dict.items():
-        name = dunder(name)
-        local_refs, exp = decode_exp(exp, dunder)
-        if with_locals:
-            ans[name] = local_refs, exp
-        elif local_refs:
-            raise AssertionError(f"fix_dot_refs: locals not allowed in {name=}: {exp=}")
-        else:
-            ans[name] = exp
-    return ans
+    def generate_widget(self):
+        self.output.print(f"# {self.name} {self.__class__.__name__}")
 
-def make_arg(name, default):
-    return f"{name}={default}"
+class stacked(composite):
+    pass
 
-def compile_composite(name, spec, output):
-    output.print("#", name, "composite")
-    output.print()
+class column(composite):
+    pass
 
-def compile_placeholder(name, spec, output):
-    output.print("#", name, "placeholder")
-    output.print()
+class row(composite):
+    pass
+
+class refines(widget):
+    def generate_widget(self):
+        self.output.print(f"# {self.name} refines")
+
+class template(widget):
+    def generate_widget(self):
+        self.output.print(f"# {self.name} template")
 
 
 if __name__ == "__main__":
