@@ -3,6 +3,7 @@
 import re
 from string import Template
 from itertools import chain
+from functools import partial
 
 from yaml import safe_load_all
 
@@ -90,6 +91,8 @@ def process(document):
                               first_comma=False, tail=')')
             output.print()
 
+Widgets = {}
+
 def compile(document, output):
     words = []
     for name in document.keys():
@@ -105,11 +108,12 @@ def compile(document, output):
                 for cls in stacked, column, row:
                     cls_name = cls.__name__
                     if cls_name in spec:
-                        widget = cls(name, spec, spec[cls_name], output)
+                        widget = cls(name, spec, spec[cls_name]['elements'], output)
                         break
                 else:
                     raise ValueError(f"compile: unknown spec type for {name=}")
             widget.generate_widget()
+            Widgets[name] = widget
     return words
 
 class generator:
@@ -125,7 +129,7 @@ class generator:
         self.needed = set(needed)
         self.add_needed()
         if self.trace:
-            print(f"{self.name()}.__init__: {self.computed=}, {self.have=}, {self.needed=}")
+            print(f"{self.name()}.__init__: {self.computed.vars=}, {self.have=}, {self.needed=}")
 
     def name(self):
         return f"{self.computed.widget.name}.{self.__class__.__name__}"
@@ -197,8 +201,22 @@ class vars:
         #print(f"vars.__contains__({name}) -> {ans}")
         return ans
 
+    def keys(self):
+        return self.vars.keys()
+
+    def values(self):
+        return self.vars.values()
+
+    def items(self):
+        return self.vars.items()
+
     def __getitem__(self, name):
+        #print(f"{self.__class__.__name__}.__getitem__({name!r})")
         return self.vars[name]
+
+    def __setitem__(self, name, value):
+        #print(f"{self.__class__.__name__}.__getitem__({name!r})")
+        self.vars[name] = value
 
     def var_names(self):
         return self.vars.keys()
@@ -228,27 +246,45 @@ class shortcuts(vars):
         return var
 
 class computed(vars):
+    simple_added = ()
+    composite_added = ()
     added = ()
     initialized = False
+
+    def check_delayed_init(self, method):
+        if not self.initialized:
+            self.delayed_init(method)
+            self.initialized = True
+
+    def delayed_init(self, method):
+        r'''Extend self.vars with self.added and do translate_exp on all exps.  And expand element
+        names on all names.
+        '''
+        new_vars = {}
+        if isinstance(self.widget, composite):
+            added = self.added + self.composite_added
+        else:
+            added = self.added + self.simple_added
+        for name, exp in chain(self.vars.items(), added):
+            # element.b.c -> element__b.c
+            tname = method.translate_name(name, sub_shortcuts=False, add_self=False)
+            if tname not in new_vars:
+                new_vars[tname] = method.translate_exp(exp)
+        self.vars = new_vars
 
     def generate(self, have, needed, method, trace=False):
         r'''This may be called multiple times.
 
         Called from method class.
         '''
-        if not self.initialized:
-            new_vars = {}
-            for name, exp in chain(self.vars.items(), self.added):
-                if name not in new_vars:
-                    new_vars[name] = method.translate_exp(exp)
-            self.vars = new_vars
-            self.initialized = True
+        self.check_delayed_init(method)
+        needed = set(needed)
         self.generator(self, have, needed, trace).generate_all()
 
 class computed_init(computed):
-    added = (('max_width', 'width'),
-             ('max_height', 'height'),
-            )
+    simple_added = (('max_width', 'width'),
+                    ('max_height', 'height'),
+                   )
     generator = init_generator
 
 class computed_draw(computed):
@@ -262,9 +298,11 @@ class computed_draw(computed):
     generator = draw_generator
 
 class method:
-    word_re = r'[.\w]+'
-    global_names = frozenset("str int float self and or not math round as_dict "
+    word_re = r'[.\w]+=?'
+    global_names = frozenset("str int float self and or not math round min max sum as_dict "
                              "half measure_text_ex".split())
+    first_auto_params = {}
+    final_auto_params = {}
 
     def __init__(self, widget, trace=False):
         self.trace = trace
@@ -275,14 +313,25 @@ class method:
         if self.trace:
             print(f"{self.__class__.__name__}.__init__({self.widget})")
 
-    def translate_name(self, name, add_self=True):
+    def translate_name(self, name, sub_shortcuts=True, add_self=True):
+        r'''Translates names:
+           
+           - .a.b    -> unchanged
+           - s[.a.b]                            where s is shortcut -> x[.a.b] where x is substitution
+           - e.a.b   -> e__a.b                  where e is element_name
+           - f[.a.b] -> f added to self.locals  where f isidentifier, f[0] not upper, and
+                                                       not in global_names
+           - x.a.b   -> self.x.a.b              where x in element_names or 
+                                                       (add_self and x in layout or computed_init)
+        '''
         if isinstance(name, re.Match):
             name = name.group(0)
-        if name[0] == '.':
+        if name[0] == '.' or name[-1] == '=':
             return name
         names = name.split('.', 1)
-        expanded = self.widget.shortcuts.substitution(names[0]).split('.')
-        names = expanded + names[1:]
+        if sub_shortcuts:
+            expanded = self.widget.shortcuts.substitution(names[0]).split('.')
+            names = expanded + names[1:]
         if names[0] in self.widget.element_names and len(names) > 1:
             names[0: 2] = [f"{names[0]}__{names[1]}"]
 
@@ -292,8 +341,10 @@ class method:
             if first.isidentifier() and not first[0].isupper() and first not in self.global_names:
                 self.locals.add(first)
 
-        if names[0] in self.widget.element_names \
-           or (add_self and (names[0] in self.widget.layout or names[0] in self.widget.computed_init)):
+        if add_self and (names[0] in self.widget.element_names or
+                         names[0] in self.widget.layout or
+                         names[0] in self.widget.appearance or
+                         names[0] in self.widget.computed_init):
             names.insert(0, 'self')
         return '.'.join(names)
 
@@ -302,7 +353,7 @@ class method:
 
         - does shortcut substitution for first name in a.b.c
         - converts element.foo to element__foo
-        - adds self. to vars in layout or computed_init
+        - adds self. to vars in layout, appearances or computed_init
 
         Returns a list of local words referenced, updated exp text.
 
@@ -311,50 +362,116 @@ class method:
         if not isinstance(exp, str):
             return [], exp
         self.locals = set()  # locals passed back to translate_exp through self.locals...
-        exp = re.sub(self.word_re, self.translate_name, exp)
+        first = ''
+        rest = exp
+        if self.trace:
+            print(f"{self.__class__.__name__}.translate_exp: checking {exp=}")
+        for name in self.widget.element_widgets:
+            if exp.startswith(f"{name}("):
+                first = exp[:len(name) + 1]
+                rest = exp[len(name) + 1:]
+                if self.trace:
+                    print(f"{self.__class__.__name__}.translate_exp: "
+                          f"starts with element={name}, {first=}, {rest=}")
+                break
+        exp = first + re.sub(self.word_re, self.translate_name, rest)
         locals = self.locals
         self.locals = None
         return locals, exp
 
     def generate(self):
-        self.start()       # prints def __init__(...):
+        self.start()           # prints def __init__(...):
         self.output.indent()
-        self.body()        # assignments
-        self.end()         # final if trace: and as_sprite init
+        self.body()            # assignments
+        self.end()             # final if trace: and as_sprite init
         self.output.deindent()
         self.output.print()
 
-class init_method(method):
     def start(self):
-        self.auto_args = "name as_sprite dynamic_capture".split()
-        args = [f"name='a {self.widget.name}'", "as_sprite=False", "dynamic_capture=False"]
-        args.extend(self.as_args(self.layout))
-        args.extend(self.as_args(self.appearance))
-        args.append("trace=False")
-        self.output.print_args("def __init__(self", args)
+        params = self.get_params()
+        self.output.print_args(f"def {self.method_name}(self",
+                               (f"{name}={exp}" for name, exp in params.items()))
 
-    def as_args(self, vars):
-        r'''Returns a list of "name=default" for __init__ params
+    def copy_param(self, name):
+        r'''outputs the lines in the body to copy param name.
         '''
-        return vars.map_items(lambda name, exp:
-                                f"{self.translate_name(name, add_self=False)}={exp}")
+        # element.foo -> element__foo
+        pname = self.translate_name(name, sub_shortcuts=False, add_self=False)
 
-    def init_name(self, name):
-        tname = self.translate_name(name, add_self=False)
-        self.output.print(f"self.{tname} = {tname}")
+        # also substitutes shortcuts: short -> long
+        sname = self.translate_name(name, add_self=False)
+
+        self.output_copy(pname, sname)
+
+    def get_first_auto_params(self):
+        return self.first_auto_params
+
+    def get_final_auto_params(self):
+        return self.final_auto_params
+
+    def get_params(self):
+        first_auto_params = self.get_first_auto_params()
+        final_auto_params = self.get_final_auto_params()
+        params = first_auto_params.copy()
+        for vars in self.param_vars:
+            params.update(self.as_params(getattr(self, vars)))
+        params.update(final_auto_params)
+        self.params = params
+        return params
 
     def body(self):
-        self.init_name("trace")
-        self.init_name("name")
-        self.init_name("as_sprite")
-        self.layout.map_names(self.init_name)
-        self.appearance.map_names(self.init_name)
-        have = chain(self.auto_args, self.layout.var_names(), self.appearance.var_names())
+        # e.a.b -> e__a.b
+        param_names = tuple(self.translate_name(name, sub_shortcuts=False, add_self=False)
+                            for name in self.params.keys())
+        for name in param_names:
+            self.copy_param(name)
+        # e.a.b -> e__a.b
+        # s.a.b -> x.a.b
+        have = set(self.translate_name(name, add_self=False)
+                   for name in self.params.keys())
+        self.load_have(have)
         if self.trace:
-            have = tuple(have)
-            print(f"init_method({self.widget.name}): {have=}")
-        self.computed_init.generate(have, ('max_width', 'max_height'), self, self.trace)
-        #self.computed_draw.generate(have, ('max_width', 'max_height'), self, self.trace)
+            print(f"{self.__class__.__name__}.body({self.widget.name}): have={have}")
+        self.gen_computed(have)
+        # end takes care of if trace and if as_sprite
+
+    def load_have(self, have):
+        pass
+
+class init_method(method):
+    method_name = '__init__'
+    first_auto_params = dict(as_sprite=False, dynamic_capture=False)
+    final_auto_params = dict(trace=False)
+    param_vars = 'layout', 'appearance'
+
+    def get_first_auto_params(self):
+        params = dict(name=f'"a {self.widget.name}"')
+        params.update(self.first_auto_params)
+        return params
+
+    def as_params(self, vars):
+        r'''Returns a list of (name, default) pairs ready for dict.
+        '''
+        return vars.map_items(
+                 lambda name, exp:
+                   # the only useful thing this translate_name does is translate element.foo names
+                   # to element__foo.
+                   (f"{self.translate_name(name, sub_shortcuts=False, add_self=False)}", exp))
+
+    def output_copy(self, pname, sname):
+        self.output.print(f"self.{sname} = {pname}")
+
+    def gen_computed(self, have):
+        if isinstance(self.widget, composite):
+            needed = set()
+        else:
+            needed = set(('max_width', 'max_height'))
+
+        # force generation of all computed names so that draw has access to them too.
+        needed.update(self.translate_name(name, sub_shortcuts=False, add_self=False)
+                      for name in self.computed_init.var_names())
+
+        self.computed_init.generate(have, needed, self, self.trace)
 
     def end(self):
         self.output.print("if trace:")
@@ -369,33 +486,36 @@ class init_method(method):
         """)
 
 class draw_method(method):
-    def __init__(self, widget, trace=False):
-        super().__init__(widget, trace)
-        self.args = ["x_pos", "y_pos"]
-        self.args.extend(self.appearance.var_names())
+    method_name = 'draw'
+    first_auto_params = dict(x_pos=False, y_pos=False)
+    param_vars = 'appearance',
 
-    def start(self):
-        self.output.print_args("def draw(self", [x + '=None' for x in self.args])
+    def as_params(self, vars):
+        r'''Returns a list of (name, None) pairs ready for dict.
+        '''
+        return vars.map_names(
+                 lambda name:
+                   # the only useful thing this translate_name does is translate element.foo names
+                   # to element__foo.
+                   (f"{self.translate_name(name, sub_shortcuts=False, add_self=False)}", None))
 
-    def body(self):
-        for arg in self.args:
-            self.init_var(arg)
-        have = chain(self.args, self.layout.var_names(), self.computed_init.var_names())
-        if self.trace:
-            have = tuple(have)
-            print(f"draw_method({self.widget.name}): {have=}")
-        #self.computed_init.generate(have, self.widget.draw_needed(), self, self.trace)
+    def load_have(self, have):
+        r'''Loads have with anything beyond parameters.
+        '''
+        have.update(self.layout.var_names())
+        have.update(self.computed_init.var_names())
+
+    def gen_computed(self, have):
         self.computed_draw.generate(have, self.widget.draw_needed(), self, self.trace)
 
-    def init_var(self, name):
+    def output_copy(self, pname, sname):
         template = Template("""
-            if $name is None:
-                $name = self.$name
+            if $pname is None:
+                $pname = self.$sname
             else:
-                self.$name = $name
+                self.$sname = $pname
         """)
-        tname = self.translate_name(name, add_self=False)
-        self.output.print_block(template.substitute(name=tname))
+        self.output.print_block(template.substitute(pname=pname, sname=sname))
 
     def end(self):
         self.output.print("if self.trace:")
@@ -407,10 +527,11 @@ class draw_method(method):
             if self.as_sprite:
                 self.sprite.save_pos(self.x_pos, self.y_pos)
         """)
-        self.widget.draw_calls(self)
+        self.widget.output_draw_calls(self)
 
 class widget:
     element_names = ()
+    element_widgets = ()
 
     def __init__(self, name, spec, output):
         self.trace_init = spec.get('trace_init', False)
@@ -429,19 +550,26 @@ class widget:
             setattr(self, name, section(computed.get(subname, {}), self, trace))
         self.init()
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {self.name}>"
+
     def init(self):
         pass
 
     def generate_widget(self):
         self.start_class()
+
         init_method(self, self.trace_init).generate()
+
         template = Template("""
             def __repr__(self):
                 return f"<$name {self.name} @ {self.id()}>"
 
         """)
         self.output.print_block(template.substitute(name=self.name))
+
         draw_method(self, self.trace_draw).generate()
+
         self.end_class()
 
     def start_class(self):
@@ -460,7 +588,7 @@ class raylib_call(widget):
         self.raylib_fn = raylib_call['name']
         self.raylib_args = raylib_call['args']
 
-    def draw_calls(self, method):
+    def output_draw_calls(self, method):
         args = ', '.join(method.translate_name(name) for name in self.raylib_args)
         self.output.print(f"{self.raylib_fn}({args})")
 
@@ -469,11 +597,44 @@ class raylib_call(widget):
 
 class composite(widget):
     def __init__(self, name, spec, elements, output):
+        print(f"{name}.__init__: {elements=}")
+        self.element_names = frozenset(elements.keys())
+        self.element_widgets = frozenset(elements.values())
+        self.elements = {name: Widgets[widget] for name, widget in elements.items()}
         super().__init__(name, spec, output)
-        self.elements = elements
 
-    def generate_widget(self):
-        self.output.print(f"# {self.name} {self.__class__.__name__}")
+    def init(self):
+        for element, widget in self.elements.items():
+            needed_names = []
+            def check_name(name, exp, my_vars):
+                if self.trace_init:
+                    print(f"{self.name}.init: {name=}, {exp=}")
+                if name not in 'as_sprite dynamic_capture'.split():
+                    compound_name = f"{element}__{name}"
+                    dotted_name = f"{element}.{name}"
+                    def name_ok(name):
+                        return name not in my_vars and \
+                               name not in self.computed_init and \
+                               name not in self.shortcuts.values()
+                    if name_ok(compound_name) and name_ok(dotted_name):
+                        my_vars[compound_name] = exp
+                    needed_names.append(compound_name)
+            for vars in 'layout', 'appearance':
+                if self.trace_init:
+                    print(f"{self.name}.init: {element=}, {widget=}, {vars=}")
+                my_vars = getattr(self, vars)
+                getattr(widget, vars).map_items(partial(check_name, my_vars=my_vars))
+            check_name('name', f'"a {element}"', self.layout)
+            check_name('trace', False, self.layout)
+            if self.trace_init:
+                print(f"{self.name}.init: {needed_names=}")
+            element_args = []
+            for name in needed_names:
+                if name.startswith(element + '__'):
+                    element_args.append(f"{name[len(element) + 2:]}={name}")
+                else:
+                    element_args.append(f"{name}={name}")
+            self.computed_init[element] = f"{widget.name}({', '.join(element_args)})"
 
 class stacked(composite):
     pass

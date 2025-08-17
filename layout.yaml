@@ -236,6 +236,7 @@ circle:
 module: containers
 
 bordered_circle:
+    trace_init: true
     stacked:
         elements:
             border: circle
