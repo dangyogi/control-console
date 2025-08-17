@@ -44,21 +44,26 @@ class indenter:
                 stripped = line.lstrip()
                 strip = len(line) - len(stripped)
             self.print(line[strip:])
-    def print_args(self, head, args, tail='):', width=90):
+    def print_args(self, head, args, first_comma=True, tail='):', width=90):
         r'''Head should not end in comma!
         '''
         save_indent = self.current_indent
         self.print(head, end='')
         self.set_indent(self.current_indent + head.index('(') + 1)
         line_len = self.current_indent + len(head)
+        if first_comma:
+            comma = ', '
+        else:
+            comma = ''
         for arg in args:
-            if line_len + 2 + len(arg) > width:
-                self.print(',', indent=False)
+            if line_len + len(comma) + len(arg) > width:
+                self.print(comma.rstrip(), indent=False)
                 self.print(arg, end='')
                 line_len = self.current_indent + len(arg)
             else:
-                self.print(', ', arg, indent=False, sep='', end='')
-                line_len += 2 + len(arg)
+                self.print(comma, arg, indent=False, sep='', end='')
+                line_len += len(comma) + len(arg)
+            comma = ', '
         self.print(tail, indent=False)
         self.set_indent(save_indent)
 
@@ -80,7 +85,9 @@ def process(document):
                 output.print()
             words = compile(document, output)
             output.print()
-            output.print(f"__all__ =", tuple(words + document.get('add_to_all', [])))
+            output.print_args(f"__all__ = (",
+                              (f'"{word}"' for word in words + document.get('add_to_all', [])),
+                              first_comma=False, tail=')')
             output.print()
 
 def compile(document, output):
@@ -182,7 +189,7 @@ class vars:
         self.trace = trace
         self.vars = vars
         self.widget = widget
-        self.output = widget.output
+        self.output = self.widget.output
         self.init()
 
     def __contains__(self, name):
@@ -224,14 +231,16 @@ class computed(vars):
     added = ()
     initialized = False
 
-    def generate(self, have, needed, trace=False):
+    def generate(self, have, needed, method, trace=False):
         r'''This may be called multiple times.
+
+        Called from method class.
         '''
         if not self.initialized:
             new_vars = {}
             for name, exp in chain(self.vars.items(), self.added):
                 if name not in new_vars:
-                    new_vars[name] = self.widget.translate_exp(exp)
+                    new_vars[name] = method.translate_exp(exp)
             self.vars = new_vars
             self.initialized = True
         self.generator(self, have, needed, trace).generate_all()
@@ -253,13 +262,59 @@ class computed_draw(computed):
     generator = draw_generator
 
 class method:
+    word_re = r'[.\w]+'
+    global_names = frozenset("str int float self and or not math round as_dict "
+                             "half measure_text_ex".split())
+
     def __init__(self, widget, trace=False):
         self.trace = trace
         self.widget = widget
+        self.locals = None
         for name in 'layout appearance computed_init computed_draw output'.split():
             setattr(self, name, getattr(widget, name))
         if self.trace:
             print(f"{self.__class__.__name__}.__init__({self.widget})")
+
+    def translate_name(self, name, add_self=True):
+        if isinstance(name, re.Match):
+            name = name.group(0)
+        if name[0] == '.':
+            return name
+        names = name.split('.', 1)
+        expanded = self.widget.shortcuts.substitution(names[0]).split('.')
+        names = expanded + names[1:]
+        if names[0] in self.widget.element_names and len(names) > 1:
+            names[0: 2] = [f"{names[0]}__{names[1]}"]
+
+        # add to self.locals?
+        if self.locals is not None:
+            first = names[0]
+            if first.isidentifier() and not first[0].isupper() and first not in self.global_names:
+                self.locals.add(first)
+
+        if names[0] in self.widget.element_names \
+           or (add_self and (names[0] in self.widget.layout or names[0] in self.widget.computed_init)):
+            names.insert(0, 'self')
+        return '.'.join(names)
+
+    def translate_exp(self, exp):
+        r'''Does the following:
+
+        - does shortcut substitution for first name in a.b.c
+        - converts element.foo to element__foo
+        - adds self. to vars in layout or computed_init
+
+        Returns a list of local words referenced, updated exp text.
+
+        Only used by computed:
+        '''
+        if not isinstance(exp, str):
+            return [], exp
+        self.locals = set()  # locals passed back to translate_exp through self.locals...
+        exp = re.sub(self.word_re, self.translate_name, exp)
+        locals = self.locals
+        self.locals = None
+        return locals, exp
 
     def generate(self):
         self.start()       # prints def __init__(...):
@@ -282,10 +337,10 @@ class init_method(method):
         r'''Returns a list of "name=default" for __init__ params
         '''
         return vars.map_items(lambda name, exp:
-                                f"{self.widget.translate_name(name, add_self=False)}={exp}")
+                                f"{self.translate_name(name, add_self=False)}={exp}")
 
     def init_name(self, name):
-        tname = self.widget.translate_name(name, add_self=False)
+        tname = self.translate_name(name, add_self=False)
         self.output.print(f"self.{tname} = {tname}")
 
     def body(self):
@@ -298,8 +353,8 @@ class init_method(method):
         if self.trace:
             have = tuple(have)
             print(f"init_method({self.widget.name}): {have=}")
-        self.computed_init.generate(have, ('max_width', 'max_height'), self.trace)
-        #self.computed_draw.generate(have, ('max_width', 'max_height'), self.trace)
+        self.computed_init.generate(have, ('max_width', 'max_height'), self, self.trace)
+        #self.computed_draw.generate(have, ('max_width', 'max_height'), self, self.trace)
 
     def end(self):
         self.output.print("if trace:")
@@ -329,8 +384,8 @@ class draw_method(method):
         if self.trace:
             have = tuple(have)
             print(f"draw_method({self.widget.name}): {have=}")
-        #self.computed_init.generate(have, self.widget.draw_needed())
-        self.computed_draw.generate(have, self.widget.draw_needed(), self.trace)
+        #self.computed_init.generate(have, self.widget.draw_needed(), self, self.trace)
+        self.computed_draw.generate(have, self.widget.draw_needed(), self, self.trace)
 
     def init_var(self, name):
         template = Template("""
@@ -339,7 +394,7 @@ class draw_method(method):
             else:
                 self.$name = $name
         """)
-        tname = self.widget.translate_name(name, add_self=False)
+        tname = self.translate_name(name, add_self=False)
         self.output.print_block(template.substitute(name=tname))
 
     def end(self):
@@ -352,13 +407,10 @@ class draw_method(method):
             if self.as_sprite:
                 self.sprite.save_pos(self.x_pos, self.y_pos)
         """)
-        self.widget.draw_calls()
+        self.widget.draw_calls(self)
 
 class widget:
     element_names = ()
-    word_re = r'[.\w]+'
-    global_names = frozenset("str int float self and or not math round as_dict "
-                             "half measure_text_ex".split())
 
     def __init__(self, name, spec, output):
         self.trace_init = spec.get('trace_init', False)
@@ -366,7 +418,6 @@ class widget:
         self.name = name
         self.spec = spec
         self.output = output
-        self.locals = None
         for section, trace in (layout, False), (appearance, False), (shortcuts, False):
             name = section.__name__
             setattr(self, name, section(spec.get(name, {}), self, trace))
@@ -393,45 +444,6 @@ class widget:
         draw_method(self, self.trace_draw).generate()
         self.end_class()
 
-    def translate_name(self, name, add_self=True):
-        if isinstance(name, re.Match):
-            name = name.group(0)
-        if name[0] == '.':
-            return name
-        names = name.split('.', 1)
-        expanded = self.shortcuts.substitution(names[0]).split('.')
-        names = expanded + names[1:]
-        if names[0] in self.element_names and len(names) > 1:
-            names[0: 2] = [f"{names[0]}__{names[1]}"]
-
-        # add to self.locals?
-        if self.locals is not None:
-            first = names[0]
-            if first.isidentifier() and not first[0].isupper() and first not in self.global_names:
-                self.locals.add(first)
-
-        if names[0] in self.element_names \
-           or (add_self and (names[0] in self.layout or names[0] in self.computed_init)):
-            names.insert(0, 'self')
-        return '.'.join(names)
-
-    def translate_exp(self, exp):
-        r'''Does the following:
-
-        - does shortcut substitution for first name in a.b.c
-        - converts element.foo to element__foo
-        - adds self. to vars in layout or computed_init
-
-        Returns a list of local words referenced, updated exp text.
-        '''
-        if not isinstance(exp, str):
-            return [], exp
-        self.locals = set()  # locals passed back to translate_exp through self.locals...
-        exp = re.sub(self.word_re, self.translate_name, exp)
-        locals = self.locals
-        self.locals = None
-        return locals, exp
-
     def start_class(self):
         self.output.print(f"class {self.name}:")
         self.output.indent()
@@ -448,8 +460,8 @@ class raylib_call(widget):
         self.raylib_fn = raylib_call['name']
         self.raylib_args = raylib_call['args']
 
-    def draw_calls(self):
-        args = ', '.join(self.translate_name(name) for name in self.raylib_args)
+    def draw_calls(self, method):
+        args = ', '.join(method.translate_name(name) for name in self.raylib_args)
         self.output.print(f"{self.raylib_fn}({args})")
 
     def draw_needed(self):
