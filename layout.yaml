@@ -134,6 +134,9 @@ include: |
             except AttributeError:
                 raise KeyError(key)
 
+add_to_all: [Fonts, Font_names]
+
+
 text:
     raylib_call:
         name: draw_text_ex
@@ -163,7 +166,7 @@ text:
             height: int(math.ceil(msize.y))
 
 rect:
-    trace_init: true
+    #trace_init: true
     raylib_call:
         name: draw_rectangle
 
@@ -188,6 +191,10 @@ circle:
             radius: half(diameter)
             width: diameter
             height: diameter
+
+---
+
+module: containers
 
 bordered_circle:
     stacked:
@@ -239,29 +246,6 @@ bordered_circle:
                 self.body.draw(x_center, y_middle, color=color)
 
 
-gap:
-    layout:
-        height: 0
-        width: 0
-    generates: |
-        class gap:
-            def __init__(self, height=0, width=0):
-                self.height = height
-                self.width = width
-
-vgap:
-    refines: gap
-    shortcuts:
-        margin: height
-    generates: |
-        def vgap(margin):
-            return gap(height=margin)
-
-hgap:
-    refines: gap
-    shortcuts:
-        margin: width
-
 titled:
     column:
         elements:
@@ -303,6 +287,37 @@ boxed_titled:
     template: boxed
     body: titled
     # titled body parameter becomes boxed_titled parameter
+
+gap:
+    layout:
+        height: 0
+        width: 0
+    generates: |
+        class gap:
+            def __init__(self, name="a gap", height=0, width=0):
+                self.name = name
+                self.height = height
+                self.width = width
+
+            def __repr__(self):
+                return f"{self.__class__.__name__}({self.name})"
+
+vgap:
+    refines: gap
+    layout:
+        name: a vgap
+    shortcuts:
+        margin: height
+    generates: |
+        def vgap(name="a vgap", margin):
+            return gap(name=name, height=margin)
+
+hgap:
+    refines: gap
+    layout:
+        name: an hgap
+    shortcuts:
+        margin: width
 
 spp_text:
     refines: text

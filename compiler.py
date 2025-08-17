@@ -73,22 +73,29 @@ def process(document):
                 for imp in document['import']:
                     output.print(imp)
                 output.print()
+                output.print()
             if 'include' in document:
                 text = document['include'].rstrip()
                 output.print(text)
                 output.print()
-            compile(document, output)
+            words = compile(document, output)
+            output.print()
+            output.print(f"__all__ =", tuple(words + document.get('add_to_all', [])))
+            output.print()
 
 def compile(document, output):
+    words = []
     for name in document.keys():
-        if name not in 'module import include'.split():
+        if name not in 'module import include add_to_all'.split():
             spec = document[name]
+            words.append(name)
             if 'raylib_call' in spec:
                 compile_raylib_call(name, spec, output)
             elif 'stacked' in spec or 'column' in spec or 'row' in spec:
                 compile_composite(name, spec, output)
             else:
                 compile_placeholder(name, spec, output)
+    return words
 
 class generator:
     r'''Generates needed computed values.
