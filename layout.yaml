@@ -242,7 +242,7 @@ circle:
 module: containers
 
 bordered_circle:
-    trace_init: true
+    #trace_init: true
     stacked:
         elements:
             border: circle
@@ -398,12 +398,15 @@ spp_display:
                 self.spp_text.draw(x_center - half(self.spp_text.width), y_top, ...)
 
 spp_mark:
+    skip: true
     column:
-        spp_text: spp_text
-        mark: button
+        elements:
+            spp_text: spp_text
+            mark: button
     #...
 
 spp_boxed_mark:
+    skip: true
     template: boxed_titled
     body: spp_mark
 

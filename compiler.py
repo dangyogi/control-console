@@ -102,6 +102,9 @@ def compile(document, output):
     for name in document.keys():
         if name not in 'module import include add_to_all widget_stubs'.split():
             spec = document[name]
+            if spec.get('skip', False):
+                continue
+            print("compiling", name)
             words.append(name)
             for cls in raylib_call, template, refines:
                 cls_name = cls.__name__
@@ -112,12 +115,14 @@ def compile(document, output):
                 for cls in stacked, column, row:
                     cls_name = cls.__name__
                     if cls_name in spec:
+                        #print(f"compile {name=}, {cls_name=}, {spec[cls_name]=}")
                         widget = cls(name, spec, spec[cls_name]['elements'], output)
                         break
                 else:
                     raise ValueError(f"compile: unknown spec type for {name=}")
-            widget.generate_widget()
             Widgets[name] = widget
+            if not widget.skip_generate:
+                widget.generate_widget()
     return words
 
 class generator:
@@ -536,6 +541,8 @@ class draw_method(method):
 class widget:
     element_names = ()
     element_widgets = ()
+    skip_generate = False
+    initialized = False
 
     def __init__(self, name, spec, output):
         self.trace_init = spec.get('trace_init', False)
@@ -543,15 +550,6 @@ class widget:
         self.name = name
         self.spec = spec
         self.output = output
-        for section, trace in (layout, False), (appearance, False), (shortcuts, False):
-            name = section.__name__
-            setattr(self, name, section(spec.get(name, {}), self, trace))
-        computed = spec.get('computed', {})
-        for section, trace in (computed_init, False), (computed_draw, False):
-            name = section.__name__
-            subname = name[9:]
-            #print(f"{self.__class__.__name__}({self.name}).__init__: {name=}, {subname=}")
-            setattr(self, name, section(computed.get(subname, {}), self, trace))
         self.init()
 
     def __repr__(self):
@@ -560,7 +558,24 @@ class widget:
     def init(self):
         pass
 
-    def generate_widget(self):
+    def init_generate(self, template):
+        for section, trace in (layout, False), (appearance, False), (shortcuts, False):
+            name = section.__name__
+            setattr(self, name, section(self.spec.get(name, {}).copy(), self, trace))
+        computed = self.spec.get('computed', {})
+        for section, trace in (computed_init, False), (computed_draw, False):
+            name = section.__name__
+            subname = name[9:]
+            #print(f"{self.__class__.__name__}({self.name}).__init__: {name=}, {subname=}")
+            setattr(self, name, section(computed.get(subname, {}).copy(), self, trace))
+        self.init_generate2(template)
+
+    def init_generate2(self, template):
+        pass
+
+    def generate_widget(self, template=None):
+        self.init_generate(template)
+
         self.start_class()
 
         init_method(self, self.trace_init).generate()
@@ -602,16 +617,26 @@ class raylib_call(widget):
 class composite(widget):
     e_x_pos = "getattr(x_pos, getattr(self, 'x_align'))(self.max_width)"
     e_y_pos = "getattr(y_pos, getattr(self, 'y_align'))(self.max_height)"
+    placeholders = ()
 
     def __init__(self, name, spec, elements, output):
         print(f"{name}.__init__: {elements=}")
-        self.element_names = frozenset(elements.keys())
-        self.element_widgets = frozenset(elements.values())
-        self.elements = {name: Widgets[widget] for name, widget in elements.items()}
-        self.placeholders = spec.get('placeholders', ())
         super().__init__(name, spec, output)
+        self.raw_elements = elements
+        if 'placeholders' in spec:
+            self.placeholders = spec['placeholders']
+            self.skip_generate = True
 
-    def init(self):
+    def init_generate2(self, template):
+        placeholders = {name: template.get(name) for name in self.placeholders}
+        self.element_names = frozenset(self.raw_elements.keys())
+        self.element_widgets = frozenset(self.raw_elements.values())
+        def get_widget(widget):
+            if widget in placeholders:
+                return Widgets[placeholders.get(widget)]
+            return Widgets[widget]
+        self.elements = {name: get_widget(widget) for name, widget in self.raw_elements.items()}
+
         for element, widget in self.elements.items():
             needed_names = []
             def check_name(name, exp, my_vars):
@@ -715,12 +740,13 @@ class row(composite):
         self.output.print(f"e_x_pos += self.{name}.width")
 
 class refines(widget):
-    def generate_widget(self):
+    def generate_widget(self, template=None):
         self.output.print(f"# {self.name} refines")
 
 class template(widget):
-    def generate_widget(self):
-        self.output.print(f"# {self.name} template")
+    def generate_widget(self, template=None):
+        assert template is None, f"template({self.name}): nested templates not allowed {template.name=}"
+        super().generate_widget(self)
 
 class widget_stub:
     def __init__(self, name, layout=(), appearance=()):
