@@ -128,7 +128,7 @@ def compile(document, output):
 class generator:
     r'''Generates needed computed values.
 
-    Used by computed.generate()
+    Used by computed.gen_vars()
     '''
     def __init__(self, computed, have, needed, trace=False):
         self.trace = trace
@@ -281,7 +281,7 @@ class computed(vars):
                 new_vars[tname] = method.translate_exp(exp)
         self.vars = new_vars
 
-    def generate(self, have, needed, method, trace=False):
+    def gen_vars(self, have, needed, method, trace=False):
         r'''This may be called multiple times.
 
         Called from method class.
@@ -291,9 +291,9 @@ class computed(vars):
         self.generator(self, have, needed, trace).generate_all()
 
 class computed_init(computed):
-    simple_added = (('max_width', 'width'),
-                    ('max_height', 'height'),
-                   )
+    #simple_added = (('max_width', 'width'),
+    #                ('max_height', 'height'),
+    #               )
     generator = init_generator
 
 class computed_draw(computed):
@@ -388,7 +388,7 @@ class method:
         self.locals = None
         return locals, exp
 
-    def generate(self):
+    def gen_method(self):
         self.start()           # prints def __init__(...):
         self.output.indent()
         self.body()            # assignments
@@ -471,16 +471,13 @@ class init_method(method):
         self.output.print(f"self.{sname} = {pname}")
 
     def gen_computed(self, have):
-        if isinstance(self.widget, composite):
-            needed = set()
-        else:
-            needed = set(('max_width', 'max_height'))
+        needed = set(self.widget.init_needed())
 
         # force generation of all computed names so that draw has access to them too.
         needed.update(self.translate_name(name, sub_shortcuts=False, add_self=False)
                       for name in self.computed_init.var_names())
 
-        self.computed_init.generate(have, needed, self, self.trace)
+        self.computed_init.gen_vars(have, needed, self, self.trace)
 
     def end(self):
         self.widget.init_calls()
@@ -491,7 +488,7 @@ class init_method(method):
         self.output.deindent()
         self.output.print_block("""
             if self.as_sprite:
-                self.sprite = sprite.Sprite(self.max_width, self.max_height, dynamic_capture, self.trace)
+                self.sprite = sprite.Sprite(self.width, self.height, dynamic_capture, self.trace)
         """)
 
 class draw_method(method):
@@ -515,7 +512,7 @@ class draw_method(method):
         have.update(self.computed_init.var_names())
 
     def gen_computed(self, have):
-        self.computed_draw.generate(have, self.widget.draw_needed(), self, self.trace)
+        self.computed_draw.gen_vars(have, self.widget.draw_needed(), self, self.trace)
 
     def output_copy(self, pname, sname):
         template = Template("""
@@ -578,7 +575,7 @@ class widget:
 
         self.start_class()
 
-        init_method(self, self.trace_init).generate()
+        init_method(self, self.trace_init).gen_method()
 
         template = Template("""
             def __repr__(self):
@@ -587,7 +584,7 @@ class widget:
         """)
         self.output.print_block(template.substitute(name=self.name))
 
-        draw_method(self, self.trace_draw).generate()
+        draw_method(self, self.trace_draw).gen_method()
 
         self.end_class()
 
@@ -600,6 +597,12 @@ class widget:
 
     def init_calls(self):
         pass
+
+    def init_needed(self):
+        return ()
+
+    def draw_needed(self):
+        return ()
 
 class raylib_call(widget):
     def init(self):
@@ -615,8 +618,8 @@ class raylib_call(widget):
         return self.raylib_args
 
 class composite(widget):
-    e_x_pos = "getattr(x_pos, getattr(self, 'x_align'))(self.max_width)"
-    e_y_pos = "getattr(y_pos, getattr(self, 'y_align'))(self.max_height)"
+    e_x_pos = "getattr(x_pos, getattr(self, 'x_align'))(self.width)"
+    e_y_pos = "getattr(y_pos, getattr(self, 'y_align'))(self.height)"
     placeholders = ()
 
     def __init__(self, name, spec, elements, output):
@@ -683,8 +686,6 @@ class composite(widget):
         for name, widget in self.elements.items():
             args = ['x_pos=e_x_pos', 'y_pos=e_y_pos']
             args.extend(f"{arg_name}=self.{name}__{arg_name}"
-                        for arg_name in widget.layout.var_names())
-            args.extend(f"{arg_name}=self.{name}__{arg_name}"
                         for arg_name in widget.appearance.var_names())
             self.output.print_args(f"self.{name}(", args, first_comma=False, tail=')')
             self.inc_draw_pos(name)
@@ -698,42 +699,42 @@ class stacked(composite):
         self.layout['y_align'] = '"C"'
 
     def init_calls(self):
-        self.output.print_args("max_width = max(",
-                               (f"self.{element}.max_width" for element in self.element_names),
+        self.output.print_args("self.width = max(",
+                               (f"self.{element}.width" for element in self.element_names),
                                first_comma=False, tail=')')
-        self.output.print_args("max_height = max(",
-                               (f"self.{element}.max_height" for element in self.element_names),
+        self.output.print_args("self.height = max(",
+                               (f"self.{element}.height" for element in self.element_names),
                                first_comma=False, tail=')')
 
 class column(composite):
-    e_y_pos = "y_pos.S(self.max_height)"
+    e_y_pos = "y_pos.S(self.height)"
 
     def sub_init(self):
         self.layout['x_align'] = '"C"'
 
     def init_calls(self):
-        self.output.print_args("max_width = max(",
-                               (f"self.{element}.max_width" for element in self.element_names),
+        self.output.print_args("self.width = max(",
+                               (f"self.{element}.width" for element in self.element_names),
                                first_comma=False, tail=')')
-        self.output.print_args("max_height = sum(",
-                               (f"self.{element}.max_height" for element in self.element_names),
+        self.output.print_args("self.height = sum(",
+                               (f"self.{element}.height" for element in self.element_names),
                                first_comma=False, tail=')')
 
     def inc_draw_pos(self, name):
         self.output.print(f"e_x_pos += self.{name}.height")
 
 class row(composite):
-    e_x_pos = "x_pos.S(self.max_width)"
+    e_x_pos = "x_pos.S(self.width)"
 
     def sub_init(self):
         self.layout['y_align'] = '"C"'
 
     def init_calls(self):
-        self.output.print_args("max_width = sum(",
-                               (f"self.{element}.max_width" for element in self.element_names),
+        self.output.print_args("self.width = sum(",
+                               (f"self.{element}.width" for element in self.element_names),
                                first_comma=False, tail=')')
-        self.output.print_args("max_height = max(",
-                               (f"self.{element}.max_height" for element in self.element_names),
+        self.output.print_args("self.height = max(",
+                               (f"self.{element}.height" for element in self.element_names),
                                first_comma=False, tail=')')
 
     def inc_draw_pos(self, name):

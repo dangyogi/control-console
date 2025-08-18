@@ -5,7 +5,7 @@
 display:
     widgets:
         size_and_appearance:
-            output: [max_width, max_height]
+            output: [width, height]
 
         drawing:
             input: [x_left, y_top]
@@ -94,7 +94,7 @@ operation:  # overall operation of program
 #     layout defines argument defaults for layout arguments.  These are only passed to __init__ and
 #     never change.  The defaults end up as parameter defaults, so must be legal in that context.
 #
-#     max_width and max_height are used.  They default to width and height.
+#     width and height are used.
 #
 # appearance:
 #     appearance defines argument defaults for appearance arguments.  These are passed to both
@@ -151,27 +151,27 @@ include: |
                 raise KeyError(key)
 
     class gap:
-        def __init__(self, name="a gap", max_height=0, max_width=0):
+        def __init__(self, name="a gap", height=0, width=0):
             self.name = name
-            self.max_height = max_height
-            self.max_width = max_width
+            self.height = height
+            self.width = width
 
         def draw(x_pos=None, y_pos=None):
             pass
 
     class vgap(gap):
         def __init__(self, name="a vgap", margin):
-            super.__init__(self, name, max_height=margin)
+            super.__init__(self, name, height=margin)
 
         def __repr__(self):
-            return f"<vgap({self.name})={self.max_height}>"
+            return f"<vgap({self.name})={self.height}>"
 
     class hgap(gap):
         def __init__(self, name="an hgap", margin):
-            super.__init__(self, name, max_width=margin)
+            super.__init__(self, name, width=margin)
 
         def __repr__(self):
-            return f"<hgap({self.name})={self.max_width}>"
+            return f"<hgap({self.name})={self.width}>"
 
 widget_stubs:
     vgap:
@@ -198,17 +198,15 @@ text:
     computed:
         init:
             font: Fonts[2 * sans + bold]
-            max_msize: measure_text_ex(font, max_text or text, size, spacing)
-            max_width: int(math.ceil(max_msize.x))
-            max_height: int(math.ceil(max_msize.y))
-        draw:
-            cooked_text: str(text).format_map(as_dict(self))
-           #x_left = x_pos.S(width).i
-           #y_top = y_pos.S(height).i
-            position: x_left, y_top
-            msize: measure_text_ex(font, cooked_text, size, spacing)
+            msize: measure_text_ex(font, max_text or text, size, spacing)
             width: int(math.ceil(msize.x))
             height: int(math.ceil(msize.y))
+        draw:
+            cooked_text: str(text).format_map(as_dict(self))
+            position: x_pos.S(draw_width).i, y_pos.S(draw_height).i
+            draw_msize: measure_text_ex(font, cooked_text, size, spacing)
+            draw_width: int(math.ceil(draw_msize.x))
+            draw_height: int(math.ceil(draw_msize.y))
 
 rect:
     #trace_init: true
@@ -293,6 +291,7 @@ bordered_circle:
 
 
 titled:
+    #trace_init: true
     column:
         elements:
             top: vgap
@@ -309,6 +308,7 @@ titled:
         bottom.margin: 7
 
 boxed:
+    trace_init: true
     stacked:
         elements:
             border: rect
@@ -330,6 +330,7 @@ boxed:
             background.height: body.height + 2*vert_margin
 
 boxed_titled:
+    trace_init: true
     template: boxed
     body: titled
     # titled body parameter becomes boxed_titled parameter
