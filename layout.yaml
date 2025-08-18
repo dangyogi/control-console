@@ -151,27 +151,33 @@ include: |
                 raise KeyError(key)
 
     class gap:
-        def __init__(self, name="a gap", height=0, width=0):
+        def __init__(self, name="a gap", max_height=0, max_width=0):
             self.name = name
-            self.height = height
-            self.width = width
+            self.max_height = max_height
+            self.max_width = max_width
 
         def draw(x_pos=None, y_pos=None):
             pass
 
     class vgap(gap):
         def __init__(self, name="a vgap", margin):
-            super.__init__(self, name, height=margin)
+            super.__init__(self, name, max_height=margin)
 
         def __repr__(self):
-            return f"vgap({self.name})={self.height}"
+            return f"<vgap({self.name})={self.max_height}>"
 
     class hgap(gap):
         def __init__(self, name="an hgap", margin):
-            super.__init__(self, name, width=margin)
+            super.__init__(self, name, max_width=margin)
 
         def __repr__(self):
-            return f"hgap({self.name})={self.width}"
+            return f"<hgap({self.name})={self.max_width}>"
+
+widget_stubs:
+    vgap:
+        layout: [margin]
+    hgap:
+        layout: [margin]
 
 add_to_all: [Fonts, Font_names, vgap, hgap]
 

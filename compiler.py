@@ -84,6 +84,10 @@ def process(document):
                 text = document['include'].rstrip()
                 output.print(text)
                 output.print()
+            if 'widget_stubs' in document:
+                for name, args in document['widget_stubs'].items():
+                    Widgets[name] = widget_stub(name, layout=args.get('layout', ()),
+                                                      appearance=args.get('appearance', ()))
             words = compile(document, output)
             output.print()
             output.print_args(f"__all__ = (",
@@ -96,7 +100,7 @@ Widgets = {}
 def compile(document, output):
     words = []
     for name in document.keys():
-        if name not in 'module import include add_to_all'.split():
+        if name not in 'module import include add_to_all widget_stubs'.split():
             spec = document[name]
             words.append(name)
             for cls in raylib_call, template, refines:
@@ -383,7 +387,7 @@ class method:
         self.start()           # prints def __init__(...):
         self.output.indent()
         self.body()            # assignments
-        self.end()             # final if trace: and as_sprite init
+        self.end()             # final if trace: and as_sprite, etc init
         self.output.deindent()
         self.output.print()
 
@@ -474,12 +478,12 @@ class init_method(method):
         self.computed_init.generate(have, needed, self, self.trace)
 
     def end(self):
+        self.widget.init_calls()
         self.output.print("if trace:")
         self.output.indent()
         args = ', '.join(f'{{self.{name}=}}' for name in self.appearance.var_names())
         self.output.print(f'print(f"{self.widget.name}({{self.name}}).__init__: {args}")')
         self.output.deindent()
-        self.widget.init_calls()
         self.output.print_block("""
             if self.as_sprite:
                 self.sprite = sprite.Sprite(self.max_width, self.max_height, dynamic_capture, self.trace)
@@ -596,11 +600,15 @@ class raylib_call(widget):
         return self.raylib_args
 
 class composite(widget):
+    e_x_pos = "getattr(x_pos, getattr(self, 'x_align'))(self.max_width)"
+    e_y_pos = "getattr(y_pos, getattr(self, 'y_align'))(self.max_height)"
+
     def __init__(self, name, spec, elements, output):
         print(f"{name}.__init__: {elements=}")
         self.element_names = frozenset(elements.keys())
         self.element_widgets = frozenset(elements.values())
         self.elements = {name: Widgets[widget] for name, widget in elements.items()}
+        self.placeholders = spec.get('placeholders', ())
         super().__init__(name, spec, output)
 
     def init(self):
@@ -635,15 +643,76 @@ class composite(widget):
                 else:
                     element_args.append(f"{name}={name}")
             self.computed_init[element] = f"{widget.name}({', '.join(element_args)})"
+            self.needed_names = needed_names
+        self.sub_init()
+
+    def sub_init(self):
+        pass
+
+    def draw_needed(self):
+        return self.needed_names
+
+    def output_draw_calls(self, method):
+        self.output.print(f"e_x_pos = {self.e_x_pos}")
+        self.output.print(f"e_y_pos = {self.e_y_pos}")
+        for name, widget in self.elements.items():
+            args = ['x_pos=e_x_pos', 'y_pos=e_y_pos']
+            args.extend(f"{arg_name}=self.{name}__{arg_name}"
+                        for arg_name in widget.layout.var_names())
+            args.extend(f"{arg_name}=self.{name}__{arg_name}"
+                        for arg_name in widget.appearance.var_names())
+            self.output.print_args(f"self.{name}(", args, first_comma=False, tail=')')
+            self.inc_draw_pos(name)
+
+    def inc_draw_pos(self, name):
+        pass
 
 class stacked(composite):
-    pass
+    def sub_init(self):
+        self.layout['x_align'] = '"C"'
+        self.layout['y_align'] = '"C"'
+
+    def init_calls(self):
+        self.output.print_args("max_width = max(",
+                               (f"self.{element}.max_width" for element in self.element_names),
+                               first_comma=False, tail=')')
+        self.output.print_args("max_height = max(",
+                               (f"self.{element}.max_height" for element in self.element_names),
+                               first_comma=False, tail=')')
 
 class column(composite):
-    pass
+    e_y_pos = "y_pos.S(self.max_height)"
+
+    def sub_init(self):
+        self.layout['x_align'] = '"C"'
+
+    def init_calls(self):
+        self.output.print_args("max_width = max(",
+                               (f"self.{element}.max_width" for element in self.element_names),
+                               first_comma=False, tail=')')
+        self.output.print_args("max_height = sum(",
+                               (f"self.{element}.max_height" for element in self.element_names),
+                               first_comma=False, tail=')')
+
+    def inc_draw_pos(self, name):
+        self.output.print(f"e_x_pos += self.{name}.height")
 
 class row(composite):
-    pass
+    e_x_pos = "x_pos.S(self.max_width)"
+
+    def sub_init(self):
+        self.layout['y_align'] = '"C"'
+
+    def init_calls(self):
+        self.output.print_args("max_width = sum(",
+                               (f"self.{element}.max_width" for element in self.element_names),
+                               first_comma=False, tail=')')
+        self.output.print_args("max_height = max(",
+                               (f"self.{element}.max_height" for element in self.element_names),
+                               first_comma=False, tail=')')
+
+    def inc_draw_pos(self, name):
+        self.output.print(f"e_x_pos += self.{name}.width")
 
 class refines(widget):
     def generate_widget(self):
@@ -652,6 +721,13 @@ class refines(widget):
 class template(widget):
     def generate_widget(self):
         self.output.print(f"# {self.name} template")
+
+class widget_stub:
+    def __init__(self, name, layout=(), appearance=()):
+        self.name = name
+        self.layout = dict(((name, None) for name in layout))
+        self.appearance = dict(((name, None) for name in appearance))
+
 
 
 if __name__ == "__main__":
