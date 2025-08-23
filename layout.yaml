@@ -2,30 +2,6 @@
 
 ---
 
-display:
-    widgets:
-        size_and_appearance:
-            output: [width, height]
-
-        drawing:
-            input: [x_left, y_top]
-
-        combination: [column, row, stacked]
-    panels: loaded into panes (replacing what was there before -- must restore background)
-    screen:
-        panes:
-            load_panel:
-                steps:
-                    - unloads current panel first
-                    - register touch
-                    - draw panel
-                    - save as current panel
-            unload_panel:
-                steps:
-                    - set pane back to background color to erase panel
-                    - unregister touch
-                    - mark panel as hidden to prevent display updates
-
 touch:
     needs:
         - contains(x, y)
@@ -183,6 +159,7 @@ add_to_all: [Fonts, Font_names, vgap, hgap]
 
 
 text:
+    #trace_draw: true
     raylib_call:
         name: draw_text_ex
         args: [font, cooked_text, position, size, spacing, color]
@@ -203,7 +180,7 @@ text:
             height: int(math.ceil(msize.y))
         draw:
             cooked_text: str(text).format_map(as_dict(self))
-            position: x_pos.S(draw_width).i, y_pos.S(draw_height).i
+            position: x_left.i, y_top.i
             draw_msize: measure_text_ex(font, cooked_text, size, spacing)
             draw_width: int(math.ceil(draw_msize.x))
             draw_height: int(math.ceil(draw_msize.y))
@@ -243,171 +220,117 @@ bordered_circle:
     #trace_init: true
     stacked:
         elements:
-            border: circle
-            body: circle
+            - border: circle
+            - body: circle
     layout:
         diameter: 31
-        border_width: 2         # ok even or odd
-        min_touch_radius: 28
+        border_width: 2             # ok even or odd
+        min_touch_radius: 28        # ok even or odd
         #min_touch_diameter: 57
     appearance:
         color: WHITE
-        border.color: BLACK
+        border__color: BLACK
     shortcuts:
-        diameter: border.diameter
-        color: body.color
+        diameter: border__diameter  # nice if this is odd, gives integer radius
+        color: body__color
     computed:
         init:
-            radius: half(border.diameter)
-            body.diameter: border.diameter - 2*border_width
+            radius: half(border__diameter)
+            body__diameter: border__diameter - 2*border_width
             touch_radius: max(radius, min_touch_radius)
     contains(x, y): |4
         dist = math.sqrt((x - x_center)**2 + (y - y_middle)**2)
         return dist <= self.touch_radius
-    generates: |
-        class bordered_circle:
-            def __init__(self, diameter=31, border_width=2, min_touch_radius=28, color=WHITE,
-                         border__color=BLACK):
-                self.border_width = border_width
-                self.min_touch_radius = min_touch_radius
-                self.border = circle(diameter=diameter, color=border__color)
-                self.body = circle(diameter=diameter - 2*border_width, color=color)
-                self.radius = half(diameter)
-                self.touch_radius = max(self.radius, min_touch_radius)
-                self.width = max(self.border.width, self.body.width)
-                self.height = max(self.border.height, self.body.height)
-            def contains(self, x, y):
-                dist = math.sqrt((x - self.x_center)**2 + (y - self.y_middle)**2)
-                return dist <= self.touch_radius
-            def draw(self, x_center, y_middle, color=None, border__color=None):
-                self.x_center = x_center
-                self.y_center = y_center
-                if color is None:
-                    color = self.color
-                if border__color is None:
-                    border__color = self.border__color
-                self.border.draw(x_center, y_middle, color=border__color)
-                self.body.draw(x_center, y_middle, color=color)
-
 
 titled:
     #trace_init: true
     column:
         elements:
-            top: vgap
-            title: text
-            middle: vgap
-            body: body
-            bottom: vgap
-    placeholders: [body]
-    shortcuts:
-        title: title.text
+            - top: vgap
+            - title: text
+            - middle: vgap
+            - body: placeholder
+            - bottom: vgap
     layout:
-        top.margin: 5     # above title
-        middle.margin: 3  # between title and body
-        bottom.margin: 7
+        title: "title"
+        top__margin: 5     # above title
+        middle__margin: 3  # between title and body
+        bottom__margin: 7  # below body
+    shortcuts:
+        title: title__text
 
 boxed:
-    trace_init: true
+    #trace_init: true
     stacked:
         elements:
-            border: rect
-            background: rect
-            body: body
-    placeholders: [body]
+            - border: rect
+            - background: rect
+            - body: placeholder
     layout:
-        border_width: 2
-        horz_margin: border_width
-        vert_margin: border_width
+        border_width: 2             # width of outer border line
+        horz_margin: border_width   # between body and left/right edge of background
+        vert_margin: border_width   # between body and top/bottom edge of background
     appearance:
-        border.color: BLACK
-        background.color: WHITE
+        border__color: BLACK
+        color: WHITE
+    shortcut:
+        color: background__color
     computed:
         init:
-            border.width: background.width + 2*border_width
-            background.width: body.width + 2*horz_margin
-            border.height: background.height + 2*border_width
-            background.height: body.height + 2*vert_margin
+            border__width: background__width + 2*border_width
+            border__height: background__height + 2*border_width
+            background__width: body__width + 2*horz_margin
+            background__height: body__height + 2*vert_margin
 
 boxed_titled:
-    trace_init: true
+    #trace_init: true
     template: boxed
-    body: titled
-    # titled body parameter becomes boxed_titled parameter
+    arguments:
+        body:                      # placeholder name in boxed
+            - titled: titled       # titled body placeholder becomes boxed_titled placeholder
+    layout:
+        title: "title"
+    shortcuts:
+        title: titled__title
 
 spp_text:
     refines: text
     layout:
-        max_text="888-8.8"
+        max_text: "888-8.8"
     appearance:
         text: "1.1"
-    generates: |
-        def spp_text(size=20, spacing=0, sans=False, bold=False, max_text="888-8.8",
-                     color=BLACK, text="1.1"):
-            return text(size=size, spacing=spacing, sans=sans, bold=bold, max_text=max_text,
-                        color=color, text=text)
 
 spp_display:
     template: boxed_titled
-    body: spp_text
-    generates: |
-        class spp_display:
-            def __init__(self,
-
-                         # boxed
-                         border_width=2, horz_margin=None, vert_margin=None,
-                         border__color=BLACK, background__color=WHITE,
-
-                         # titled:
-                         top__margin=5, middle__margin=3, bottom__margin=7,
-
-                         # spp_text:
-                         spp_text__size=20, spp_text__spacing=0, spp_text__sans=False,
-                         spp_text__bold=False, spp_text__max_text="888-8.8",
-                         spp_text__color=BLACK, spp_text__text="1.1"):
-
-                # titled elements:
-                self.top = vgap(...)
-                self.title = text(...)
-                self.middle = vgap(...)
-                self.spp_text = spp_text(...)
-                self.bottom = vgap(...)
-                body_width = max(x.width for x in self.title, self.spp_text)
-                body_height = sum(x.height for x in self.top, self.title, self.middle, self.spp_text,
-                                                    self.bottom)
-
-                # boxed elements:
-                background_width = body_width + 2*horz_margin
-                background_height = body_height + 2*vert_margin
-                self.background = rect(...)
-                border_width = background_width + 2*border_width
-                border_height = background_height + 2*border_width
-                self.border = rect(...)
-                boxed_width = max(self.border.width + self.background.width)
-                boxed_height = max(self.border.height + self.background.height)
-
-                self.width = max(body_width, boxed_width)
-                self.height = max(body_height, boxed_height)
-            def draw(self, x_center, y_top, ...):
-                self.border.draw(x_center - half(self.border.width), y_top, ...)
-                self.background.draw(x_center - half(self.background.width), y_top, ...)
-                y_top += max(self.border.height, self.background.height)
-                y_top += self.top.height
-                self.title.draw(x_center - half(self.title.width), y_top, ...)
-                y_top += self.title.height
-                y_top += self.middle.height
-                self.spp_text.draw(x_center - half(self.spp_text.width), y_top, ...)
+    arguments:
+        body:
+            - spp_text: spp_text
 
 spp_mark:
     skip: true
     column:
         elements:
-            spp_text: spp_text
-            mark: button
-    #...
+            - spp_text: spp_text
+            - gap: vgap
+            - mark: button
+    layout:
+        gap__margin: 3
+
+spp_mark2:
+    skip: true
+    template: boxed_titled
+    arguments:
+        body:
+            - spp_text: spp_text
+            - gap: vgap
+            - mark: button
+    layout:
+        gap__margin: 3
 
 spp_boxed_mark:
     skip: true
     template: boxed_titled
-    body: spp_mark
-
+    arguments:
+        body:
+            - spp_mark: spp_mark
+    # ...
