@@ -1,0 +1,202 @@
+# touch.py
+
+r'''These register themselves with the Screen.touch_dispatcher.
+
+    - screen.Screen.Touch_dispatcher.register(self)
+    - screen.Screen.Touch_dispatcher.unregister(self)
+
+# all x, y are ints, not alignment objects
+
+The touch_dispatcher calls the following methods on a touch object:
+
+    - contains(x, y) -> bool
+    - touch(x, y)   -> bool   # The remaining functions return True if they've changed the screen.
+    - move_to(x, y) -> bool
+    - release()     -> bool
+'''
+
+
+class SlotEvent:
+    def __init__(self, slot, action, x, y, sec):
+        self.slot = slot      # touch device assigned slot number
+        self.action = action  # "touch", "move", "release"
+        self.x = x            # int, abs screen addr in pixels
+        self.y = y            # int, abs screen addr in pixels
+        self.sec = sec        # not sure why you'd care about this.
+                              # This combines the touch sec and usec as a float with microsec
+                              # resolution.
+
+import screen
+
+
+class touch:
+    def __init__(self, name, trace=False):
+        self.trace = trace
+        self.name = name
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}({self.name})>"
+
+    def attach_widget(self, widget):   # called at end of widget.__init__ method
+        self.widget = widget
+
+    def activate(self):                # called after draws, so x, y positions are now known
+        screen.Screen.Touch_dispatcher.register(self)
+
+    def deactivate(self):
+        screen.Screen.Touch_dispatcher.unregister(self)
+
+    def touch(self, x, y):
+        return False
+
+    def move_to(self, x, y):
+        return False
+
+    def release(self, x, y):
+        return False
+
+
+class rect_contains:
+    def __init__(self, widget):
+        self.widget = widget
+        self.width = widget.width
+        self.height = widget.height
+        self.update_pos()
+
+    def update_pos(self):
+        x_pos = self.widget.x_pos
+        self.x_left = x_pos.S(self.width).i
+        self.x_right = x_pos.E(self.width).i
+        y_pos = self.widget.y_pos
+        self.y_top = y_pos.S(self.height).i
+        self.y_bottom = y_pos.E(self.height).i
+
+    def __call__(self, x, y):
+        return self.x_left <= x <= self.x_right \
+           and self.y_top <= y <= self.y_bottom
+
+class touch_rect(touch):
+    def attach_widget(self, widget):
+        super().attach_widget(widget)
+        self.width = widget.width
+        self.height = widget.height
+
+    def activate(self):
+        self.contains = rect_contains(self.widget)
+        x_pos = self.widget.x_pos
+        self.x_left = x_pos.S(self.width).i
+        self.x_right = x_pos.E(self.width).i
+        y_pos = self.widget.y_pos
+        self.y_top = y_pos.S(self.height).i
+        self.y_bottom = y_pos.E(self.height).i
+        super().activate()
+
+
+class touch_slider(touch_rect):
+    def __init__(self, name, display, scale_fn, command, trace=False):
+        super().__init__(name, trace)
+        self.display = display
+        self.scale_fn = scale_fn
+        self.command = command
+
+    def attach_widget(self, widget):
+        super().attach_widget(widget)
+        self.scale_fn = self.widget.scale_fn
+        self.low_value = self.widget.low_value
+        self.value = self.low_value
+        self.high_value = self.widget.high_value
+        self.tick = self.widget.tick
+        self.num_values = self.widget.num_values
+        self.slide_height = self.widget.slide_height
+        self.knob = widget.knob
+
+    def activate(self):
+        self.slide_y_top_C = self.widget.slide_y_top_C
+        self.slide_y_bottom_C = self.widget.slide_y_bottom_C
+        self.knob_contains = rect_contains(self.widget.knob)
+        super().activate()
+
+    def touch(self, x, y):
+        if not self.knob_contains(x, y):
+            # do a sudden jump to the touch point!
+            if self.trace:
+                print(f"{self}.touch({x=}, {y=}): sudden jump!")
+            self.offset = 0
+            return self.move_to(x, y)
+        # do incremental moves from this starting position, maintaining the offset of the touch
+        # point to the knob's position.
+
+        # self.knob.y_mid = y + self.offset
+        self.offset = self.knob.y_pos.C(self.knob.height).i - y
+        if self.trace:
+            print(f"{self}.touch({x=}, {y=}): incremental movement {self.offset=}")
+        return False
+
+    def move_to(self, x, y):
+        if self.trace:
+            print(f"{self}.move_to({x=}, {y=})")
+        knob_y = y + self.offset
+        # clamp knob_y to the interval [self.slide_y_top_C, self.slide_y_bottom_C]
+        knob_y = min(max(knob_y, self.slide_y_top_C.i), self.slide_y_bottom_C.i)
+        knob_y_middle = self.knob.y_pos.C(self.knob.height).i
+        pixel_movement = knob_y_middle - knob_y        # positive up
+        _, remainder = divmod(pixel_movement, self.tick)
+        if remainder * 2 == self.tick:  # don't count the half-way point
+            tick_change = int(pixel_movement / self.tick)   # truncate
+        else:
+            tick_change = round(pixel_movement / self.tick) # round
+        if tick_change:
+            self.value += tick_change
+            if self.trace:
+                print(f"{self}.move_to: {knob_y=}, {pixel_movement=}, {tick_change=}, "
+                      f"{self.value=}")
+            if self.command is not None:
+                self.command.value_change(self.value)
+            self.draw_knob()
+            self.update_text()
+            return True
+        if self.trace:
+            print(f"{self}.move_to: no change, {knob_y=}, {pixel_movement=}")
+        return False
+
+    def draw_knob(self):
+        self.knob.draw(y_pos=self.slide_y_bottom_C - (self.value - self.low_value) * self.tick)
+
+    def update_text(self):
+        self.display.draw(text=str(self.scale_fn(self.value)))
+
+    def remote_change(self, channel, new_value):  # FIX: Do we really need channel here?
+        r'''Called when a MIDI command is received updating the Slider's value.
+
+        The new_value is the raw value, i.e., value.
+
+        Returns True if the screen changed and needs a Screen.draw_to_framebuffer() done.
+        '''
+        if self.trace:
+            print(f"{self}.remote_change {channel=}, {new_value=}")
+        if new_value != self.value:
+            self.value = new_value
+            #if self.command is not None:
+            #    self.command.value_change(self.value)
+            self.draw_knob()
+            self.update_text()
+            return True
+        return False
+
+
+
+class touch_circle(touch):
+    def activate(self):
+        self.width = self.widget.width
+        self.touch_radius = self.widget.touch_radius
+        x_pos = self.widget.x_pos
+        self.x_center = x_pos.C(self.width).i
+        y_pos = self.widget.y_pos
+        self.y_middle = y_pos.C(self.height).i
+        super().activate()
+
+    def contains(self, x, y):
+        dist = math.sqrt((x - self.x_center)**2 + (y - self.y_middle)**2)
+        return dist <= self.touch_radius
+
+

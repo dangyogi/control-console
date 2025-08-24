@@ -46,7 +46,10 @@ class indenter:
 
     def print_block(self, text):
         strip = None
-        for line in text.splitlines()[1:-1]:
+        lines = text.splitlines()
+        for i, line in enumerate(lines):
+            if (i == 0 or i == len(lines) - 1) and not line.strip():
+                continue
             if strip is None:
                 stripped = line.lstrip()
                 strip = len(line) - len(stripped)
@@ -55,16 +58,16 @@ class indenter:
     def print_args(self, head, args, first_comma=True, tail='):', width=94):
         r'''Head should not end in comma!
         '''
-        self.print_head(head, first_comma)
+        self.print_head(head, first_comma, width=width)
         for arg in args:
             self.print_arg(arg)
         self.print_tail(tail)
 
     def print_head(self, head, first_comma=True, width=94):
-        self.save_indent = self.current_indent
         self.print(head, end='')
-        self.set_indent(self.current_indent + head.index('(') + 1)
         self.line_len = self.current_indent + len(head)
+        self.save_indent = self.current_indent
+        self.set_indent(self.current_indent + head.index('(') + 1)
         if first_comma:
             self.comma = ', '
         else:
@@ -73,8 +76,9 @@ class indenter:
 
     def print_arg(self, arg):
         if self.line_len + len(self.comma) + len(arg) > self.width:
+            # arg won't fit on current line
             self.print(self.comma.rstrip())   # ends the current line
-            self.print(arg, end='')
+            self.print(arg, end='')           # starts the next line at self.current_indent
             self.line_len = self.current_indent + len(arg)
         else:
             self.print(self.comma, arg, sep='', end='')
@@ -472,12 +476,12 @@ class computed_draw(computed):
     added = (('draw_height', 'height'),
              ('draw_width', 'width'),
 
-             ('x_left', 'x_pos.S(draw_width).i'),
-             ('x_center', 'x_pos.C(draw_width).i'),
-             ('x_right', 'x_pos.E(draw_width).i'),
-             ('y_top', 'y_pos.S(draw_height).i'),
-             ('y_middle', 'y_pos.C(draw_height).i'),
-             ('y_bottom', 'y_pos.E(draw_height).i'),
+             ('x_left', 'x_pos.S(draw_width)'),
+             ('x_center', 'x_pos.C(draw_width)'),
+             ('x_right', 'x_pos.E(draw_width)'),
+             ('y_top', 'y_pos.S(draw_height)'),
+             ('y_middle', 'y_pos.C(draw_height)'),
+             ('y_bottom', 'y_pos.E(draw_height)'),
             )
     generator = draw_generator
     var_class = draw_var
@@ -518,7 +522,7 @@ class method:
         self.start()           # prints def __init__(...):
         self.output.indent()
         self.body()            # assignments
-        self.end()             # final if trace: and as_sprite, etc init
+        self.end()             # final if trace: and include, etc init
         self.output.deindent()
         self.output.print()
 
@@ -557,12 +561,12 @@ class method:
         if self.trace:
             print(f"{self.__class__.__name__}.body({self.widget.name})")
         self.gen_computed()
-        # end takes care of if trace and if as_sprite
+        # end takes care of if trace and includes
 
 class init_method(method):
     method_name = '__init__'
     first_auto_params = ()
-    final_auto_params = (('as_sprite', False), ('dynamic_capture', False), ('trace', False))
+    final_auto_params = (('trace', False),)
     param_vars = 'layout', 'appearance'
 
     def get_first_auto_params(self):
@@ -621,12 +625,8 @@ class init_method(method):
         args = ', '.join(f'{{{sname}=}}' for sname in self.appearance.gen_snames())
         self.output.print(f'print(f"{self.widget.name}({{self.name}}).__init__: {args}")')
         self.output.deindent()
-        self.output.print_block("""
-            if self.as_sprite:
-                self.sprite = sprite.Sprite(self.width, self.height, dynamic_capture, self.trace)
-        """)
-        if 'init' in self.widget.includes:
-            self.output.print_block(self.widget.includes['init'])
+        if 'init' in self.widget.include:
+            self.output.print_block(self.widget.include['init'])
 
 class draw_method(method):
     method_name = 'draw'
@@ -654,13 +654,11 @@ class draw_method(method):
         args = ', '.join(f'{{{sname=}}}' for sname in self.appearance.gen_snames())
         self.output.print(f'print(f"{self.widget.name}({{self.name}}).draw: {args}")')
         self.output.deindent()
-        self.output.print_block("""
-            if self.as_sprite:
-                self.sprite.save_pos(self.x_pos, self.y_pos)
-        """)
+        if 'draw_before' in self.widget.include:
+            self.output.print_block(self.widget.include['draw_before'])
         self.widget.output_draw_calls(self)
-        if 'draw' in self.widget.includes:
-            self.output.print_block(self.widget.includes['draw'])
+        if 'draw_end' in self.widget.include:
+            self.output.print_block(self.widget.include['draw_end'])
 
 class clear_method(method):
     method_name = 'clear'
@@ -674,8 +672,8 @@ class clear_method(method):
 
     def end(self):
         added = self.widget.clear_calls()
-        if 'clear' in self.widget.includes:
-            self.output.print_block(self.widget.includes['clear'])
+        if 'clear' in self.widget.include:
+            self.output.print_block(self.widget.include['clear'])
             added = True
         if not added:
             self.output.print("pass")
@@ -691,7 +689,7 @@ class widget:
         self.name = name
         self.spec = spec
         self.output = output
-        self.includes = spec.get('includes', {})
+        self.include = spec.get('include', {})
         for section, trace in (shortcuts, False), (layout, False), (appearance, False):
             name = section.__name__
             setattr(self, name, section(self.spec.get(name, {}), self, trace))

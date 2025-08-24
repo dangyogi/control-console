@@ -158,11 +158,35 @@ widget_stubs:
 add_to_all: [Fonts, Font_names, vgap, hgap]
 
 
-text:
+static_text:
     #trace_draw: true
     raylib_call:
         name: draw_text_ex
-        args: [font, cooked_text, position, size, spacing, color]
+        args: [font, str_text, position, size, spacing, color]
+    layout:
+        size: 20
+        spacing: 0
+        sans: false
+        bold: false
+        text: null
+    appearance:
+        color: BLACK
+    computed:
+        init:
+            font: Fonts[2 * sans + bold]
+            msize: measure_text_ex(font, str_text, size, spacing)
+            width: int(math.ceil(msize.x))
+            height: int(math.ceil(msize.y))
+            str_text: str(text)
+        draw:
+           #cooked_text: str_text.format_map(as_dict(self))
+            position: x_left.i, y_top.i
+
+dynamic_text:
+    #trace_draw: true
+    raylib_call:
+        name: draw_text_ex
+        args: [font, str_text, position, size, spacing, color]
     layout:
         size: 20
         spacing: 0
@@ -175,15 +199,23 @@ text:
     computed:
         init:
             font: Fonts[2 * sans + bold]
-            msize: measure_text_ex(font, max_text or text, size, spacing)
+            msize: measure_text_ex(font, str(max_text), size, spacing)
             width: int(math.ceil(msize.x))
             height: int(math.ceil(msize.y))
         draw:
-            cooked_text: str(text).format_map(as_dict(self))
+           #cooked_text: str_text.format_map(as_dict(self))
             position: x_left.i, y_top.i
-            draw_msize: measure_text_ex(font, cooked_text, size, spacing)
+            draw_msize: measure_text_ex(font, text, size, spacing)
             draw_width: int(math.ceil(draw_msize.x))
             draw_height: int(math.ceil(draw_msize.y))
+            str_text: str(text)
+    include:
+        init: |
+            self.sprite = sprite.Sprite(self.width, self.height, trace=self.trace)
+        draw_before: |
+            self.sprite.save_pos(self.x_pos, self.y_pos)
+        clear: |
+            self.sprite.reset()
 
 rect:
     #trace_init: true
@@ -247,7 +279,7 @@ titled:
     column:
         elements:
             - top: vgap
-            - title: text
+            - title: static_text
             - middle: vgap
             - body: placeholder
             - bottom: vgap
@@ -294,7 +326,7 @@ boxed_titled:
         title: titled__title
 
 spp_text:
-    refines: text
+    refines: dynamic_text
     layout:
         max_text: "888-8.8"
     appearance:
@@ -334,3 +366,138 @@ spp_boxed_mark:
         body:
             - spp_mark: spp_mark
     # ...
+
+---
+
+module: sliders
+
+import:
+    - import math
+    - from touch import touch_slider
+
+include: |
+    def longer_str(a, b):
+        a = str(a)
+        b = str(b)
+        if len(a) > len(b):
+            return a
+        return b
+
+    def id(x):
+        return x
+
+    # m = (max_y - min_y) / (max_x - min_x)
+    # b = min_y - m*min_x       # m*min_x + b = min_y
+
+    # so m*max_x + b = max_y ?
+    #    m*max_x + min_y - m*min_x = max_y ?
+    #    m*(max_x - min_x) = max_y - min_y
+    #    m = (max_y - min_y) / (max_x - min_x)
+    def linear(m, b):
+        # y = m*x + b
+        digits = max(0, int(math.ceil(-math.log(m, 10) - 1e10)))  # after decimal point
+        def scalei(x):  # returns an int
+            return round(m*x + b)
+        def scalef(x):  # returns a float
+            return round(m*x + b, digits)
+        if digits <= 0:
+            return scalei
+        return scalef
+
+    # min_y*math.pow(m, max_x) = max_y
+    # math.pow(m, max_x) = max_y / min_y
+    # m = math.pow(max_y / min_y, 1/max_x) # raise each side by 1/max_x
+    def exponential(m, min):
+        # y = min*math.pow(m, x)
+        digits_at_min = max(0, int(math.ceil(-math.log(min*(m-1), 10) - 1e10)))  # after decimal point
+        breakpoints = [math.ceil(math.pow(10, -d) / (m - 1))
+                       for d in range(digits_at_min, -1, -1)] 
+        assert breakpoints[0] < min, f"{breakpoints[0]=} >= {min=}"
+        del breakpoints[0]
+        def scale(x):
+            ans = min*math.pow(m, x)
+            i = 0
+            while i < len(breakpoints) and breakpoints[i] < ans:
+                i += 1
+            digits = digits_at_min - i
+            if digits <= 0:
+                return round(ans)
+            return round(ans, digits)
+        return scale
+
+slider_vknob:
+    stacked:
+        elements:
+            - wide_rect: rect
+            - narrow_rect: rect
+    layout:
+        as_sprite: true
+    appearance:
+        wide_rect__color: BLACK
+        narrow_rect__color: GRAY
+    computed:
+        init:
+            wide_rect__width: 49
+            wide_rect__height: 19
+            narrow_rect__width: 61
+            narrow_rect__height: 5
+    include:
+        init: |
+            self.sprite = sprite.Sprite(self.width, self.height, trace=self.trace)
+        draw_before: |
+            self.sprite.save_pos(self.x_pos, self.y_pos)
+        clear: |
+            self.sprite.reset()
+
+slider_touch:
+    stacked:
+        elements:
+            - centerline: rect
+            - knob: slider_vknob
+    layout:
+        low_value: 0
+        high_value: 127
+        tick: 3  # width of a "tick", or the number of pixels separating one value from the next
+        centerline__width: 3
+        touch: null
+    appearance:
+        centerline__color: BLACK
+    computed:
+        init:
+            num_values: (high_value - low_value) + 1
+            slide_height: (num_values - 1) * tick
+            centerline__height: slide_height + knob.height - 1
+        draw:
+            slide_y_top_C: (y_top + half(knob.height)).as_C()        # knob Y_pos at high_value
+            slide_y_bottom_C: (y_bottom - half(knob.height)).as_C()  # knob Y_pos at low_value
+    include:
+        init: self.touch.attach_widget(self)
+        draw_end: self.touch.activate()
+        clear: self.touch.deactivate()
+
+slider:
+    template: boxed_titled # titled body placeholder becomes boxed_titled placeholder
+    arguments:
+        body:                        # placeholder name in boxed_titled
+            - display: dynamic_text
+            - slider_gap: vgap
+            - slider: slider_touch
+    layout:
+        title: null
+        low_value: 0
+        high_value: 127
+        tick: 3  # number of pixels separating one value from the next
+        scale_fn: id
+        slider_gap__margin: 5
+        command: null
+    shortcuts:
+        low_value: slider.low_value
+        high_value: slider.high_value
+        tick: slider.tick
+        scale_fn: slider.scale_fn
+    computed:
+        init:
+            display__max_text: longer_str(scale_fn(low_value), scale_fn(high_value))
+            display__text: str(scale_fn(low_value))
+            slider__touch: touch_slider(name, display, scale_fn, command)
+

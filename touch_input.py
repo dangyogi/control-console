@@ -3,13 +3,13 @@
 r'''Reads touch SlotEvents using libevdev.
 
 This is designed to keep each touch slot independent so that you can drive multiple unrelated widgets
-by touch at the same time.  I.e., it is not designed for multi-touch events (such as "pinch")
+by touch at the same time.  I.e., it is _not_ designed for multi-touch events (such as "pinch")
 for a single widget.
 
 This opens the file in non-blocking mode so that you can alternate between gen_slot_events and calls to
 other code.
 
-To use, create an Touch_generator and then repeatedly call gen_slot_events each time the input device
+To use, create a Touch_generator and then repeatedly call gen_slot_events each time the input device
 is readable.
 '''
 

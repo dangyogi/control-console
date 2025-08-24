@@ -80,6 +80,9 @@ class Sprite:
         self.last_y = y_pos
         self.texture_saved = True
 
+    def reset(self):
+        self.texture_saved = False
+
 
 
 if __name__ == "__main__":
