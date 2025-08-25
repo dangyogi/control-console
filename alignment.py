@@ -98,7 +98,7 @@ You do the same thing for the y axis...
 import math
 
 
-__all__ = ('S', 'C', 'E', 'to_S', 'to_C', 'to_E', 'Si', 'Ci', 'Ei')
+__all__ = ('S', 'C', 'E', 'to_S', 'to_C', 'to_E', 'Si', 'Ci', 'Ei', 'half')
 
 
 #              horz    vert
@@ -108,27 +108,27 @@ CENTER = 2  # CENTER  MIDDLE
 END = 3     #  RIGHT  BOTTOM
 
 
-def half_length(length):
+def half(length):
     r'''Returns half the length, rounding up.
 
-    With a row of, say 3,  pixels, ***, the length is 2 -- adding an offset of 2
+    With a row of, say 3, pixels, ***, the length is 2 -- adding an offset of 2
     to the position of the first one gets you the position of the last one. 
 
-    So half_length wants (length - 1) / 2.
+    So half wants (length - 1) / 2.
 
     But what if length - 1 is odd?  In this case, we want to round up, so (length - 1 + 1) // 2.
 
     So if length is even, length - 1 is odd and we want length // 2.
 
-    And if length is odd, length - 1 is even and we want (length - 1) // 2.  But is length is odd, this
+    And if length is odd, length - 1 is even and we want (length - 1) // 2.  But if length is odd, this
     is the same as length // 2!
 
-        >>> half_length(3)
+        >>> half(3)
         1
-        >>> half_length(4)
+        >>> half(4)
         2
     '''
-    assert not isinstance(length, float), f"half_length got float {length=}"
+    assert not isinstance(length, float), f"half got float {length=}"
     #length -= 1
     #if length & 1:  # odd
     #    length += 1
@@ -186,7 +186,7 @@ class S(pos):
         return self
 
     def C(self, length):
-        ans = self.i + half_length(length)
+        ans = self.i + half(length)
         if not isinstance(ans, int):
             raise AssertionError(f"S({self.i}).C({length}) is not an integer, got {ans}")
         return C(ans)
@@ -209,7 +209,7 @@ class C(pos):
         E(11)
     '''
     def S(self, length):
-        ans = self.i - half_length(length)
+        ans = self.i - half(length)
         if not isinstance(ans, int):
             raise AssertionError(f"C({self.i}).S({length}) is not an integer, got {ans}")
         return S(ans)
@@ -218,7 +218,7 @@ class C(pos):
         return self
 
     def E(self, length):
-        ans = self.i + half_length(length)
+        ans = self.i + half(length)
         if not isinstance(ans, int):
             raise AssertionError(f"C({self.i}).E({length}) is not an integer, got {ans}")
         return E(ans)
@@ -241,7 +241,7 @@ class E(pos):
         return S(ans)
 
     def C(self, length):
-        ans = self.i - half_length(length)
+        ans = self.i - half(length)
         if not isinstance(ans, int):
             raise AssertionError(f"E({self.i}).C({length}) is not an integer, got {ans}")
         return C(ans)

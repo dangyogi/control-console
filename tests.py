@@ -2,110 +2,78 @@
 
 from pyray import *
 
-from exp import *
 from alignment import *
-from composite import Composite
-from composites import *
 import screen
 from shapes import *
+from slider import *
+from containers import *
 import traffic_cop
 from commands import ControlChange, Channels
 import midi_io
 
 
+def hline(length, width=3):
+    return rect(height=width, width=length)
+
 def group():
     message="Hello gjpqy!"
-    g = Composite(Row(text(name='txt', size=80, text=message, max_text=message, trace=True),
-                      rect(name='r', height=80, width=300),
-                      circle(name='c', diameter=80),
-                      hline(length=40),
-                      y_align=to_E)) \
-          .init()
+    widgets = (static_text(name='txt', size=80, text=message, trace=True),
+               rect(name='r', height=80, width=300),
+               circle(name='c', diameter=80),
+               hline(length=40),
+              )
     with screen.Screen.update():
-        g.draw(x_pos=S(500), y_pos=E(600))
+        x_pos = S(500)
+        y_pos = E(600)
+        for widget in widgets:
+            widget.draw(x_pos=x_pos, y_pos=y_pos)
+            x_pos += widget.width
     traffic_cop.run(2)
 
 def rect_as_sprite():
-    r1 = rect(y_pos=E(300), height=80, width=200, as_sprite=True).init()
-    r2 = rect(y_pos=E(700), height=200, width=80).init()
+    r1 = rect(height=80, width=200)
+    r2 = rect(height=200, width=80)
     border = False
     border_width = 0
     for x in range(100, 1701, 100):
         #print("drawing x", x)
         with screen.Screen.update():
-            r1.draw(x_pos=S(x), border=border, border_width=border_width)
-            r2.draw(x_pos=S(x), border=border, border_width=border_width)
+            r1.draw(x_pos=S(x), y_pos=E(300), border=border, border_width=border_width)
+            r2.draw(x_pos=S(x), y_pos=E(700), border=border, border_width=border_width)
         border = True
         border_width += 1
         traffic_cop.run(1)
     traffic_cop.run(5)
 
 def circle_colors():
-    t1 = text(y_pos=E(350)).init()
-    cir1 = circle(y_pos=C(400)).init()
-    t2 = text(y_pos=E(550)).init()
-    cir2 = circle(y_pos=C(600)).init()
-    r = rect(width=1200, height=350).init()
+    r = rect(width=1200, height=350)
+
+    def draw_color(x_pos, y_pos, color, border_width, diameter):
+        if border_width > 0:
+            circle_widget = bordered_circle(border_width=border_width, diameter=diameter)
+        else:
+            circle_widget = circle()
+        circle_widget.draw(x_pos=C(x_pos), y_pos=C(y_pos), color=screen.Colors[color])
+        static_text(text=color).draw(x_pos=C(x_pos), y_pos=E(y_pos-50))
+
     with screen.Screen.update():
         r.draw(x_pos=S(50), y_pos=S(300))
 
         # LED on:
-        c_x_center = cir1.draw('x_center', x_pos=C(100), color=WHITE,
-                               border=True, border_width=10, diameter=41)
-        t1.draw(x_pos=c_x_center, text="WHITE")
-        c_x_center = cir1.draw('x_center', x_pos=C(200), color=YELLOW,
-                               border=True, border_width=9, diameter=39)
-        t1.draw(x_pos=c_x_center, text="YELLOW")
-        c_x_center = cir1.draw('x_center', x_pos=C(300), color=ORANGE,
-                               border=True, border_width=8, diameter=37)
-        t1.draw(x_pos=c_x_center, text="ORANGE")
-        c_x_center = cir1.draw('x_center', x_pos=C(400), color=PINK,
-                               border=True, border_width=7, diameter=35)
-        t1.draw(x_pos=c_x_center, text="PINK")
-        c_x_center = cir1.draw('x_center', x_pos=C(500), color=RED,
-                               border=True, border_width=6, diameter=33)
-        t1.draw(x_pos=c_x_center, text="RED")
-        c_x_center = cir1.draw('x_center', x_pos=C(600), color=GREEN,
-                               border=True, border_width=5, diameter=31)
-        t1.draw(x_pos=c_x_center, text="GREEN")
-        c_x_center = cir1.draw('x_center', x_pos=C(700), color=LIME,
-                               border=True, border_width=4, diameter=29)
-        t1.draw(x_pos=c_x_center, text="LIME")
-        c_x_center = cir1.draw('x_center', x_pos=C(800), color=SKYBLUE,
-                               border=True, border_width=3, diameter=27)
-        t1.draw(x_pos=c_x_center, text="SKYBLUE")
-        c_x_center = cir1.draw('x_center', x_pos=C(900), color=BLUE,
-                               border=True, border_width=2, diameter=25)
-        t1.draw(x_pos=c_x_center, text="BLUE")
-        c_x_center = cir1.draw('x_center', x_pos=C(1000), color=PURPLE,
-                               border=True, border_width=1, diameter=23)
-        t1.draw(x_pos=c_x_center, text="PURPLE")
-        c_x_center = cir1.draw('x_center', x_pos=C(1100), border=False, color=VIOLET)
-        t1.draw(x_pos=c_x_center, text="VIOLET")
-        c_x_center = cir1.draw('x_center', x_pos=C(1200), color=MAGENTA)
-        t1.draw(x_pos=c_x_center, text="MAGENTA")
+        for i, color in enumerate("WHITE YELLOW ORANGE PINK RED GREEN LIME SKYBLUE BLUE "
+                                  "PURPLE VIOLET MAGENTA".split()):
+            draw_color(100 + 100*i, 400, color, 10 - i, 41 - 2*i)
 
         # LED off:
-        c_x_center = cir2.draw('x_center', x_pos=C(100), color=LIGHTGRAY)
-        t2.draw(x_pos=c_x_center, text="LIGHTGRAY")
-        c_x_center = cir2.draw('x_center', x_pos=C(200), color=GRAY)
-        t2.draw(x_pos=c_x_center, text="GRAY")
-        c_x_center = cir2.draw('x_center', x_pos=C(300), color=DARKGRAY)
-        t2.draw(x_pos=c_x_center, text="DARKGRAY")
-        c_x_center = cir2.draw('x_center', x_pos=C(400), color=BEIGE)
-        t2.draw(x_pos=c_x_center, text="BEIGE")
-        c_x_center = cir2.draw('x_center', x_pos=C(500), color=BROWN)
-        t2.draw(x_pos=c_x_center, text="BROWN")
-        c_x_center = cir2.draw('x_center', x_pos=C(600), color=DARKBROWN)
-        t2.draw(x_pos=c_x_center, text="DARKBROWN")
-        c_x_center = cir2.draw('x_center', x_pos=C(700), color=BLACK)
-        t2.draw(x_pos=c_x_center, text="BLACK")
+        for i, color in enumerate("LIGHTGRAY GRAY DARKGRAY BEIGE BROWN DARKBROWN BLACK".split()):
+            draw_color(100 + 100*i, 600, color, 0, 41)
+
     traffic_cop.run(8)
 
 def lines():
-    l1 = hline(width=1, length=50).init()
-    l2 = hline(width=2, length=50).init()
-    l3 = hline(width=3, length=50).init()
+    l1 = hline(width=1, length=50)
+    l2 = hline(width=2, length=50)
+    l3 = hline(width=3, length=50)
     with screen.Screen.update():
         for x in range(100, 901, 400):
             x_pos = S(x)
@@ -116,11 +84,11 @@ def lines():
     traffic_cop.run(2)
 
 def scales():
-    l1 = hline(width=1, length=15).init()
-    l2 = hline(width=1, length=20).init()
-    l3 = hline(width=1, length=23).init()
-    l4 = hline(width=1, length=26).init()
-    l5 = hline(width=1, length=29).init()
+    l1 = hline(width=1, length=15)
+    l2 = hline(width=1, length=20)
+    l3 = hline(width=1, length=23)
+    l4 = hline(width=1, length=26)
+    l5 = hline(width=1, length=29)
     with screen.Screen.update():
         y_pos = E(1000)
         for step_size in range(3, 8, 1):
@@ -141,7 +109,7 @@ def scales():
     traffic_cop.run(2)
 
 def knob():
-    vknob = Slider_vknob.init()
+    vknob = slider_vknob()
     with screen.Screen.update():
         x_pos = C(900)
         y_pos = C(500)
@@ -153,7 +121,7 @@ def slider(profile=False):
         import cProfile
         import time
         pr = cProfile.Profile(time.perf_counter)
-    sc = Slider_control.refine(label="testing...").init()
+    sc = Slider_control.refine(label="testing...")
     print(f"{sc.width=}, {sc.height=}")
     midi_io.Trace = True
     ControlChange(0, 0x10, Channels(1,3,5), sc.guts.slider, trace=True)
@@ -169,18 +137,18 @@ def slider(profile=False):
         pr.dump_stats('slider.prof')
 
 def buttons():
-    re = rect(width=200, height=100).init()
+    re = rect(width=200, height=100)
     rc = radio_control()
-    radio = text(text="radio").init()
-    r1 = button(type="radio", radio_control=rc, border=True).init()
-    r2 = button(type="radio", radio_control=rc, border=True).init()
-    r3 = button(type="radio", radio_control=rc, border=True).init()
-    toggle = text(text="toggle").init()
-    t = button(type="toggle", border=True).init()
-    mom = text(text="mom").init()
-    m = button(type="mom", border=True).init()
-    start_stop = text(text="start-stop").init()
-    ss = button(type="start-stop", border=True).init()
+    radio = text(text="radio")
+    r1 = button(type="radio", radio_control=rc, border=True)
+    r2 = button(type="radio", radio_control=rc, border=True)
+    r3 = button(type="radio", radio_control=rc, border=True)
+    toggle = text(text="toggle")
+    t = button(type="toggle", border=True)
+    mom = text(text="mom")
+    m = button(type="mom", border=True)
+    start_stop = text(text="start-stop")
+    ss = button(type="start-stop", border=True)
     with screen.Screen.update():
         x_pos = C(300)
         text_y = E(140)

@@ -41,6 +41,8 @@ import:
     - import os.path
     - from pyray import *
     - import screen
+    - from alignment import half
+    - import sprite
 
 include: |
     Fonts = []   # Serif, Serif-Bold, Sans, Sans-Bold
@@ -83,14 +85,14 @@ include: |
             pass
 
     class vgap(gap):
-        def __init__(self, name="a vgap", margin):
+        def __init__(self, margin, name="a vgap"):
             super.__init__(self, name, height=margin)
 
         def __repr__(self):
             return f"<vgap({self.name})={self.height}>"
 
     class hgap(gap):
-        def __init__(self, name="an hgap", margin):
+        def __init__(self, margin, name="an hgap"):
             super.__init__(self, name, width=margin)
 
         def __repr__(self):
@@ -127,7 +129,7 @@ static_text:
             str_text: str(text)
         draw:
            #cooked_text: str_text.format_map(as_dict(self))
-            position: x_left.i, y_top.i
+            position: x_left, y_top
 
 dynamic_text:
     #trace_draw: true
@@ -151,7 +153,7 @@ dynamic_text:
             height: int(math.ceil(msize.y))
         draw:
            #cooked_text: str_text.format_map(as_dict(self))
-            position: x_left.i, y_top.i
+            position: x_left, y_top
             draw_msize: measure_text_ex(font, text, size, spacing)
             draw_width: int(math.ceil(draw_msize.x))
             draw_height: int(math.ceil(draw_msize.y))
@@ -215,6 +217,10 @@ circle:
 
 module: containers
 
+import:
+    - from pyray import *
+    - from shapes import *
+
 bordered_circle:
     #trace_init: true
     stacked:
@@ -223,7 +229,7 @@ bordered_circle:
             - body: circle
     layout:
         diameter: 31
-        border_width: 2             # ok even or odd
+        border_width: 2             # or, maybe, 3 -- ok even or odd
         touch: null
     appearance:
         border__color: BLACK
@@ -238,7 +244,6 @@ bordered_circle:
         touch: body__touch
     computed:
         init:
-            radius: half(border__diameter)
             body__diameter: border__diameter - 2*border_width
 
 titled:
@@ -251,7 +256,7 @@ titled:
             - body: placeholder
             - bottom: vgap
     layout:
-        title: "title"
+        title: '"title"'
         top__margin: 5     # above title
         middle__margin: 3  # between title and body
         bottom__margin: 7  # below body
@@ -288,7 +293,7 @@ boxed_titled:
         body:
             - titled: titled
     layout:
-        title: "title"
+        title: '"title"'
         placeholders: null
     appearance:
         color: WHITE
@@ -299,10 +304,10 @@ boxed_titled:
 spp_text:
     specializes: dynamic_text
     layout:
-        max_text: "888-8.8"
+        max_text: '"888-8.8"'
     appearance:
         color: BLACK
-        text: "1.1"
+        text: '"1.1"'
 
 spp_display:
     specializes: boxed_titled
@@ -310,7 +315,7 @@ spp_display:
         body:
             - spp_text: spp_text
     layout:
-        title: "title"
+        title: '"title"'
     appearance:
         color: WHITE
 
@@ -320,19 +325,26 @@ spp_mark:
         body:
             - spp_text: spp_text
             - gap: vgap
-            - mark: button
+            - mark: bordered_circle
     layout:
-        title: "title"
+        title: '"title"'
         gap__margin: 3
     appearance:
         color: WHITE
+    computed:
+        init:
+            bordered_circle__touch: null  # FIX
 
 ---
 
-module: sliders
+module: slider
 
 import:
     - import math
+    - from pyray import *
+    - from alignment import half
+    - from shapes import *
+    - import sprite
     - from touch import touch_slider
 
 include: |

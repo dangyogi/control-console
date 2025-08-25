@@ -128,7 +128,6 @@ def compile(document, output):
                 continue
             print()
             print("compiling", name)
-            words.append(name)
             spec_copy = spec.copy()
             for cls in raylib_call, specializes:
                 cls_name = cls.__name__
@@ -150,6 +149,8 @@ def compile(document, output):
                 else:
                     raise ValueError(f"compile: unknown spec type for {name=}")
             widget.generate_widget()
+            if not widget.skip:
+                words.append(name)
     return words
 
 class generator:
@@ -361,12 +362,18 @@ class vars:
         first = names[0]
         if sub_shortcuts:
             first = names[0] = self.widget.shortcuts.substitute(first)
+            if self.trace:
+                print(f"translate_name({name=}): after shortcuts.substitute, {first=}")
         if names[0] in self.widget.element_names and len(names) > 1:
             first = f"{names[0]}__{names[1]}"
+            if self.trace:
+                print(f"translate_name({name=}): after element_name__, {names=}, {first=}")
             names[0: 2] = [first]
 
         # add to self.locals?
         if self.locals is not None and first in self:
+            if self.trace:
+                print(f"translate_name({name=}): adding to locals, {first=}")
             self.locals.add(first)
 
         ans = '.'.join(names)
@@ -375,6 +382,8 @@ class vars:
                          first in self.widget.appearance or
                          first in self.widget.computed_init):
             ans = 'self.' + ans
+            if self.trace:
+                print(f"translate_name({name=}): adding 'self.', {ans=}")
         return ans
 
 class params(vars):
@@ -483,12 +492,12 @@ class computed_draw(computed):
     added = (('draw_height', 'height'),
              ('draw_width', 'width'),
 
-             ('x_left', 'x_pos.S(draw_width)'),
-             ('x_center', 'x_pos.C(draw_width)'),
-             ('x_right', 'x_pos.E(draw_width)'),
-             ('y_top', 'y_pos.S(draw_height)'),
-             ('y_middle', 'y_pos.C(draw_height)'),
-             ('y_bottom', 'y_pos.E(draw_height)'),
+             ('x_left', 'x_pos.S(draw_width).i'),
+             ('x_center', 'x_pos.C(draw_width).i'),
+             ('x_right', 'x_pos.E(draw_width).i'),
+             ('y_top', 'y_pos.S(draw_height).i'),
+             ('y_middle', 'y_pos.C(draw_height).i'),
+             ('y_bottom', 'y_pos.E(draw_height).i'),
             )
     generator = draw_generator
     var_class = draw_var
@@ -505,13 +514,15 @@ class shortcuts:
                        for shortcut, iname in vars.items()}
 
     def substitute(self, pname):
-        if '__' in pname:
-            first, rest = pname.split('__', 1)
-            rest = '__' + rest
-        else:
-            first = pname
-            rest = ''
-        return self.pnames.get(first, first) + rest
+        # FIX: delete?
+        #if '__' in pname:
+        #    first, rest = pname.split('__', 1)
+        #    rest = '__' + rest
+        #else:
+        #    first = pname
+        #    rest = ''
+        #return self.pnames.get(first, first) + rest
+        return self.pnames.get(pname, pname)
 
 class method:
     first_auto_params = {}
@@ -534,9 +545,17 @@ class method:
         self.output.print()
 
     def start(self):
-        self.params = self.get_params()  # list of (pname, iname, sname, exp)
-        self.output.print_args(f"def {self.method_name}(self",
-                               (f"{pname}={exp}" for pname, _, _, exp in self.params))
+        self.params = []  # list of (pname, iname, sname, exp|None), exp is None if in param list
+        self.output.print_head(f"def {self.method_name}(self")
+        for pname, iname, sname, exp in self.get_params():  # list of (pname, iname, sname, exp)
+            if not isinstance(exp, str) or exp[0].isupper() or exp[0] == '"' or exp[0] == "'":
+                arg = f"{pname}={exp}"
+                self.params.append((pname, iname, sname, None))
+            else:
+                arg = f"{pname}=None"
+                self.params.append((pname, iname, sname, exp))
+            self.output.print_arg(arg)
+        self.output.print_tail('):')
 
     def get_first_auto_params(self):
         r'''Returns a new list of (pname, iname, sname, exp)
@@ -561,8 +580,8 @@ class method:
 
     def body(self):
         # e.a.b -> e__a.b
-        for pname, _, sname, _ in self.params:
-            self.output_copy(pname, sname)
+        for pname, _, sname, exp in self.params:
+            self.output_copy(pname, sname, exp)
         # e.a.b -> e__a.b
         # s.a.b -> x.a.b
         if self.trace:
@@ -597,7 +616,7 @@ class init_method(method):
         '''
         return vars.map_pitems(lambda pname, var: (pname, var.iname, var.sname, var.exp))
 
-    def output_copy(self, pname, sname):
+    def output_copy(self, pname, sname, exp):
         if pname == 'placeholders':
             self.output.print(f"{sname} = {pname}")
             for name in self.widget.placeholders:
@@ -614,8 +633,16 @@ class init_method(method):
                   template.substitute(name=name,
                                       width_agg_fn=self.widget.width_agg_fn,
                                       height_agg_fn=self.widget.height_agg_fn))
-        else:
+        elif exp is None:
             self.output.print(f"{sname} = {pname}")
+        else:
+            template = Template("""
+               if $pname is None:
+                   $sname = $exp
+               else:
+                   $sname = $pname
+            """)
+            self.output.print_block(template.substitute(pname=pname, sname=sname, exp=exp))
 
     def gen_computed(self):
         needed = set(self.widget.init_needed())
@@ -648,7 +675,7 @@ class draw_method(method):
     def gen_computed(self):
         self.computed_draw.gen_vars(self.widget.draw_needed(), self, self.trace)
 
-    def output_copy(self, pname, sname):
+    def output_copy(self, pname, sname, exp):  # exp ignored
         template = Template("""
             if $pname is not None:
                 $sname = $pname
@@ -658,7 +685,7 @@ class draw_method(method):
     def end(self):
         self.output.print("if self.trace:")
         self.output.indent()
-        args = ', '.join(f'{{{sname=}}}' for sname in self.appearance.gen_snames())
+        args = ', '.join(f'{{{sname}=}}' for sname in self.appearance.gen_snames())
         self.output.print(f'print(f"{self.widget.name}({{self.name}}).draw: {args}")')
         self.output.deindent()
         if 'draw_before' in self.widget.include:
@@ -687,6 +714,7 @@ class clear_method(method):
 
 
 class widget:
+    skip = False
     element_names = ()     # element names, excluding placeholders
     element_widgets = ()   # widget names, excluding placeholders, used by translate_exp
 
@@ -701,7 +729,7 @@ class widget:
             name = section.__name__
             setattr(self, name, section(self.spec.pop(name, {}), self, trace))
         computed = self.spec.pop('computed', {})
-        for section, trace in (computed_init, False), (computed_draw, False):
+        for section, trace in (computed_init, self.trace_init), (computed_draw, False):
             name = section.__name__
             subname = name[9:]
             #print(f"{self.__class__.__name__}({self.name}).__init__: {name=}, {subname=}")
@@ -872,19 +900,25 @@ class composite(widget):
                   computed_draw_inames.intersection(
                     (f"{name}__{pname}" for pname in widget.draw_params())))
                 init_available = self.init_available_inames()  # set(iname)
-                init_params = (f"{name}__{pname}" for pname in widget.init_params().keys())
+                init_params = [f"{name}__{pname}" for pname in widget.init_params().keys()]
                 params_to_pass = init_available.intersection(init_params)
                 args_to_pass = [f"{my_iname[len(name) + 2:]}={my_iname}" 
                                 for my_iname in params_to_pass]
+                if self.trace_init:
+                    print(f"{self.name}.init:")
+                    print(f"  {init_available=}")
+                    print(f"  {init_params=}")
+                    print(f"  {params_to_pass=}")
+                    print(f"  {args_to_pass=}")
                 name_pname = f"{name}__name"
                 if name_pname not in params_to_pass:
                     args_to_pass.insert(0, f'name="{name}"')
                     if self.trace_init:
                         print(f"added name {name=}, {name_pname=}, {args_to_pass[0]=}")
-                self.computed_init.add_compute(
-                   name,
-                   f"{widget_name}({', '.join(args_to_pass)})"
-                )
+                exp = f"{widget_name}({', '.join(args_to_pass)})"
+                if self.trace_init:
+                    print(f"add_compute({name=}, {exp=}")
+                self.computed_init.add_compute(name, exp)
         self.sub_init()
 
     def sub_init(self):
@@ -988,6 +1022,7 @@ class row(composite):
         self.output.print(f"e_x_pos += {sname}.width")
 
 class specializes(widget):
+    skip = True
     def init(self):
         self.base_widget = self.spec.pop("specializes")
         self.placeholders = self.spec.pop("placeholders", None)
