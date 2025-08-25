@@ -152,9 +152,6 @@ class pos:
     def __copy__(self):
         return self
 
-    def __deepcopy__(self, memo):
-        return self
-
     def __add__(self, i):
         return self.__class__(self.i + i)
 

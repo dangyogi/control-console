@@ -2,59 +2,6 @@
 
 ---
 
-touch:
-    needs:
-        - contains(x, y)
-        - touch(x, y)
-        - move_to(x, y)
-        - release
-
-operation:  # overall operation of program
-    data:
-        read: nothing special
-        write: [who, value]  # who may be None if it's not a listener.
-        listen: who  # may have multiple listeners.  Listener not activated when it writes.
-        examples:
-            cc_param:
-                channel: may be int or channels object
-                param: int
-                value: this is the data
-                to_text: fn to generate text for display
-                listeners:
-                    midi: send CC MIDI command for each channel
-                    display: update display (text or slide position)
-                updaters:
-                    midi: on received CC MIDI command
-                    display: on user input
-            change_spp: sends MIDI STOP & SPP commands
-            stop: sends MIDI STOP command
-            start: sends MIDI START command
-            continue: sends MIDI CONTINUE command
-            channels:
-                values: 0-15
-                multivalued: true
-                humans: add one
-            chord_nums:
-                values: 0-5
-                multivalued: true
-            slur_position:  # factors into CC param
-                values: [start, end]
-                multivalued: true
-            spp:
-                updated_by: MIDI CLOCK
-                read_only: true
-                to_text: fn to generate text for display
-    action:
-        - update display values
-        - change display layout, load_panel (registers for touch), unload_panel (clears touch)
-        - change player CC params
-        - change SPP
-        - stop
-        - start
-        - continue
-
----
-
 # rules for layout, appearance, computed, shortcuts:
 #
 #     - name:
@@ -87,7 +34,7 @@ operation:  # overall operation of program
 # for touch:
 #     touch_width and touch_height are used.  They default to width and height.
 
-module: foobar
+module: shapes
 
 import:
     - import math
@@ -236,13 +183,33 @@ circle:
         args: [x_center, y_middle, radius, color]
     layout:
         diameter: 31  # nice if this is odd, gives integer radius
+
+        # used by touch_buttons:
+        min_touch_radius: 28        # ok even or odd
+        #min_touch_diameter: 57
+        touch: null
     appearance:
         color: WHITE
+
+        # used by touch_buttons:
+        on_color: GREEN    # suggest: RED, GREEN, BLUE
+        off_color: BROWN   # suggest: GRAY, DARKGRAY, BROWN, BLACK
     computed:
         init:
             radius: half(diameter)
             width: diameter
             height: diameter
+            touch_radius: max(radius, min_touch_radius)
+    include:
+        init: |
+            if self.touch is not None:
+                self.touch.attach_widget(self)
+        draw_end: |
+            if self.touch is not None:
+                self.touch.activate()
+        clear: |
+            if self.touch is not None:
+                self.touch.deactivate()
 
 ---
 
@@ -257,19 +224,22 @@ bordered_circle:
     layout:
         diameter: 31
         border_width: 2             # ok even or odd
-        min_touch_radius: 28        # ok even or odd
-        #min_touch_diameter: 57
+        touch: null
     appearance:
-        color: WHITE
         border__color: BLACK
+        color: WHITE
+        on_color: GREEN
+        off_color: BROWN
     shortcuts:
         diameter: border__diameter  # nice if this is odd, gives integer radius
         color: body__color
+        on_color: body__on_color
+        off_color: body__off_color
+        touch: body__touch
     computed:
         init:
             radius: half(border__diameter)
             body__diameter: border__diameter - 2*border_width
-            touch_radius: max(radius, min_touch_radius)
 
 titled:
     #trace_init: true
@@ -313,56 +283,49 @@ boxed:
 
 boxed_titled:
     #trace_init: true
-    template: boxed
-    arguments:
-        body:                      # placeholder name in boxed
-            - titled: titled       # titled body placeholder becomes boxed_titled placeholder
+    specializes: boxed
+    placeholders:
+        body:
+            - titled: titled
     layout:
         title: "title"
+        placeholders: null
+    appearance:
+        color: WHITE
     shortcuts:
         title: titled__title
+        placeholders: titled__placeholders
 
 spp_text:
-    refines: dynamic_text
+    specializes: dynamic_text
     layout:
         max_text: "888-8.8"
     appearance:
+        color: BLACK
         text: "1.1"
 
 spp_display:
-    template: boxed_titled
-    arguments:
+    specializes: boxed_titled
+    placeholders:
         body:
             - spp_text: spp_text
+    layout:
+        title: "title"
+    appearance:
+        color: WHITE
 
 spp_mark:
-    skip: true
-    column:
-        elements:
-            - spp_text: spp_text
-            - gap: vgap
-            - mark: button
-    layout:
-        gap__margin: 3
-
-spp_mark2:
-    skip: true
-    template: boxed_titled
-    arguments:
+    specializes: boxed_titled
+    placeholders:
         body:
             - spp_text: spp_text
             - gap: vgap
             - mark: button
     layout:
+        title: "title"
         gap__margin: 3
-
-spp_boxed_mark:
-    skip: true
-    template: boxed_titled
-    arguments:
-        body:
-            - spp_mark: spp_mark
-    # ...
+    appearance:
+        color: WHITE
 
 ---
 
@@ -473,9 +436,9 @@ slider_touch:
         clear: self.touch.deactivate()
 
 slider:
-    template: boxed_titled # titled body placeholder becomes boxed_titled placeholder
-    arguments:
-        body:                        # placeholder name in boxed_titled
+    specializes: boxed_titled
+    placeholders:
+        body:
             - display: dynamic_text
             - slider_gap: vgap
             - slider: slider_touch

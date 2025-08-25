@@ -126,10 +126,11 @@ def compile(document, output):
             spec = document[name]
             if spec.get('skip', False):
                 continue
+            print()
             print("compiling", name)
             words.append(name)
             spec_copy = spec.copy()
-            for cls in raylib_call, template, refines:
+            for cls in raylib_call, specializes:
                 cls_name = cls.__name__
                 if cls_name in spec_copy:
                     widget = cls(name, spec_copy, output)
@@ -843,7 +844,7 @@ class composite(widget):
     e_y_pos = "getattr(y_pos, self.y_align)(self.height)"
 
     def __init__(self, name, spec, elements, output):
-        print(f"{name}.__init__: {elements=}")
+        #print(f"{name}.__init__: {elements=}")
         self.raw_elements = elements
         super().__init__(name, spec, output)    # calls self.init()
 
@@ -878,7 +879,8 @@ class composite(widget):
                 name_pname = f"{name}__name"
                 if name_pname not in params_to_pass:
                     args_to_pass.insert(0, f'name="{name}"')
-                    print(f"added name {name=}, {name_pname=}, {args_to_pass[0]=}")
+                    if self.trace_init:
+                        print(f"added name {name=}, {name_pname=}, {args_to_pass[0]=}")
                 self.computed_init.add_compute(
                    name,
                    f"{widget_name}({', '.join(args_to_pass)})"
@@ -985,13 +987,13 @@ class row(composite):
     def inc_draw_pos(self, sname):
         self.output.print(f"e_x_pos += {sname}.width")
 
-class refines(widget):
-    def generate_widget(self, template=None):
-        self.output.print(f"# {self.name} refines")
+class specializes(widget):
+    def init(self):
+        self.base_widget = self.spec.pop("specializes")
+        self.placeholders = self.spec.pop("placeholders", None)
 
-class template(widget):
     def generate_widget(self):
-        self.output.print(f"# {self.name} template")
+        self.output.print(f"# {self.name} specializes")
 
 class widget_stub:
     def __init__(self, name, layout=(), appearance=()):

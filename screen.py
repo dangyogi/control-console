@@ -159,10 +159,6 @@ class Screen_class:
             init_fn(self)
         Screen = self
 
-    def __deepcopy__(self, memo):
-        print("Screen.__deepcopy__!!!")
-        return self
-
     def close(self):
         if self.trace:
             print("Screen.close")

@@ -74,9 +74,6 @@ class Exp:
     def __copy__(self):
         return self
 
-    def __deepcopy__(self, memo):
-        return self
-
     def __neg__(self):
         r'''
             >>> -I.foo

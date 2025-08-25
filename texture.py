@@ -35,9 +35,6 @@ class Texture:
         if as_sprite:
             self.sprite = sprite.Sprite(width, height, trace=trace)
 
-    def __deepcopy__(self, memo):
-        raise AssertionError("Texture.__deepcopy__ called!!")
-
     def close(self):
         if self.texture is not None:
             unload_render_texture(self.texture)

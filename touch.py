@@ -27,12 +27,15 @@ class SlotEvent:
                               # resolution.
 
 import screen
+import traffic_cop
 
 
 class touch:
-    def __init__(self, name, trace=False):
+    def __init__(self, name, command, trace=False):
         self.trace = trace
         self.name = name
+        self.command = command
+        self.active = False
 
     def __repr__(self):
         return f"<{self.__class__.__name__}({self.name})>"
@@ -42,9 +45,11 @@ class touch:
 
     def activate(self):                # called after draws, so x, y positions are now known
         screen.Screen.Touch_dispatcher.register(self)
+        self.active = True
 
     def deactivate(self):
         screen.Screen.Touch_dispatcher.unregister(self)
+        self.active = False
 
     def touch(self, x, y):
         return False
@@ -94,10 +99,9 @@ class touch_rect(touch):
 
 class touch_slider(touch_rect):
     def __init__(self, name, display, scale_fn, command, trace=False):
-        super().__init__(name, trace)
+        super().__init__(name, command, trace)
         self.display = display
         self.scale_fn = scale_fn
-        self.command = command
 
     def attach_widget(self, widget):
         super().attach_widget(widget)
@@ -110,7 +114,7 @@ class touch_slider(touch_rect):
         self.slide_height = self.widget.slide_height
         self.knob = widget.knob
 
-    def activate(self):
+    def activate(self):    # FIX: move knob to value, if not low_value
         self.slide_y_top_C = self.widget.slide_y_top_C
         self.slide_y_bottom_C = self.widget.slide_y_bottom_C
         self.knob_contains = rect_contains(self.widget.knob)
@@ -178,16 +182,22 @@ class touch_slider(touch_rect):
             self.value = new_value
             #if self.command is not None:
             #    self.command.value_change(self.value)
-            self.draw_knob()
-            self.update_text()
-            return True
+            if self.active:
+                self.draw_knob()
+                self.update_text()
+                return True
         return False
 
 
+class touch_button(touch):
+    def __init__(self, name, command, trace=False):
+        super().__init__(name, command, trace)
+        self.is_on = False
 
-class touch_circle(touch):
     def activate(self):
         self.width = self.widget.width
+        self.on_color = self.widget.on_color
+        self.off_color = self.widget.off_color
         self.touch_radius = self.widget.touch_radius
         x_pos = self.widget.x_pos
         self.x_center = x_pos.C(self.width).i
@@ -199,4 +209,91 @@ class touch_circle(touch):
         dist = math.sqrt((x - self.x_center)**2 + (y - self.y_middle)**2)
         return dist <= self.touch_radius
 
+    def show_on(self):
+        self.widget.draw(color=self.on_color)
+        return True
 
+    def show_off(self):
+        self.widget.draw(color=self.off_color)
+        return True
+
+class touch_toggle(touch_button):
+    def touch(self, x, y):
+        if self.is_on:
+            return self.turn_off()
+        return self.turn_on()
+
+    def turn_on(self):
+        if not self.is_on:
+            self.is_on = True
+            self.show_on()
+            if self.command is not None:
+                self.command.value_change(self.is_on)
+            return True
+        return False
+
+    def turn_off(self):
+        if self.is_on:
+            self.is_on = False
+            self.show_off()
+            if self.command is not None:
+                self.command.value_change(self.is_on)
+            return True
+        return False
+
+class touch_one_shot(touch_button):
+    def __init__(self, name, command, blink_time=0.3, trace=False):
+        super().__init__(name, command, trace)
+        self.blink_time = blink_time
+        #self.is_on not used
+
+    def touch(self, x, y):
+        self.show_on()
+        if self.command is not None:
+            self.command.act()
+        traffic_cop.set_alarm(self.blink_time, self.show_off)
+        return True
+
+class touch_start_stop(touch_button):
+    def touch(self, x, y):
+        self.show_on()
+        if self.command is not None:
+            self.command.start()
+        return True
+
+    def release(self, x, y):
+        self.show_off()
+        if self.command is not None:
+            self.command.stop()
+        return True
+
+class touch_radio(touch_toggle):
+    def __init__(self, name, command, radio_control, trace=False):
+        super().__init__(name, command, trace)
+        self.radio_control = radio_control
+
+    def turn_on(self):
+        if super().turn_on():
+            self.radio_control.on(self)
+            return True
+        return False
+
+    def turn_off(self, tell_radio=True):
+        if super().turn_off():
+            if tell_radio:
+                self.radio_control.off(self)
+            return True
+        return False
+
+class radio_control:
+    def __init__(self):
+        self.on_button = None
+
+    def on(self, button):
+        if self.on_button is not None:
+            self.on_button.turn_off(tell_radio=False)
+        self.on_button = button
+
+    def off(self, button):
+        if self.on_button == button:
+            self.on_button = None

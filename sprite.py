@@ -29,13 +29,6 @@ class Sprite:
         self.dynamic_capture = dynamic_capture
         self.trace = trace
 
-    def __deepcopy__(self, memo):
-        texture = self.saved_texture.texture.texture
-        ans = Sprite(texture.width, texture.height, self.dynamic_capture, self.trace)
-        if self.trace:
-            print(f"{self}.__deepcopy__ -> {ans=}")
-        return ans
-
     def close(self):
         if self.saved_texture is not None:
             self.saved_texture.close()
