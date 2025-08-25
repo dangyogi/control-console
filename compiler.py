@@ -128,17 +128,23 @@ def compile(document, output):
                 continue
             print("compiling", name)
             words.append(name)
+            spec_copy = spec.copy()
             for cls in raylib_call, template, refines:
                 cls_name = cls.__name__
-                if cls_name in spec:
-                    widget = cls(name, spec, output)
+                if cls_name in spec_copy:
+                    widget = cls(name, spec_copy, output)
                     break
             else:
                 for cls in stacked, column, row:
                     cls_name = cls.__name__
-                    if cls_name in spec:
+                    if cls_name in spec_copy:
                         #print(f"compile {name=}, {cls_name=}, {spec[cls_name]=}")
-                        widget = cls(name, spec, spec[cls_name]['elements'], output)
+                        cls_section = spec_copy.pop(cls_name)
+                        elements = cls_section.pop('elements')
+                        if cls_section:
+                            print(f"unknown keys in {cls_name} section for {name}, "
+                                  f"{tuple(cls_section.keys())}")
+                        widget = cls(name, spec_copy, elements, output)
                         break
                 else:
                     raise ValueError(f"compile: unknown spec type for {name=}")
@@ -626,7 +632,7 @@ class init_method(method):
         self.output.print(f'print(f"{self.widget.name}({{self.name}}).__init__: {args}")')
         self.output.deindent()
         if 'init' in self.widget.include:
-            self.output.print_block(self.widget.include['init'])
+            self.output.print_block(self.widget.include.pop('init'))
 
 class draw_method(method):
     method_name = 'draw'
@@ -655,10 +661,10 @@ class draw_method(method):
         self.output.print(f'print(f"{self.widget.name}({{self.name}}).draw: {args}")')
         self.output.deindent()
         if 'draw_before' in self.widget.include:
-            self.output.print_block(self.widget.include['draw_before'])
+            self.output.print_block(self.widget.include.pop('draw_before'))
         self.widget.output_draw_calls(self)
         if 'draw_end' in self.widget.include:
-            self.output.print_block(self.widget.include['draw_end'])
+            self.output.print_block(self.widget.include.pop('draw_end'))
 
 class clear_method(method):
     method_name = 'clear'
@@ -673,7 +679,7 @@ class clear_method(method):
     def end(self):
         added = self.widget.clear_calls()
         if 'clear' in self.widget.include:
-            self.output.print_block(self.widget.include['clear'])
+            self.output.print_block(self.widget.include.pop('clear'))
             added = True
         if not added:
             self.output.print("pass")
@@ -684,21 +690,23 @@ class widget:
     element_widgets = ()   # widget names, excluding placeholders, used by translate_exp
 
     def __init__(self, name, spec, output):
-        self.trace_init = spec.get('trace_init', False)
-        self.trace_draw = spec.get('trace_draw', False)
-        self.name = name
         self.spec = spec
+        self.trace_init = self.spec.pop('trace_init', False)
+        self.trace_draw = self.spec.pop('trace_draw', False)
+        self.name = name
         self.output = output
-        self.include = spec.get('include', {})
+        self.include = self.spec.pop('include', {})
         for section, trace in (shortcuts, False), (layout, False), (appearance, False):
             name = section.__name__
-            setattr(self, name, section(self.spec.get(name, {}), self, trace))
-        computed = self.spec.get('computed', {})
+            setattr(self, name, section(self.spec.pop(name, {}), self, trace))
+        computed = self.spec.pop('computed', {})
         for section, trace in (computed_init, False), (computed_draw, False):
             name = section.__name__
             subname = name[9:]
             #print(f"{self.__class__.__name__}({self.name}).__init__: {name=}, {subname=}")
-            setattr(self, name, section(computed.get(subname, {}), self, trace))
+            setattr(self, name, section(computed.pop(subname, {}), self, trace))
+        if computed:
+            print("unknown keys in 'computed' spec for", self.name, tuple(self.computed.keys()))
         self.init_method = init_method(self, self.trace_init)
         self.draw_method = draw_method(self, self.trace_draw)
         self.clear_method = clear_method(self)
@@ -710,6 +718,8 @@ class widget:
             print(f"widget({self.name}).__init__: {self.init_params()=}")
         if self.trace_draw:
             print(f"widget({self.name}).__init__: {self.draw_params()=}")
+        if self.spec:
+            print("unknown keys in spec for", self.name, tuple(self.spec.keys()))
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.name}>"
@@ -786,6 +796,8 @@ class widget:
         self.clear_method.gen_method()
 
         self.end_class()
+        if self.include:
+            print("unknown keys in 'include' spec for", self.name, tuple(self.include.keys()))
 
     def start_class(self):
         self.output.print(f"class {self.name}:")
@@ -810,7 +822,7 @@ class widget:
 
 class raylib_call(widget):
     def init(self):
-        raylib_call = self.spec['raylib_call']
+        raylib_call = self.spec.pop('raylib_call')
         self.raylib_fn = raylib_call['name']    # something defined in pyray (raylib) library
         self.raylib_args = raylib_call['args']  # these are inames
 

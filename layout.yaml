@@ -270,9 +270,6 @@ bordered_circle:
             radius: half(border__diameter)
             body__diameter: border__diameter - 2*border_width
             touch_radius: max(radius, min_touch_radius)
-    contains(x, y): |4
-        dist = math.sqrt((x - x_center)**2 + (y - y_middle)**2)
-        return dist <= self.touch_radius
 
 titled:
     #trace_init: true
@@ -305,7 +302,7 @@ boxed:
     appearance:
         border__color: BLACK
         color: WHITE
-    shortcut:
+    shortcuts:
         color: background__color
     computed:
         init:
