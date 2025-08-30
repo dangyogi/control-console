@@ -53,25 +53,13 @@ def compile(document, output):
             print()
             print("compiling", name)
             spec_copy = spec.copy()
-            for cls in raylib_call, specializes:
+            for cls in Widget_types:
                 cls_name = cls.__name__
                 if cls_name in spec_copy:
                     widget = cls(name, spec_copy, output)
                     break
             else:
-                for cls in stacked, column, row:
-                    cls_name = cls.__name__
-                    if cls_name in spec_copy:
-                        #print(f"compile {name=}, {cls_name=}, {spec[cls_name]=}")
-                        cls_section = spec_copy.pop(cls_name)
-                        elements = cls_section.pop('elements')
-                        if cls_section:
-                            print(f"unknown keys in {cls_name} section for {name}, "
-                                  f"{tuple(cls_section.keys())}")
-                        widget = cls(name, spec_copy, elements, output)
-                        break
-                else:
-                    raise ValueError(f"compile: unknown spec type for {name=}")
+                raise ValueError(f"compile: unknown spec type for {name=}")
             widget.generate_widget()
             if not widget.skip:
                 words.append(name)

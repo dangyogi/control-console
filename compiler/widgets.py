@@ -8,7 +8,7 @@ from vars import *
 from variable import *
 
 
-__all__ = "raylib_call stacked column row specializes widget_stub Widgets".split()
+__all__ = "raylib_call stacked column row specializes widget_stub Widget_types Widgets".split()
 
 
 Widgets = {}
@@ -187,9 +187,14 @@ class composite(widget):
     e_x_pos = "getattr(x_pos, self.x_align)(self.width)"
     e_y_pos = "getattr(y_pos, self.y_align)(self.height)"
 
-    def __init__(self, name, spec, elements, output):
+    def __init__(self, name, spec, output):
         #print(f"{name}.__init__: {elements=}")
-        self.raw_elements = elements
+        cls_name = self.__class__.__name__
+        cls_section = spec.pop(cls_name)
+        self.raw_elements = cls_section.pop('elements')
+        if cls_section:
+            print(f"unknown keys in {cls_name} section for {name}, "
+                  f"{tuple(cls_section.keys())}")
         super().__init__(name, spec, output)    # calls self.init()
 
     def init(self):
@@ -416,3 +421,4 @@ class widget_stub:
     def draw_params(self):
         return []
 
+Widget_types = (raylib_call, stacked, column, row, specializes)
