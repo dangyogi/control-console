@@ -6,10 +6,11 @@
 #
 #     - name:
 #       - no self. prefix
-#       - use shortcut name rather than real name
+#       - use shortcut name rather than expanded name
 #     - in exp:
 #       - don't use self. prefixes 
-#       - use obj.attr rather than obj__attr
+#       - use child.attr to lookup an attr in child after it's created, and child__attr to get a
+#         copy of the value sent to the child ctor
 #       - can use shortcut names
 
 
@@ -86,14 +87,14 @@ include: |
 
     class vgap(gap):
         def __init__(self, margin, name="a vgap"):
-            super.__init__(self, name, height=margin)
+            super().__init__(name, height=margin)
 
         def __repr__(self):
             return f"<vgap({self.name})={self.height}>"
 
     class hgap(gap):
         def __init__(self, margin, name="an hgap"):
-            super.__init__(self, name, width=margin)
+            super().__init__(name, width=margin)
 
         def __repr__(self):
             return f"<hgap({self.name})={self.width}>"
@@ -111,7 +112,7 @@ static_text:
     #trace_draw: true
     raylib_call:
         name: draw_text_ex
-        args: [font, str_text, position, size, spacing, color]
+        args: [font, str(text), (x_left.i, y_top.i), size, spacing, color]
     layout:
         size: 20
         spacing: 0
@@ -126,16 +127,12 @@ static_text:
             msize: measure_text_ex(font, str_text, size, spacing)
             width: int(math.ceil(msize.x))
             height: int(math.ceil(msize.y))
-            str_text: str(text)
-        draw:
-           #cooked_text: str_text.format_map(as_dict(self))
-            position: x_left, y_top
 
 dynamic_text:
     #trace_draw: true
     raylib_call:
         name: draw_text_ex
-        args: [font, str_text, position, size, spacing, color]
+        args: [font, str(text), (x_left.i, y_top.i), size, spacing, color]
     layout:
         size: 20
         spacing: 0
@@ -153,11 +150,9 @@ dynamic_text:
             height: int(math.ceil(msize.y))
         draw:
            #cooked_text: str_text.format_map(as_dict(self))
-            position: x_left, y_top
             draw_msize: measure_text_ex(font, text, size, spacing)
             draw_width: int(math.ceil(draw_msize.x))
             draw_height: int(math.ceil(draw_msize.y))
-            str_text: str(text)
     include:
         init: |
             self.sprite = sprite.Sprite(self.width, self.height, trace=self.trace)
@@ -172,7 +167,7 @@ rect:
         name: draw_rectangle
 
         # nice if width and height are odd, gives integer center
-        args: [x_left, y_top, width, height, color]
+        args: [x_left.i, y_top.i, width, height, color]
     layout:
         width: null
         height: null
@@ -182,7 +177,7 @@ rect:
 circle:
     raylib_call:
         name: draw_circle
-        args: [x_center, y_middle, radius, color]
+        args: [x_center.i, y_middle.i, radius, color]
     layout:
         diameter: 31  # nice if this is odd, gives integer radius
 
@@ -251,7 +246,7 @@ titled:
     column:
         elements:
             - top: vgap
-            - title: static_text
+            - title_text: static_text
             - middle: vgap
             - body: placeholder
             - bottom: vgap
@@ -261,7 +256,7 @@ titled:
         middle__margin: 3  # between title and body
         bottom__margin: 7  # below body
     shortcuts:
-        title: title__text
+        title: title_text__text
 
 boxed:
     #trace_init: true
@@ -448,6 +443,7 @@ slider_touch:
         clear: self.touch.deactivate()
 
 slider:
+    trace_init: true
     specializes: boxed_titled
     placeholders:
         body:

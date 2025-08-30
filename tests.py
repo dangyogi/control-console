@@ -38,8 +38,10 @@ def rect_as_sprite():
     for x in range(100, 1701, 100):
         #print("drawing x", x)
         with screen.Screen.update():
-            r1.draw(x_pos=S(x), y_pos=E(300), border=border, border_width=border_width)
-            r2.draw(x_pos=S(x), y_pos=E(700), border=border, border_width=border_width)
+            #r1.draw(x_pos=S(x), y_pos=E(300), border=border, border_width=border_width)
+            #r2.draw(x_pos=S(x), y_pos=E(700), border=border, border_width=border_width)
+            r1.draw(x_pos=S(x), y_pos=E(300))
+            r2.draw(x_pos=S(x), y_pos=E(700))
         border = True
         border_width += 1
         traffic_cop.run(1)
@@ -114,14 +116,14 @@ def knob():
         x_pos = C(900)
         y_pos = C(500)
         vknob.draw(x_pos=x_pos, y_pos=y_pos)
-    traffic_cop.run(1)
+    traffic_cop.run(2)
 
-def slider(profile=False):
+def slider_test(profile=False):
     if profile:
         import cProfile
         import time
         pr = cProfile.Profile(time.perf_counter)
-    sc = Slider_control.refine(label="testing...")
+    sc = slider(title="testing...")
     print(f"{sc.width=}, {sc.height=}")
     midi_io.Trace = True
     ControlChange(0, 0x10, Channels(1,3,5), sc.guts.slider, trace=True)
@@ -190,7 +192,7 @@ if __name__ == "__main__":
             case "lines": lines()
             case "scales": scales()
             case "knob": knob()
-            case "slider": slider(args.profile)
+            case "slider": slider_test(args.profile)
             case "buttons": buttons()
             case None:
                 group()
@@ -211,7 +213,7 @@ if __name__ == "__main__":
                 knob()
                 time.sleep(2)
                 screen.Screen.clear()
-                slider()
+                slider_test()
                 time.sleep(2)
                 screen.Screen.clear()
                 buttons()
