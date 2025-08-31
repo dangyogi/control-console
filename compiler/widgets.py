@@ -14,48 +14,68 @@ __all__ = "raylib_call stacked column row specializes widget_stub Widget_types W
 Widgets = {}
 
 class widget:
+    r'''A widget only has two external steps:
+
+        1. call to __init__
+        2. call to it's generate_widget
+
+    These are both done before compiling the next widget in the yaml file.
+    '''
     skip = False
     element_names = ()     # element names, excluding placeholders
     element_widgets = ()   # widget names, excluding placeholders, used by translate_exp
-    computed_vars = ((computed_init, False), (computed_draw, False))
+    vars = (shortcuts, layout, appearance)
+    computed_vars = (computed_init, computed_draw)
+    methods = (init_method, draw_method, clear_method)
 
-    def __init__(self, name, spec, output):
-        self.spec = spec
-        self.trace_init = self.spec.pop('trace_init', False)
-        self.trace_draw = self.spec.pop('trace_draw', False)
+    def __init__(self, name, spec, output, trace):
         self.name = name
+        self.spec = spec
         self.output = output
+
+        # pop this regardless of trace...
+        self.trace = self.spec.pop('trace', ())
+
+        if not trace:
+            self.trace = ()
+
         self.include = self.spec.pop('include', {})
 
         # create helpers
-        for section, trace in (shortcuts, False), (layout, False), (appearance, False):
+        if shortcuts not in self.vars:
+            self.shortcuts = shortcuts({}, self)
+        for section in self.vars:
             name = section.name
-            setattr(self, name, section(self.spec.pop(name, {}), self, trace))
+            setattr(self, name, section(self.spec.pop(name, {}), self, name in self.trace))
         computed = self.spec.pop('computed', {})
-        for section, trace in self.computed_vars:
+        for section in self.computed_vars:
             name = section.name
             subname = name[9:]
             #print(f"{self.__class__.__name__}({self.name}).__init__: {name=}, {subname=}")
-            setattr(self, name, section(computed.pop(subname, {}), self, trace))
+            setattr(self, name, section(computed.pop(subname, {}), self, name in self.trace))
         if computed:
             print("unknown keys in 'computed' spec for", self.name, tuple(self.computed.keys()))
+
+        for method in self.methods:
+            name = method.__name__
+            setattr(self, name, method(self, name in self.trace))
 
         Widgets[self.name] = self
 
         # Called before computed_X helpers are fully initialized
-        # creates methods, may override assignment to Widgets and add_compute to computed_init/draw...
+        # may add_compute to computed_init/draw...
         self.init()
 
-        for section, _ in self.computed_vars:
+        for section in self.computed_vars:
             section_name = section.name
             getattr(self, section_name).init2()
 
         # after all helpers are fully initialized
         self.init2()
 
-        if self.trace_init:
+        if "show_init_params" in self.trace:
             print(f"widget({self.name}).__init__: {self.init_params()=}")
-        if self.trace_draw:
+        if "show_draw_params" in self.trace:
             print(f"widget({self.name}).__init__: {self.draw_params()=}")
         if self.spec:
             print("unknown keys in spec for", self.name, tuple(self.spec.keys()))
@@ -64,9 +84,7 @@ class widget:
         return f"<{self.__class__.__name__}: {self.name}>"
 
     def init(self):
-        self.init_method = init_method(self, self.trace_init)
-        self.draw_method = draw_method(self, self.trace_draw)
-        self.clear_method = clear_method(self)
+        pass
 
     def init2(self):
         pass
@@ -165,11 +183,14 @@ class widget:
         return False
 
 class raylib_call(widget):
+    vars = (layout, appearance)
     def init(self):
         super().init()
         raylib_call = self.spec.pop('raylib_call')
         self.raylib_fn = raylib_call['name']    # something defined in pyray (raylib) library
         self.raylib_args = raylib_call['args']  # these are inames
+        if raylib_call:
+            print(f"unknown keys in 'raylib_call' section for {self.name}, {tuple(raylib_call.keys())}")
 
     def output_draw_calls(self, method):
         self.output.print_head(f"{self.raylib_fn}(", first_comma=False)
@@ -187,7 +208,7 @@ class composite(widget):
     e_x_pos = "getattr(x_pos, self.x_align)(self.width)"
     e_y_pos = "getattr(y_pos, self.y_align)(self.height)"
 
-    def __init__(self, name, spec, output):
+    def __init__(self, name, spec, output, trace):
         #print(f"{name}.__init__: {elements=}")
         cls_name = self.__class__.__name__
         cls_section = spec.pop(cls_name)
@@ -195,7 +216,7 @@ class composite(widget):
         if cls_section:
             print(f"unknown keys in {cls_name} section for {name}, "
                   f"{tuple(cls_section.keys())}")
-        super().__init__(name, spec, output)    # calls self.init()
+        super().__init__(name, spec, output, trace)    # calls self.init()
 
     def init(self):
         r'''Called after everything else is initialized in widget.
@@ -233,7 +254,7 @@ class composite(widget):
             params_to_pass = init_available.intersection(init_params)
             args_to_pass = [f"{my_iname[len(name) + 2:]}={my_iname}" 
                             for my_iname in params_to_pass]
-            if self.trace_init:
+            if "dump_init" in self.trace:
                 print(f"{self.name}.init:")
                 print(f"  {init_available=}")
                 print(f"  {init_params=}")
@@ -242,10 +263,10 @@ class composite(widget):
             name_pname = f"{name}__name"
             if name_pname not in params_to_pass:
                 args_to_pass.insert(0, f'name="{name}"')
-                if self.trace_init:
+                if "trace_names" in self.trace:
                     print(f"added name {name=}, {name_pname=}, {args_to_pass[0]=}")
             exp = f"{widget_name}({', '.join(args_to_pass)})"
-            if self.trace_init:
+            if "add_compute" in self.trace:
                 print(f"add_compute({name=}, {exp=}")
             self.computed_init.add_compute(name, exp)
         self.sub_init()
@@ -351,13 +372,14 @@ class row(composite):
         self.output.print(f"e_x_pos += {sname}.width")
 
 class specializes(widget):
-    computed_vars = ((computed_specialize, True),)
+    computed_vars = (computed_specialize,)
+    methods = (specialize_fn,)
     #skip = True
 
     def init(self):
         self.base_widget = self.spec.pop("specializes")
         self.placeholders = self.spec.pop("placeholders", None)
-        self.init_method = specialize_fn(self, self.trace_init)
+        self.init_method = specialize_fn(self, "specialize_fn" in self.trace)
         if self.placeholders is not None:
             second_pass = []
             for placeholder_name, elements in self.placeholders.items():
@@ -400,7 +422,7 @@ class specializes(widget):
         init_params = [f'{prefix}{name}' for name in widget.init_params().keys()]  # pnames
         args.extend([f'{name[len(prefix):]}={self.shortcuts.desubstitute(name)}'
                      for name in available_names.intersection(init_params)])
-        if self.trace_init:
+        if "widget_exp" in self.trace:
             print(f"{self.name}.widget_exp({widget_name=}):")
             print(f"  {available_names=}")
             print(f"  {init_params=}")

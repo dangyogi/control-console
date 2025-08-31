@@ -109,7 +109,6 @@ add_to_all: [Fonts, Font_names, vgap, hgap]
 
 
 static_text:
-    #trace_draw: true
     raylib_call:
         name: draw_text_ex
         args: [font, str(text), (x_left.i, y_top.i), size, spacing, color]
@@ -129,7 +128,6 @@ static_text:
             height: int(math.ceil(msize.y))
 
 dynamic_text:
-    #trace_draw: true
     raylib_call:
         name: draw_text_ex
         args: [font, str(text), (x_left.i, y_top.i), size, spacing, color]
@@ -162,7 +160,6 @@ dynamic_text:
             self.sprite.reset()
 
 rect:
-    #trace_init: true
     raylib_call:
         name: draw_rectangle
 
@@ -217,7 +214,6 @@ import:
     - from shapes import *
 
 bordered_circle:
-    #trace_init: true
     stacked:
         elements:
             - border: circle
@@ -242,7 +238,6 @@ bordered_circle:
             body__diameter: border__diameter - 2*border_width
 
 titled:
-    #trace_init: true
     column:
         elements:
             - top: vgap
@@ -259,7 +254,6 @@ titled:
         title: title_text__text
 
 boxed:
-    #trace_init: true
     stacked:
         elements:
             - border: rect
@@ -282,7 +276,6 @@ boxed:
             background__height: body__height + 2*vert_margin
 
 boxed_titled:
-    #trace_init: true
     specializes: boxed
     placeholders:
         body:
@@ -443,7 +436,6 @@ slider_touch:
         clear: self.touch.deactivate()
 
 slider:
-    trace_init: true
     specializes: boxed_titled
     placeholders:
         body:
