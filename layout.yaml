@@ -123,7 +123,7 @@ static_text:
     computed:
         init:
             font: Fonts[2 * sans + bold]
-            msize: measure_text_ex(font, str_text, size, spacing)
+            msize: measure_text_ex(font, str(text), size, spacing)
             width: int(math.ceil(msize.x))
             height: int(math.ceil(msize.y))
 
