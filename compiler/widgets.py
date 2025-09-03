@@ -28,6 +28,8 @@ class widget:
     vars = (shortcuts, layout, appearance)
     computed_vars = (computed_init, computed_draw)
     methods = (init_method, draw_method, clear_method)
+    use_ename = True
+    use_self = True
 
     def __init__(self, name, spec, output, trace):
         r'''
@@ -107,6 +109,13 @@ class widget:
             args_dict[pname] = avail_param.sname
             if avail_param.is_computed:
                 needs.add(avail_param.ename)
+        if "create_widget_args" in self.trace:
+            print(f"widget({self.name}).create_widget_args(method={method.name}, {widget_name=}, "
+                  f"{prefix=}, {args=}):")
+            print(f"  {init_params=}")
+            print(f"  {avail_params=}")
+            print(f"  {args_dict=}")
+            print(f"  {needs=}")
         return [f"{name}={exp}" for name, exp in args_dict.items()], needs
 
     def init_params(self):
@@ -161,7 +170,7 @@ class widget:
 
         template = Template("""
             def __repr__(self):
-                return f"<$name {self.name} @ {self.id()}>"
+                return f"<$name {self.name} @ {id(self)}>"
 
         """)
         self.output.print_block(template.substitute(name=self.name))
@@ -203,17 +212,18 @@ class raylib_call(widget):
 
     def output_draw_calls(self, method):
         self.output.print_head(f"{self.raylib_fn}(", first_comma=False)
-        for variable in self.raylib_args.args:
+        for variable in self.raylib_args.gen_variables():
             self.output.print_arg(variable.exp)
         self.output.print_tail(")")
 
     def draw_needed(self):
-        self.raylib_args.init(self.draw_method)
-        return self.raylib_args.get_needs()
+        needs = set()
+        self.raylib_args.init(self.draw_method, needs)
+        return needs
 
 class composite(widget):
-    e_x_pos = "getattr(x_pos, self.x_align)(self.width)"
-    e_y_pos = "getattr(y_pos, self.y_align)(self.height)"
+    e_x_pos = "getattr(self.x_pos, self.x_align)(self.width)"
+    e_y_pos = "getattr(self.y_pos, self.y_align)(self.height)"
 
     def __init__(self, name, spec, output, trace):
         #print(f"{name}.__init__: {elements=}")
@@ -356,6 +366,8 @@ class row(composite):
 class specializes(widget):
     computed_vars = (computed_specialize,)
     methods = (specialize_fn,)
+    use_self = False
+    use_ename = False
     #skip = True
 
     def init(self):
@@ -375,7 +387,7 @@ class specializes(widget):
             print("unknown keys in 'include' spec for", self.name, tuple(self.include.keys()))
 
     def init_calls(self):
-        widget_args = []
+        widget_args = ["name=name"]
         if self.placeholders is not None:
             #placeholders_arg = dict(
             #    body=[dict(name: element)],

@@ -276,6 +276,9 @@ boxed:
             background__height: body__height + 2*vert_margin
 
 boxed_titled:
+    trace:
+        - show_init_params
+        - create_widget_args
     specializes: boxed
     placeholders:
         body:
@@ -451,10 +454,10 @@ slider:
         slider_gap__margin: 5
         command: null
     shortcuts:
-        low_value: slider.low_value
-        high_value: slider.high_value
+        low_value: slider__low_value
+        high_value: slider__high_value
         tick: slider.tick
-        scale_fn: slider.scale_fn
+        scale_fn: slider__scale_fn
     computed:
         init:
             display__max_text: longer_str(scale_fn(low_value), scale_fn(high_value))

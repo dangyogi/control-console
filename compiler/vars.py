@@ -10,7 +10,6 @@ __all__ = "layout appearance computed_init computed_specialize computed_draw " \
 
 class base_vars:
     use_ename = True  # use ename for sname base, else yaml name
-    use_self = True   # add "self." for sname
     added = ()
 
     def __init__(self, widget, trace):
@@ -75,7 +74,6 @@ class computed_init(computed, vars):
 
 class computed_specialize(computed_init):
     use_ename = False
-    use_self = False
 
 class computed_draw(computed, vars):
     name = "computed_draw"
@@ -113,19 +111,17 @@ class shortcuts:
     def desubstitute(self, sname):
         return self.snames.get(sname, sname)
 
-class raylib_args(computed):
+class raylib_args(base_vars):
     use_ename = False
-    use_self = False
-    variable_class = computed_exp
+    variable_class = raylib_arg
 
     def __init__(self, args, widget, trace):
         super().__init__(widget, trace)
-        self.args = []   # list of computed_exp variables with dummy names
+        self.needs = set()
         for i, exp in enumerate(args, 1):
             self.add_var(f"_p{i}", exp)
 
-    def get_needs(self):
-        needs = set()
+    def init(self, method, needs):
         for variable in self.gen_variables():
-            needs.update(variable.needs)
-        return needs
+            variable.init(method, needs)
+

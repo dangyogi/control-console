@@ -11,8 +11,8 @@ __all__ = "init_method specialize_fn draw_method clear_method".split()
 
 class method:
     first_auto_params = ()
+    computed_vars_name = None
     widget_attrs = 'layout appearance computed_init computed_draw output'.split()
-    self_arg = "self"
 
     def __init__(self, widget, trace):
         self.trace = trace
@@ -33,8 +33,10 @@ class method:
         self.output.print()
 
     def start(self):
-        self.output.print_head(f"def {self.method_name}({self.self_arg}",
-                               first_comma=bool(self.self_arg))
+        if self.widget.use_self:
+            self.output.print_head(f"def {self.method_name}(self", first_comma=True)
+        else:
+            self.output.print_head(f"def {self.method_name}(", first_comma=False)
         for variable in self.gen_params():
             self.output.print_arg(variable.as_param())
         self.output.print_tail('):')
@@ -68,6 +70,20 @@ class method:
         r'''Returns an empty list (of variables)
         '''
         return []
+
+    def load_computed(self, variable):
+        self.output.print(f"{variable.sname} = {variable.exp}")
+
+    def load_computed_param(self, variable):
+        template = Template("""
+           if $pname is not None:
+               $sname = $pname
+           else:
+               $sname = $exp
+        """)
+        self.output.print_block(template.substitute(pname=variable.pname,
+                                                    sname=variable.sname,
+                                                    exp=variable.exp))
 
     def available_variables(self):
         for vars in self.available_vars:
@@ -128,20 +144,6 @@ class init_method(method):
                                       width_agg_fn=self.widget.width_agg_fn,
                                       height_agg_fn=self.widget.height_agg_fn))
 
-    def load_computed(self, variable):
-        self.output.print(f"{variable.sname} = {variable.exp}")
-
-    def load_computed_param(self, variable):
-        template = Template("""
-           if $pname is not None:
-               $sname = $pname
-           else:
-               $sname = $exp
-        """)
-        self.output.print_block(template.substitute(pname=variable.pname,
-                                                    sname=variable.sname,
-                                                    exp=variable.exp))
-
     def gen_computed(self):
         self.computed_init.init(self)
 
@@ -153,9 +155,11 @@ class init_method(method):
 
     def end(self):
         self.widget.init_calls()
-        self.output.print("if trace:")
+
+        # FIX: what makes sense here?
+        self.output.print("if self.trace:")
         self.output.indent()
-        args = ', '.join(f'{{{ename}=}}' for ename in self.appearance.gen_names())
+        args = ', '.join(f'{{{variable.sname}=}}' for variable in self.appearance.gen_variables())
         self.output.print(f'print(f"{self.widget.name}({{self.name}}).__init__: {args}")')
         self.output.deindent()
         if 'init' in self.widget.include:
@@ -163,7 +167,6 @@ class init_method(method):
 
 class specialize_fn(init_method):
     widget_attrs = 'layout appearance computed_init output'.split()
-    self_arg = ""
 
     def __init__(self, widget, trace):
         super().__init__(widget, trace)
@@ -176,7 +179,7 @@ class specialize_fn(init_method):
         return [pseudo_variable(pname, pname, pname, exp) for pname, exp in params]
 
     def load_param(self, variable):
-        self.output.print(f"specialize_fn.load_param({variable.pname=}) FYI: called")
+        pass
         ''' FIX
         if exp is not None:
             template = Template("""
@@ -195,6 +198,7 @@ class draw_method(method):
     first_auto_params = (('x_pos', None), ('y_pos', None))
     param_vars = 'appearance',
     available_vars = 'appearance', 'computed_draw'
+    computed_vars_name = 'computed_draw'
 
     def as_params(self, vars):
         r'''Returns a list of pseudo_variables copied from vars with exp set to None.
