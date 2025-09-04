@@ -30,22 +30,59 @@ def group():
             x_pos += widget.width
     traffic_cop.run(2)
 
-def rect_as_sprite():
-    r1 = rect(height=80, width=200)
-    r2 = rect(height=200, width=80)
-    border = False
-    border_width = 0
-    for x in range(100, 1701, 100):
+def rect_borders():
+    inner = rect(height=425, width=61, color=LIGHTGRAY)
+    t_placeholders = dict(body=[dict(inner=inner)])
+    border_width = 1
+    # screen: width=1920, height=1080
+    for x in range(30, 1758, 140):  # 12 iterations
         #print("drawing x", x)
+
+        top_margin = 5
+        middle_margin = 4
+        bottom_margin = 7
+
+        # missing horz/vert_margin (both border_width)
+        bt = boxed_titled(title=f"width={border_width}", placeholders=t_placeholders,
+                          border_width=border_width,
+                          top_margin=top_margin, middle_margin=middle_margin,
+                          bottom_margin=bottom_margin)
+
+        print(f"{bt.width=}, {bt.height=}")   # width: 77-136, height: 465-513
+
         with screen.Screen.update():
-            #r1.draw(x_pos=S(x), y_pos=E(300), border=border, border_width=border_width)
-            #r2.draw(x_pos=S(x), y_pos=E(700), border=border, border_width=border_width)
-            r1.draw(x_pos=S(x), y_pos=E(300))
-            r2.draw(x_pos=S(x), y_pos=E(700))
-        border = True
+            bt.draw(x_pos=S(x), y_pos=S(300))
         border_width += 1
-        traffic_cop.run(1)
+        traffic_cop.run(0.1)
     traffic_cop.run(5)
+
+def rect_margins():
+    inner = rect(height=425, width=61, color=LIGHTGRAY)
+    t_placeholders = dict(body=[dict(inner=inner)])
+    border_width = 5
+    # screen: width=1920, height=1080
+    for y_i, y in enumerate(range(18, 1000, 513)):       # 2 iterations
+        for x_i, x in enumerate(range(30, 1758, 140)):   # 13 iterations
+            #print("drawing x", x)
+            i = 13*y_i + x_i
+
+            top_margin = 8
+            middle_margin = 5 + i // 5
+            bottom_margin = 5 + i % 5
+            print(f"{y_i=}, {x_i=}, {i=}, {top_margin=}, {middle_margin=}")
+
+            # missing horz/vert_margin (both border_width)
+            bt = boxed_titled(title=f"mid={middle_margin} bot={bottom_margin}",
+                              placeholders=t_placeholders, border_width=border_width,
+                              top_margin=top_margin, middle_margin=middle_margin,
+                              bottom_margin=bottom_margin)
+
+            print(f"{bt.width=}, {bt.height=}")   # width: 77-136, height: 465-513
+
+            with screen.Screen.update():
+                bt.draw(x_pos=S(x), y_pos=S(y))
+            traffic_cop.run(0.1)
+    traffic_cop.run(25)
 
 def circle_colors():
     r = rect(width=1200, height=350)
@@ -123,7 +160,7 @@ def slider_test(profile=False):
         import cProfile
         import time
         pr = cProfile.Profile(time.perf_counter)
-    sc = slider(title="testing...")
+    sc = slider(title="Testing...", top_margin=5, middle_margin=5)
     print(f"{sc.width=}, {sc.height=}")
     #midi_io.Trace = True
     #ControlChange(0, 0x10, Channels(1,3,5), sc.guts.slider, trace=True)
@@ -133,7 +170,7 @@ def slider_test(profile=False):
         sc.draw(x_pos=x_pos, y_pos=y_pos)
     if profile:
         pr.enable()
-    traffic_cop.run(10)
+    traffic_cop.run(15)
     if profile:
         pr.disable()
         pr.dump_stats('slider.prof')
@@ -178,16 +215,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--profile", "-p", default=False, action="store_true")
     parser.add_argument("test", nargs='?',
-                        choices=("group", "rect_as_sprite", "circle_colors", "lines", "scales",
+                        choices=("group", "rect_borders", "rect_margins", 
+                                 "circle_colors", "lines", "scales",
                                  "knob", "slider", "buttons"))
 
     args = parser.parse_args()
 
+    # screen: width=1920, height=1080
     with screen.Screen_class():
         print(f"{screen.Screen.width=}, {screen.Screen.height=}")
         match args.test:
             case "group": group()
-            case "rect_as_sprite": rect_as_sprite()
+            case "rect_borders": rect_borders()
+            case "rect_margins": rect_margins()
             case "circle_colors": circle_colors()
             case "lines": lines()
             case "scales": scales()
@@ -198,7 +238,9 @@ if __name__ == "__main__":
                 group()
                 time.sleep(2)
                 screen.Screen.clear()
-                rect_as_sprite()
+                rect_borders()
+                time.sleep(2)
+                rect_margins()
                 time.sleep(2)
                 screen.Screen.clear()
                 circle_colors()

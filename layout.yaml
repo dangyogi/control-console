@@ -268,8 +268,8 @@ titled:
     layout:
         title: '"title"'
         top__margin: 5     # above title
-        middle__margin: 3  # between title and body
-        bottom__margin: 7  # below body
+        middle__margin: 5  # between title and body
+        bottom__margin: 6  # below body
     shortcuts:
         title: title_text__text
 
@@ -280,7 +280,7 @@ boxed:
             - background: rect
             - body: placeholder
     layout:
-        border_width: 2             # width of outer border line
+        border_width: 5             # width of outer border line
         horz_margin: null           # between body and left/right edge of background
         vert_margin: null           # between body and top/bottom edge of background
     appearance:
@@ -308,11 +308,24 @@ boxed_titled:
     layout:
         title: '"title"'
         placeholders: null
+
+        # boxed arguments:
+        border_width: 5
+        horz_margin: null           # between body and left/right edge of background
+        vert_margin: null           # between body and top/bottom edge of background
+
+        # titled arguments:
+        top_margin: 5
+        middle_margin: 5
+        bottom_margin: 6
     appearance:
         color: WHITE
     shortcuts:
         title: body_titled__title
         placeholders: body_titled__placeholders
+        top_margin: body_titled__top__margin
+        middle_margin: body_titled__middle__margin
+        bottom_margin: body_titled__bottom__margin
 
 spp_text:
     specializes: dynamic_text
@@ -498,6 +511,16 @@ slider:
         scale_fn: id
         slider_gap__margin: 5
         command: null
+
+        # boxed_titled arguments:
+        border_width: 5
+        horz_margin: null           # between body and left/right edge of background
+        vert_margin: null           # between body and top/bottom edge of background
+
+        # titled arguments:
+        top_margin: 5
+        middle_margin: 5
+        bottom_margin: 6
     shortcuts:
         low_value: slider__low_value
         high_value: slider__high_value
@@ -507,5 +530,5 @@ slider:
         init:
             display__max_text: longer_str(scale_fn(low_value), scale_fn(high_value))
             display__text: str(scale_fn(low_value))
-            slider__touch: touch_slider(name, display, scale_fn, command)
+            slider__touch: touch_slider(name, display, command)
 

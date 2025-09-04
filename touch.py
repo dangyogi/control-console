@@ -57,7 +57,7 @@ class touch:
     def move_to(self, x, y):
         return False
 
-    def release(self, x, y):
+    def release(self):
         return False
 
 
@@ -109,13 +109,16 @@ class touch_slider(touch_rect):
         - num_values
         - slide_height
     '''
-    def __init__(self, name, display, scale_fn, command, trace=False):
+    def __init__(self, name, display, command, trace=False):
+        r'''Called from slider.__init__.
+        '''
         super().__init__(name, command, trace)
-        self.display = display
-        self.scale_fn = scale_fn
+        self.display = display  # dynamic_text widget to display scaled values.
 
     def attach_widget(self, widget):
-        super().attach_widget(widget)
+        r'''Called from slider_touch.__init__ with slider_touch widget.
+        '''
+        super().attach_widget(widget)  # stores widget in self.widget
         self.scale_fn = self.widget.scale_fn
         self.low_value = self.widget.low_value
         self.value = self.low_value
@@ -126,10 +129,14 @@ class touch_slider(touch_rect):
         self.knob = widget.knob
 
     def activate(self):    # FIX: move knob to value, if not low_value
+        r'''Called at the end of slider_touch.draw.
+        '''
         self.slide_y_top_C = self.widget.slide_y_top_C
         self.slide_y_bottom_C = self.widget.slide_y_bottom_C
         self.knob_contains = rect_contains(self.widget.knob)
-        super().activate()
+        self.draw_knob()
+        self.update_text()
+        super().activate()  # registers with touch_dispatcher
 
     def touch(self, x, y):
         if not self.knob_contains(x, y):
@@ -272,7 +279,7 @@ class touch_start_stop(touch_button):
             self.command.start()
         return True
 
-    def release(self, x, y):
+    def release(self):
         self.show_off()
         if self.command is not None:
             self.command.stop()
