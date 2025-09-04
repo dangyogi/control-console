@@ -532,3 +532,73 @@ slider:
             display__text: str(scale_fn(low_value))
             slider__touch: touch_slider(name, display, command)
 
+---
+
+module: buttons
+
+import:
+    - from pyray import *
+    - from containers import bordered_circle
+    - from touch import *
+
+add_to_all: [radio_control]
+
+
+toggle_button:
+    specializes: bordered_circle
+    layout:
+        diameter: 31
+        border_width: 2         # or, maybe, 3 -- ok even or odd
+        command: null
+    appearance:
+        border__color: BLACK
+        on_color: GREEN
+        off_color: BROWN
+    computed:
+        init:
+            touch: touch_toggle(name, command, trace)
+
+one_shot_button:
+    specializes: bordered_circle
+    layout:
+        diameter: 31
+        border_width: 2         # or, maybe, 3 -- ok even or odd
+        command: null
+        blink_time: 0.3
+    appearance:
+        border__color: BLACK
+        on_color: GREEN
+        off_color: BROWN
+    computed:
+        init:
+            touch: touch_one_shot(name, command, blink_time, trace)
+
+start_stop_button:
+    specializes: bordered_circle
+    layout:
+        diameter: 31
+        border_width: 2         # or, maybe, 3 -- ok even or odd
+        command: null
+    appearance:
+        border__color: BLACK
+        on_color: GREEN
+        off_color: BROWN
+    computed:
+        init:
+            touch: touch_start_stop(name, command, trace)
+
+radio_button:
+    specializes: bordered_circle
+    layout:
+        diameter: 31
+        border_width: 2         # or, maybe, 3 -- ok even or odd
+        command: null
+        radio_control: null     # may not be null, pass same radio_control() to all buttons in group
+    appearance:
+        border__color: BLACK
+        on_color: GREEN
+        off_color: BROWN
+    computed:
+        init:
+            touch: touch_radio(name, command, radio_control, trace)
+

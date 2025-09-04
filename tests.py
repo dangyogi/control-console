@@ -7,6 +7,7 @@ import screen
 from shapes import *
 from slider import *
 from containers import *
+from buttons import *
 import traffic_cop
 from commands import ControlChange, Channels
 import midi_io
@@ -176,33 +177,33 @@ def slider_test(profile=False):
         pr.dump_stats('slider.prof')
 
 def buttons():
-    re = rect(width=200, height=100)
+    re = rect(width=200, height=100)   # for radio buttons
     rc = radio_control()
-    radio = text(text="radio")
-    r1 = button(type="radio", radio_control=rc, border=True)
-    r2 = button(type="radio", radio_control=rc, border=True)
-    r3 = button(type="radio", radio_control=rc, border=True)
-    toggle = text(text="toggle")
-    t = button(type="toggle", border=True)
-    mom = text(text="mom")
-    m = button(type="mom", border=True)
-    start_stop = text(text="start-stop")
-    ss = button(type="start-stop", border=True)
+    radio = static_text(text="radio")
+    r1 = radio_button(radio_control=rc)
+    r2 = radio_button(radio_control=rc)
+    r3 = radio_button(radio_control=rc)
+    toggle = static_text(text="toggle")
+    t = toggle_button()
+    one_shot = static_text(text="one-shot")
+    os = one_shot_button()  # blink_time = 0.3
+    start_stop = static_text(text="start-stop")
+    ss = start_stop_button()
     with screen.Screen.update():
         x_pos = C(300)
         text_y = E(140)
         b_y_pos = S(160)
         re_y_pos = S(110)
         re.draw(x_pos=x_pos, y_pos=re_y_pos)
-        radio.draw(x_pos=x_pos, y_pos=text_y)
+        radio.draw(x_pos=x_pos, y_pos=text_y)       # "radio" text
         r1.draw(x_pos=x_pos-60, y_pos=b_y_pos)
         r2.draw(x_pos=x_pos, y_pos=b_y_pos)
         r3.draw(x_pos=x_pos+60, y_pos=b_y_pos)
-        toggle.draw(x_pos=C(500), y_pos=text_y)
+        toggle.draw(x_pos=C(500), y_pos=text_y)     # "toggle" text
         t.draw(x_pos=C(500), y_pos=b_y_pos)
-        mom.draw(x_pos=C(600), y_pos=text_y)
-        m.draw(x_pos=C(600), y_pos=b_y_pos)
-        start_stop.draw(x_pos=C(700), y_pos=text_y)
+        one_shot.draw(x_pos=C(600), y_pos=text_y)   # "one_shot" text
+        os.draw(x_pos=C(600), y_pos=b_y_pos)
+        start_stop.draw(x_pos=C(700), y_pos=text_y) # "start_stop" text
         ss.draw(x_pos=C(700), y_pos=b_y_pos)
     traffic_cop.run(10)
 
