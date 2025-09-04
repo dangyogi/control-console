@@ -98,6 +98,17 @@ class touch_rect(touch):
 
 
 class touch_slider(touch_rect):
+    r'''This controls a slider_touch widget.
+
+    slider_touch has:
+        - knob
+        - low_value
+        - high_value
+        - tick
+        - scale_fn
+        - num_values
+        - slide_height
+    '''
     def __init__(self, name, display, scale_fn, command, trace=False):
         super().__init__(name, command, trace)
         self.display = display

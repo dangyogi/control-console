@@ -82,7 +82,7 @@ include: |
             self.height = height
             self.width = width
 
-        def draw(x_pos=None, y_pos=None):
+        def draw(self, x_pos=None, y_pos=None):
             pass
 
     class vgap(gap):
@@ -109,6 +109,23 @@ add_to_all: [Fonts, Font_names, vgap, hgap]
 
 
 static_text:
+
+    trace:
+        - variable.init
+        - translate_name
+        - translate_exp
+        - show_shortcuts
+        - show_layout
+        - show_appearance
+        - show_computed_init
+        - show_computed_draw
+        - show_init_params
+        - show_init_available
+        - show_draw_params
+        - show_draw_available
+        - show_draw_computable
+        - method__init__dump
+
     raylib_call:
         name: draw_text_ex
         args: [font, str(text), (x_left.i, y_top.i), size, spacing, color]
@@ -238,6 +255,9 @@ bordered_circle:
             body__diameter: border__diameter - 2*border_width
 
 titled:
+    trace:
+        - show_init_params
+        - show_draw_params
     column:
         elements:
             - top: vgap
@@ -261,8 +281,8 @@ boxed:
             - body: placeholder
     layout:
         border_width: 2             # width of outer border line
-        horz_margin: border_width   # between body and left/right edge of background
-        vert_margin: border_width   # between body and top/bottom edge of background
+        horz_margin: null           # between body and left/right edge of background
+        vert_margin: null           # between body and top/bottom edge of background
     appearance:
         border__color: BLACK
         color: WHITE
@@ -270,6 +290,8 @@ boxed:
         color: background__color
     computed:
         init:
+            horz_margin: border_width
+            vert_margin: border_width
             border__width: background__width + 2*border_width
             border__height: background__height + 2*border_width
             background__width: body__width + 2*horz_margin
@@ -282,15 +304,15 @@ boxed_titled:
     specializes: boxed
     placeholders:
         body:
-            - titled: titled
+            - body_titled: titled
     layout:
         title: '"title"'
         placeholders: null
     appearance:
         color: WHITE
     shortcuts:
-        title: titled__title
-        placeholders: titled__placeholders
+        title: body_titled__title
+        placeholders: body_titled__placeholders
 
 spp_text:
     specializes: dynamic_text
@@ -304,7 +326,7 @@ spp_display:
     specializes: boxed_titled
     placeholders:
         body:
-            - spp_text: spp_text
+            - text: spp_text
     layout:
         title: '"title"'
     appearance:
@@ -314,7 +336,7 @@ spp_mark:
     specializes: boxed_titled
     placeholders:
         body:
-            - spp_text: spp_text
+            - text: spp_text
             - gap: vgap
             - mark: bordered_circle
     layout:
@@ -335,6 +357,7 @@ import:
     - from pyray import *
     - from alignment import half
     - from shapes import *
+    - from containers import *
     - import sprite
     - from touch import touch_slider
 
@@ -423,6 +446,7 @@ slider_touch:
         tick: 3  # width of a "tick", or the number of pixels separating one value from the next
         centerline__width: 3
         touch: null
+        scale_fn: id
     appearance:
         centerline__color: BLACK
     computed:
@@ -430,15 +454,36 @@ slider_touch:
             num_values: (high_value - low_value) + 1
             slide_height: (num_values - 1) * tick
             centerline__height: slide_height + knob.height - 1
-        draw:
-            slide_y_top_C: (y_top + half(knob.height)).as_C()        # knob Y_pos at high_value
-            slide_y_bottom_C: (y_bottom - half(knob.height)).as_C()  # knob Y_pos at low_value
+       #draw:
+       #    slide_y_top_C: (y_top + half(knob.height)).as_C()        # knob Y_pos at high_value
+       #    slide_y_bottom_C: (y_bottom - half(knob.height)).as_C()  # knob Y_pos at low_value
     include:
         init: self.touch.attach_widget(self)
-        draw_end: self.touch.activate()
+        draw_end: |
+            y_top = y_pos.S(self.height)
+            y_bottom = y_pos.E(self.height)
+
+            # knob Y_pos at high_value
+            self.slide_y_top_C = (y_top + half(self.knob.height)).as_C()
+
+            # knob Y_pos at low_value
+            self.slide_y_bottom_C = (y_bottom - half(self.knob.height)).as_C()
+
+            self.touch.activate()
         clear: self.touch.deactivate()
 
 slider:
+    trace:
+        - variable.init
+        - translate_name
+        - translate_exp
+        - show_shortcuts
+        - show_layout
+        - show_appearance
+        - show_computed_init
+        - show_init_params
+        - show_init_available
+        - method__init__dump
     specializes: boxed_titled
     placeholders:
         body:

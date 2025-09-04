@@ -74,10 +74,26 @@ class widget:
         # may add to computed_init/draw...
         self.init()
 
+        if "show_shortcuts" in self.trace:
+            self.shortcuts.dump()
+        if "show_layout" in self.trace:
+            self.layout.dump()
+        if "show_appearance" in self.trace:
+            self.appearance.dump()
+        if "show_computed_init" in self.trace:
+            self.computed_init.dump()
+        if "show_computed_draw" in self.trace:
+            self.computed_draw.dump()
         if "show_init_params" in self.trace:
             print(f"widget({self.name}).__init__: {self.init_params()=}")
+        if "show_init_available" in self.trace:
+            print(f"widget({self.name}).__init__: {self.init_available()=}")
         if "show_draw_params" in self.trace:
             print(f"widget({self.name}).__init__: {self.draw_params()=}")
+        if "show_draw_available" in self.trace:
+            print(f"widget({self.name}).__init__: {self.draw_available()=}")
+        if "show_draw_computable" in self.trace:
+            print(f"widget({self.name}).__init__: {self.draw_computable()=}")
         if self.spec:
             print("unknown keys in spec for", self.name, tuple(self.spec.keys()))
 
@@ -110,8 +126,8 @@ class widget:
             if avail_param.is_computed:
                 needs.add(avail_param.ename)
         if "create_widget_args" in self.trace:
-            print(f"widget({self.name}).create_widget_args(method={method.name}, {widget_name=}, "
-                  f"{prefix=}, {args=}):")
+            print(f"widget({self.name}).create_widget_args(method={method.method_name}, "
+                  f"{widget_name=}, {prefix=}, {args=}):")
             print(f"  {init_params=}")
             print(f"  {avail_params=}")
             print(f"  {args_dict=}")
@@ -146,12 +162,17 @@ class widget:
         return [variable.pname for variable in self.draw_method.gen_params()]
 
     def draw_available(self):
-        r'''Returns a new {iname: sname} of available inames within the draw method.
+        r'''Returns a new {ename: sname} of available inames within the draw method.
 
         This does not include computed_draw info.
         '''
-        return {iname: sname for iname, sname in self.init_available().items()
-                             if sname.startswith("self.")}
+        ans = {variable.ename: variable.sname
+               for variable in self.draw_method.get_first_auto_params()}
+        ans.update((ename, sname) for ename, sname in self.init_available().items()
+                                  if sname.startswith("self."))
+        ans.update((variable.ename, variable.sname)
+                   for variable in self.draw_method.get_final_auto_params())
+        return ans
 
     def draw_computable(self):
         r'''Returns a new {ename: sname} of computable enames within the draw method.
@@ -160,7 +181,7 @@ class widget:
 
         If you need any of these, you must add the ename to needs.
         '''
-        return {ans[variable.ename]: variable.sname
+        return {variable.ename: variable.sname
                 for variable in self.computed_draw.gen_variables()}
 
     def generate_widget(self):
@@ -267,18 +288,18 @@ class composite(widget):
         pass
 
     def init_calls(self):
-        self.output.print_head(f"self.width = {self.width_agg_fn}(", first_comma=False)
+        self.output.print_head(f"self.width = {self.width_agg_fn}([", first_comma=False)
         for element in self.element_names:
             self.output.print_arg(f"self.{element}.width")
         for placeholder in self.placeholders:
-            self.output.print_arg(f"self.{placeholder}__width")
-        self.output.print_tail(')')
-        self.output.print_head(f"self.height = {self.height_agg_fn}(", first_comma=False)
+            self.output.print_arg(f"{placeholder}__width")
+        self.output.print_tail('])')
+        self.output.print_head(f"self.height = {self.height_agg_fn}([", first_comma=False)
         for element in self.element_names:
             self.output.print_arg(f"self.{element}.height")
         for placeholder in self.placeholders:
-            self.output.print_arg(f"self.{placeholder}__height")
-        self.output.print_tail(')')
+            self.output.print_arg(f"{placeholder}__height")
+        self.output.print_tail('])')
 
     def draw_needed(self):
         return self.needed_draw_names
@@ -342,7 +363,7 @@ class stacked(composite):
         self.layout.add_var('y_align', '"C"')
 
 class column(composite):
-    e_y_pos = "y_pos.S(self.height)"
+    e_y_pos = "self.y_pos.S(self.height)"
     width_agg_fn = "max"
     height_agg_fn = "sum"
 
@@ -353,7 +374,7 @@ class column(composite):
         self.output.print(f"e_y_pos += {sname}.height")
 
 class row(composite):
-    e_x_pos = "x_pos.S(self.width)"
+    e_x_pos = "self.x_pos.S(self.width)"
     width_agg_fn = "sum"
     height_agg_fn = "max"
 

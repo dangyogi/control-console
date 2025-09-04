@@ -13,7 +13,7 @@ def translate_name(name, method, needs):
        - .a.b    -> unchanged               .a.b comes after something other than an identifier
        - s[.a.b]                            where s is shortcut -> x[.a.b] where x is substitution
        - s__a[.b]                           where s is shortcut -> x__a[.b] where x is substitution
-       - e.a.b   -> e__a.b                  where e is element_name
+    no - e.a.b   -> e__a.b                  where e is element_name
        - f[.a.b] -> f added to needs        where f in getattr(widget, method.computed_vars)
        - x.a.b   -> self.x.a.b              where use_self and translated x in
                                                     element_names, layout, appearance,
@@ -30,48 +30,50 @@ def translate_name(name, method, needs):
     first = names[0] = method.widget.shortcuts.substitute(first)
     if "translate_name" in method.trace:
         print(f"translate_name({name=}): after shortcuts.substitute, {first=}")
-    if names[0] in method.widget.element_names and len(names) > 1:
-        first = f"{names[0]}__{names[1]}"
-        if "translate_name" in method.trace:
-            print(f"translate_name({name=}): after element_name__, {names=}, {first=}")
-        names[0: 2] = [first]
 
-    if method.computed_vars_name is not None:
-        computed_vars = getattr(method.widget, method.computed_vars_name)
-    else:
-        computed_vars = ()
+    # FIX:
+    #if names[0] in method.widget.element_names and len(names) > 1:
+    #    first = f"{names[0]}__{names[1]}"
+    #    if "translate_name" in method.trace:
+    #        print(f"translate_name({name=}): after element_name__, {names=}, {first=}")
+    #    names[0: 2] = [first]
 
     # first is now ename
-    if first in computed_vars:
-        if "translate_name" in method.trace:
-            print(f"translate_name({name=}): adding to needs, {first=}")
-        needs.add(first)
+
+    if "translate_name" in method.trace:
+        print(f"translate_name({name=}): {method.computed_vars_name=}")
+    if method.computed_vars_name is not None:
+        computed_vars = getattr(method.widget, method.computed_vars_name)
+        if first in computed_vars:
+            if "translate_name" in method.trace:
+                print(f"translate_name({name=}): in method.computed_vars_name, "
+                      f"adding to needs, {first=}")
+            needs.add(first)
+    else:
+        computed_vars = ()
+        if first in method.widget.computed_init:
+            if "translate_name" in method.trace:
+                print(f"translate_name({name=}): in computed_init, adding to needs, {first=}")
+            needs.add(first)
 
     if method.widget.use_self and first in method.widget.element_names:
         first = 'self.' + first
         if "translate_name" in method.trace:
             print(f"translate_name({name=}): adding 'self.' to element name, {first=}")
-    elif first in method.widget.layout:
-        first = method.widget.layout[first].sname
-        if "translate_name" in method.trace:
-            print(f"translate_name({name=}): using layout sname, {first=}")
-    elif first in method.widget.appearance:
-        first = method.widget.appearance[first].sname
-        if "translate_name" in method.trace:
-            print(f"translate_name({name=}): using appearance sname, {first=}")
-    elif first in method.widget.computed_init:
-        first = method.widget.computed_init[first].sname
-        if "translate_name" in method.trace:
-            print(f"translate_name({name=}): using computed_init sname, {first=}")
-    elif first in computed_vars:
-        first = computed_vars[first].sname
-        if "translate_name" in method.trace:
-            print(f"translate_name({name=}): using method.computed_vars_name sname, {first=}")
+    else:
+        available_variables = {variable.ename: variable
+                               for variable in method.available_variables()}
+        if first in available_variables:
+            first = available_variables[first].sname
+            if "translate_name" in method.trace:
+                print(f"translate_name({name=}): using method.available_variables sname, {first=}")
+
     names[0] = first
     return '.'.join(names)
 
 
-Word_re = r'[.\w]+[(=]?'
+#Word_re = r'[.\w]+|\w+[(=]?'
+Word_re = r'\w+((\.\w+)*|[(=])'
 
 # FIX: still needed? -- No...
 #Global_names = frozenset("str int float self and or not math round min max sum as_dict "
@@ -90,7 +92,7 @@ def translate_exp(exp, method, needs):
     Only used by computed:
     '''
     if not isinstance(exp, str):
-        return [], exp
+        return exp
     dquote_index = exp.find('"')
     squote_index = exp.find("'")
     if dquote_index >= 0 or squote_index >= 0:

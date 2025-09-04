@@ -13,7 +13,7 @@ import midi_io
 
 
 def hline(length, width=3):
-    return rect(height=width, width=length)
+    return rect(height=width, width=length, color=BLACK)
 
 def group():
     message="Hello gjpqy!"
@@ -125,8 +125,8 @@ def slider_test(profile=False):
         pr = cProfile.Profile(time.perf_counter)
     sc = slider(title="testing...")
     print(f"{sc.width=}, {sc.height=}")
-    midi_io.Trace = True
-    ControlChange(0, 0x10, Channels(1,3,5), sc.guts.slider, trace=True)
+    #midi_io.Trace = True
+    #ControlChange(0, 0x10, Channels(1,3,5), sc.guts.slider, trace=True)
     with screen.Screen.update():
         x_pos = C(900)
         y_pos = S(100)

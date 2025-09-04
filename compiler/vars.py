@@ -10,6 +10,7 @@ __all__ = "layout appearance computed_init computed_specialize computed_draw " \
 
 class base_vars:
     use_ename = True  # use ename for sname base, else yaml name
+    use_self = True
     added = ()
 
     def __init__(self, widget, trace):
@@ -23,6 +24,11 @@ class base_vars:
 
     def __getitem__(self, ename):
         return self.enames[ename]
+
+    def dump(self):
+        print(f"{self.__class__.__name__}.dump:")
+        for ename, variable in self.enames.items():
+            print(f"  {ename=}: {variable=}")
 
     def gen_names(self):
         return self.enames.keys()
@@ -74,19 +80,21 @@ class computed_init(computed, vars):
 
 class computed_specialize(computed_init):
     use_ename = False
+    use_self = False
 
 class computed_draw(computed, vars):
     name = "computed_draw"
     added = (('draw_height', 'height'),
              ('draw_width', 'width'),
 
-             ('x_left', 'x_pos.S(draw_width).i'),
-             ('x_center', 'x_pos.C(draw_width).i'),
-             ('x_right', 'x_pos.E(draw_width).i'),
-             ('y_top', 'y_pos.S(draw_height).i'),
-             ('y_middle', 'y_pos.C(draw_height).i'),
-             ('y_bottom', 'y_pos.E(draw_height).i'),
+             ('x_left', 'x_pos.S(draw_width)'),
+             ('x_center', 'x_pos.C(draw_width)'),
+             ('x_right', 'x_pos.E(draw_width)'),
+             ('y_top', 'y_pos.S(draw_height)'),
+             ('y_middle', 'y_pos.C(draw_height)'),
+             ('y_bottom', 'y_pos.E(draw_height)'),
             )
+    use_self = False
 
 class shortcuts:
     r'''Only used to translate shortcut pnames to expanded inames.
@@ -104,6 +112,11 @@ class shortcuts:
 
         # {sname: name}
         self.snames = {sname: name for name, sname in self.names.items()}
+
+    def dump(self):
+        print(f"shortcuts.dump:")
+        for name, sname in self.names.items():
+            print(f"  {name=}: {sname=}")
 
     def substitute(self, name):
         return self.names.get(name, name)

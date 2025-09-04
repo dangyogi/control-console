@@ -20,9 +20,19 @@ class method:
         for name in self.widget_attrs:
             setattr(self, name, getattr(widget, name))
         if "method__init__dump" in self.trace:
-            print(f"{self.__class__.__name__}.__init__({self.widget.name}): gen_params():")
-            for variable in self.gen_params():
-                print(f"  {variable.pname=}, {variable.ename=}, {variable.sname=}, {variable.exp=}")
+            print(f"{self.__class__.__name__}.__init__({self.widget.name}):")
+            def dump(variables):
+                for variable in variables:
+                    if hasattr(variable, 'pname'):
+                        print(f"    pname={variable.pname}, ename={variable.ename}, "
+                              f"sname={variable.sname}, exp={variable.exp}")
+                    else:
+                        print(f"    ename={variable.ename}, sname={variable.sname}, "
+                              f"exp={variable.exp}")
+            print("  gen_params():")
+            dump(self.gen_params())
+            print("  available_variables():")
+            dump(self.available_variables())
 
     def gen_method(self):
         self.start()           # prints def __init__(...):
@@ -63,7 +73,7 @@ class method:
     def get_first_auto_params(self):
         r'''Returns a new list of pseudo_variables
         '''
-        return [pseudo_variable(pname, pname, 'self.' + pname, exp)
+        return [pseudo_variable.create(self, pname, exp)
                 for pname, exp in self.first_auto_params]
 
     def get_final_auto_params(self):
@@ -86,8 +96,12 @@ class method:
                                                     exp=variable.exp))
 
     def available_variables(self):
+        r'''Generates variables.
+        '''
+        yield from self.get_first_auto_params()
         for vars in self.available_vars:
             yield from getattr(self, vars).gen_variables()
+        yield from self.get_final_auto_params()
 
 class init_method(method):
     method_name = '__init__'
@@ -101,7 +115,7 @@ class init_method(method):
         '''
         params = [('name', f'"a {self.widget.name}"')]
         params.extend(self.first_auto_params)
-        return [pseudo_variable(pname, pname, 'self.' + pname, exp) for pname, exp in params]
+        return [pseudo_variable.create(self, pname, exp) for pname, exp in params]
 
     def get_final_auto_params(self):
         r'''Returns a new list of pseudo_variables
@@ -110,7 +124,7 @@ class init_method(method):
         if hasattr(self.widget, 'placeholders') and self.widget.placeholders:
             params.append(('placeholders', None))
         params.extend(self.final_auto_params)
-        return [pseudo_variable(pname, pname, 'self.' + pname, exp) for pname, exp in params]
+        return [pseudo_variable.create(self, pname, exp) for pname, exp in params]
 
     def as_params(self, vars):
         r'''Generates variables from vars
@@ -157,10 +171,13 @@ class init_method(method):
         self.widget.init_calls()
 
         # FIX: what makes sense here?
-        self.output.print("if self.trace:")
+        if self.widget.use_self:
+            self.output.print("if self.trace:")
+        else:
+            self.output.print("if trace:")
         self.output.indent()
         args = ', '.join(f'{{{variable.sname}=}}' for variable in self.appearance.gen_variables())
-        self.output.print(f'print(f"{self.widget.name}({{self.name}}).__init__: {args}")')
+        self.output.print(f'print(f"{self.widget.name}({{self.method_name}}).__init__: {args}")')
         self.output.deindent()
         if 'init' in self.widget.include:
             self.output.print_block(self.widget.include.pop('init'))
@@ -176,7 +193,7 @@ class specialize_fn(init_method):
         r'''Returns a new list of pseudo_variables
         '''
         params = self.final_auto_params
-        return [pseudo_variable(pname, pname, pname, exp) for pname, exp in params]
+        return [pseudo_variable.create(self, pname, exp) for pname, exp in params]
 
     def load_param(self, variable):
         pass
@@ -197,8 +214,14 @@ class draw_method(method):
     method_name = 'draw'
     first_auto_params = (('x_pos', None), ('y_pos', None))
     param_vars = 'appearance',
-    available_vars = 'appearance', 'computed_draw'
+    available_vars = 'computed_draw',
+    #available_vars = 'appearance', 'computed_draw'
+    #available_vars = 'layout', 'appearance', 'computed_init', 'computed_draw'
     computed_vars_name = 'computed_draw'
+
+    def available_variables(self):
+        yield from self.widget.init_method.available_variables()
+        yield from super().available_variables()
 
     def as_params(self, vars):
         r'''Returns a list of pseudo_variables copied from vars with exp set to None.
@@ -223,7 +246,7 @@ class draw_method(method):
         self.output.print("if self.trace:")
         self.output.indent()
         args = ', '.join(f'{{{ename}=}}' for ename in self.appearance.gen_names())
-        self.output.print(f'print(f"{self.widget.name}({{self.name}}).draw: {args}")')
+        self.output.print(f'print(f"{self.widget.name}({{self.method_name}}).draw: {args}")')
         self.output.deindent()
         if 'draw_before' in self.widget.include:
             self.output.print_block(self.widget.include.pop('draw_before'))

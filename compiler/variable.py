@@ -24,15 +24,15 @@ class variable:
         self.ename = self.vars.widget.shortcuts.substitute(name)
         if self.vars.widget.use_ename and self.vars.use_ename:
             name = self.ename
-        if self.vars.widget.use_self:
+        if self.vars.widget.use_self and self.vars.use_self:
             self.sname = "self." + name
         else:
             self.sname = name
 
     def __repr__(self):
-        if hasattr(self, 'exp'):
-            return f"<{self.__class__.__name__}: ename={self.ename}, sname={self.sname}, exp={self.exp}>"
-        return f"<{self.__class__.__name__}: ename={self.ename}, sname={self.sname}>"
+        if not hasattr(self, 'exp'):
+            return f"<{self.__class__.__name__}: ename={self.ename}, sname={self.sname}>"
+        return f"<{self.__class__.__name__}: ename={self.ename}, sname={self.sname}, exp={self.exp}>"
 
 class param:
     computed = False
@@ -68,7 +68,12 @@ class computed_exp(variable):
 
         Called just prior to generate.
         '''
+        if "variable.init" in self.vars.trace:
+            print(f"computed_exp({self.ename=}).init({method.method_name=}): {self.exp=}")
         self.exp = translate_exp(self.exp, method, self.needs)
+        if "variable.init" in self.vars.trace:
+            print(f"computed_exp({self.ename=}).init({method.method_name=}) -> "
+                  f"{self.exp=}, {self.needs=}")
 
 class computed_var(computed_exp):
     computed_param = False
@@ -116,9 +121,14 @@ class computed_create_widget(variable):
     def init(self, method):
         r'''gathers arguments
         '''
+        if "variable.init" in self.vars.trace:
+            print(f"computed_create_widget({self.ename=}).init({method.method_name=})")
         self.args, self.needs = \
           self.vars.widget.create_widget_args(method, self.widget_name,
                                               f"{self.child_name}__", *self.args_init)
+        if "variable.init" in self.vars.trace:
+            print(f"computed_create_widget({self.ename=}).init({method.method_name=}) -> "
+                  f"{self.args=}, {self.needs=}")
 
     def load(self, method):
         method.load_create_widget(self)  # head is "sname = widget_name(", figured out by method
@@ -136,15 +146,33 @@ class raylib_arg(variable):
 
         Called just prior to generate.
         '''
+        if "variable.init" in self.vars.trace:
+            print(f"raylib_arg({self.ename=}).init({method.method_name=}): {self.exp=}")
         self.exp = translate_exp(self.exp, method, needs)
+        if "variable.init" in self.vars.trace:
+            print(f"raylib_arg({self.ename=}).init({method.method_name=}) -> {self.exp=}")
 
 
 class pseudo_variable(param):
     r'''Only created by draw_method, so no computed flag needed.
     '''
+    is_computed = False
+
     def __init__(self, pname, ename, sname, exp=None):
         self.pname = pname
         self.ename = ename
         self.sname = sname
         self.exp = exp
 
+    @classmethod
+    def create(cls, method, pname, exp):
+        ename = method.widget.shortcuts.substitute(pname)
+        if method.widget.use_ename: # and self.vars.use_ename:
+            name = ename
+        else:
+            name = pname
+        if method.widget.use_self: # and self.vars.use_self: in computed_draw, but not used for that
+            sname = "self." + name
+        else:
+            sname = name
+        return cls(pname, ename, sname, exp)
