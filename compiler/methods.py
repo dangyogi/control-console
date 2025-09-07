@@ -137,6 +137,11 @@ class init_method(method):
         return vars.gen_variables()
 
     def load_create_widget(self, variable):
+        init_name = f"init_{variable.child_name}"
+        #print(f"{self.method_name}.load_create_widget(variable): {init_name=}")
+        if init_name in self.widget.include:
+            #print(f"{self.method_name}.load_create_widget(variable): {init_name=} found!")
+            self.output.print_block(self.widget.include.pop(init_name))
         self.output.print_head(f"{variable.sname} = {variable.widget_name}(", first_comma=False)
         for arg in variable.args:
             self.output.print_arg(arg)
@@ -182,8 +187,8 @@ class init_method(method):
         args = ', '.join(f'{{{variable.sname}=}}' for variable in self.appearance.gen_variables())
         self.output.print(f'print(f"{self.widget.name}({{self.method_name}}).__init__: {args}")')
         self.output.deindent()
-        if 'init' in self.widget.include:
-            self.output.print_block(self.widget.include.pop('init'))
+        if 'init_end' in self.widget.include:
+            self.output.print_block(self.widget.include.pop('init_end'))
 
 class specialize_fn(init_method):
     widget_attrs = 'layout appearance computed_init output'.split()

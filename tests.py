@@ -196,16 +196,29 @@ def buttons():
     ss = start_stop_circle()
     c = circle()
     print(f"{c.diameter=}")
-    c1_label = static_text(text="1")
-    print(f"{c1_label.width=}, {c1_label.height=}, "
-          f"hypot={math.hypot(c1_label.width, c1_label.height)}")
-    c1 = circle(label=c1_label)
-    print(f"{c1.adj_dia=}")
-    c16_label = static_text(text="16")
-    print(f"{c16_label.width=}, {c16_label.height=}, "
-          f"hypot={math.hypot(c16_label.width, c16_label.height)}")
-    c16 = circle(label=c16_label)
-    print(f"{c16.adj_dia=}")
+    c_1_label = static_text(text="1")
+    print(f"{c_1_label.width=}, {c_1_label.height=}, "
+          f"hypot={math.hypot(c_1_label.width, c_1_label.height)}")
+    c_1 = circle(label=c_1_label)
+    print(f"{c_1.adj_dia=}")
+    c_16_label = static_text(text="16")
+    print(f"{c_16_label.width=}, {c_16_label.height=}, "
+          f"hypot={math.hypot(c_16_label.width, c_16_label.height)}")
+    c_16 = circle(label=c_16_label)
+    print(f"{c_16.adj_dia=}")
+    r_1 = rect(label=static_text(text="1"))
+    r_16 = rect(label=static_text(text="16"))
+    r_Continue = rect(label=static_text(text="Continue"))
+    br = bordered_rect(width=36, height=34)
+    print(f"{br.width=}, {br.height=}")
+    br2 = bordered_rect(body__width=36, body__height=34)
+    print(f"{br2.width=}, {br2.height=}")
+    br_1 = bordered_rect(label=static_text(text="1"))
+    print(f"{br_1.width=}, {br_1.height=}")
+    br_16 = bordered_rect(label=static_text(text="16"))
+    print(f"{br_16.width=}, {br_16.height=}")
+    br_Continue = bordered_rect(label=static_text(text="Continue"))
+    print(f"{br_Continue.width=}, {br_Continue.height=}")
     with screen.Screen.update():
         x_pos = C(300)
         text_y = E(140)
@@ -223,8 +236,18 @@ def buttons():
         start_stop.draw(x_pos=C(700), y_pos=text_y) # "start_stop" text
         ss.draw(x_pos=C(700), y_pos=b_y_pos)
         c.draw(x_pos=C(900), y_pos=b_y_pos)
-        c1.draw(x_pos=C(950), y_pos=b_y_pos)
-        c16.draw(x_pos=C(1000), y_pos=b_y_pos)
+        c_1.draw(x_pos=C(950), y_pos=b_y_pos)
+        c_16.draw(x_pos=C(1000), y_pos=b_y_pos)
+        r_y_pos = b_y_pos + 50
+        r_1.draw(x_pos=C(900), y_pos=r_y_pos)
+        r_16.draw(x_pos=C(950), y_pos=r_y_pos)
+        r_Continue.draw(x_pos=C(1024), y_pos=r_y_pos)
+        br_y_pos = r_y_pos + 50
+        br_1.draw(x_pos=C(900), y_pos=br_y_pos)
+        br_16.draw(x_pos=C(950), y_pos=br_y_pos)
+        br_Continue.draw(x_pos=C(1024), y_pos=br_y_pos)
+        br.draw(x_pos=C(950), y_pos=br_y_pos + 50)
+        br2.draw(x_pos=C(950), y_pos=br_y_pos + 100)
     traffic_cop.run(10)
 
 def spp():

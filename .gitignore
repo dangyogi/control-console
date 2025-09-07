@@ -1,5 +1,13 @@
 # .gitignore
 
+# generated .py files
+shapes.py
+containers.py
+controls.py
+buttons.py
+slider.py
+song_position.py
+
 __pycache__/
 *.py[cod]
 

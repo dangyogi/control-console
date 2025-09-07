@@ -170,7 +170,7 @@ dynamic_text:
             draw_height: int(math.ceil(draw_msize.y))
             x_left: x_pos.C(width).S(draw_width)
     include:
-        init: |
+        init_end: |
             self.sprite = sprite.Sprite(self.width, self.height, trace=self.trace)
         draw_before: |
             self.sprite.save_pos(self.x_pos, self.y_pos)
@@ -201,7 +201,7 @@ rect:
             width: self.label.width + 2*self.label_wmargin
             height: self.label.height + 2*self.label_hmargin
     include:
-        init: |
+        init_end: |
             if self.label is not None:
                 if self.width is None:
                     self.width = self.label.width + 2 * self.label_wmargin
@@ -249,7 +249,7 @@ circle:
             height: adj_dia
             touch_radius: max(radius, min_touch_radius)
     include:
-        init: |
+        init_end: |
             if self.touch is not None:
                 self.touch.attach_widget(self)
         draw_end: |
@@ -297,6 +297,83 @@ bordered_circle:
         init:
             body__diameter: border__diameter - 2*border_width
 
+bordered_rect:
+    stacked:
+        elements:
+            - border: rect
+            - body: rect
+    layout:
+        border_width: 5             # width of outer border line
+        width: null                 # of border rect, if null, calced by body__width + border_width
+        height: null                # of border rect, if null, calced by body__height + border_width
+        body__width: null           # if null: calced by label, or width - border_width
+        body__height: null          # if null: calced by label, or height - border_width
+        label: null                 # static_text over the button, pass a static_text object
+        label_wmargin: 2
+        label_hmargin: 2
+        touch: null
+
+        # used by touch_buttons:
+        on_color: GREEN    # suggest: RED, GREEN, BLUE
+        off_color: GRAY    # suggest: GRAY, DARKGRAY, BROWN, BLACK
+    appearance:
+        border__color: BLACK
+        color: WHITE
+    shortcuts:
+        width: border__width
+        height: border__height
+        color: body__color
+        label: body__label
+        label_wmargin: body__wmargin
+        label_hmargin: body__hmargin
+        touch: body__touch
+        on_color: body__on_color
+        off_color: body__off_color
+    computed:
+        init:
+            #body__width: width - 2*border_width if label is None else None
+            #body__height: height - 2*border_width if label is None else None
+            border__width: body.width + 2*border_width    # only calced if width is None
+            border__height: body.height + 2*border_width  # only calced if height is None
+    include:
+        init_body: |
+            if width is not None:
+                self.body__width = width - 2*self.border_width
+                self.body__height = height - 2*self.border_width
+
+    # NNNNYYYY | label is None
+    # NNYYNNYY | body__width is None
+    # NYNYNYNY | width is None
+    # ----------------------------------
+    # X   X  X | error
+    #  X X X   | width = body.width + 2*border_width
+    #   X   X  | body__width = width - 2*border_width 
+
+    # -N-YY | label is None
+    # N-YNY | body__width is None
+    # NYNYY | width is None
+    # ----------------------------------
+    # X   X | error
+    #  X X  | create body; width = body.width + 2*border_width; create border
+    #   X   | body__width = width - 2*border_width; create body; create border
+
+    #
+    #
+    #
+    #
+    #
+    # with label:
+    #
+    #   create body with label
+    #   calc border width/height (width/height params should be null)
+    #   create border
+    #
+    # without label:
+    #
+    #   calc body width/height
+    #   create body
+    #   create border
+
 titled:
     trace:
         - show_init_params
@@ -319,18 +396,33 @@ titled:
 boxed:
     stacked:
         elements:
-            - border: rect
-            - background: rect
+            - border: bordered_rect
             - body: placeholder
     layout:
         border_width: 5             # width of outer border line
         horz_margin: null           # between body and left/right edge of background
         vert_margin: null           # between body and top/bottom edge of background
+        label: null                 # static_text over the button, pass a static_text object
+        label_wmargin: 2
+        label_hmargin: 2
+        touch: null
+
+        # used by touch_buttons:
+        on_color: GREEN    # suggest: RED, GREEN, BLUE
+        off_color: GRAY    # suggest: GRAY, DARKGRAY, BROWN, BLACK
     appearance:
         border__color: BLACK
         color: WHITE
     shortcuts:
-        color: background__color
+        width: border__width
+        height: border__height
+        color: border__color
+        label: border__label
+        label_wmargin: border__wmargin
+        label_hmargin: border__hmargin
+        touch: border__touch
+        on_color: border__on_color
+        off_color: border__off_color
     computed:
         init:
             horz_margin: border_width
@@ -453,7 +545,7 @@ slider_vknob:
             narrow_rect__width: 61
             narrow_rect__height: 5
     include:
-        init: |
+        init_end: |
             self.sprite = sprite.Sprite(self.width, self.height, trace=self.trace)
         draw_before: |
             self.sprite.save_pos(self.x_pos, self.y_pos)
@@ -485,7 +577,7 @@ slider_touch:
        #    slide_y_top_C: (y_top + half(knob.height)).as_C()        # knob Y_pos at high_value
        #    slide_y_bottom_C: (y_bottom - half(knob.height)).as_C()  # knob Y_pos at low_value
     include:
-        init: self.touch.attach_widget(self)
+        init_end: self.touch.attach_widget(self)
         draw_end: |
             y_top = y_pos.S(self.height)
             y_bottom = y_pos.E(self.height)
@@ -618,6 +710,75 @@ radio_circle:
         label_margin: 2
         command: null
         radio_control: null     # may not be null, pass same radio_control() to all buttons in group
+    appearance:
+        border__color: BLACK
+        on_color: GREEN
+        off_color: GRAY
+    computed:
+        init:
+            touch: circle_radio(name, command, radio_control, trace)
+
+rect_button:
+    specializes: boxed
+    placeholders:
+        body: []
+    layout:
+        label: null             # static_text over the button, pass a static_text object
+        label_margin: 2
+        command: null
+        radio_control: null     # may not be null, pass same radio_control() to all buttons in group
+    appearance:
+        border__color: BLACK
+        on_color: GREEN
+        off_color: GRAY
+    computed:
+        init:
+            touch: circle_radio(name, command, radio_control, trace)
+
+toggle_rect:
+    specializes: rect_button
+    layout:
+        label: null
+        command: null
+    appearance:
+        border__color: BLACK
+        on_color: GREEN
+        off_color: GRAY
+    computed:
+        init:
+            touch: circle_radio(name, command, radio_control, trace)
+
+one_shot_rect:
+    specializes: rect_button
+    layout:
+        label: null
+        command: null
+    appearance:
+        border__color: BLACK
+        on_color: GREEN
+        off_color: GRAY
+    computed:
+        init:
+            touch: circle_radio(name, command, radio_control, trace)
+
+start_stop_rect:
+    specializes: rect_button
+    layout:
+        label: null
+        command: null
+    appearance:
+        border__color: BLACK
+        on_color: GREEN
+        off_color: GRAY
+    computed:
+        init:
+            touch: circle_radio(name, command, radio_control, trace)
+
+radio_rect:
+    specializes: rect_button
+    layout:
+        label: null
+        command: null
     appearance:
         border__color: BLACK
         on_color: GREEN
