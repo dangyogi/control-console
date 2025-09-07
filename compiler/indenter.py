@@ -36,6 +36,7 @@ class indenter:
     def print_block(self, text):
         strip = None
         lines = text.splitlines()
+        #print(f"print_block: {lines=}")
         for i, line in enumerate(lines):
             if (i == 0 or i == len(lines) - 1) and not line.strip():
                 continue

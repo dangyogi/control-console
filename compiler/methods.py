@@ -82,7 +82,10 @@ class method:
         return []
 
     def load_computed(self, variable):
-        self.output.print(f"{variable.sname} = {variable.exp}")
+        if isinstance(variable.exp, str):
+            self.output.print(f"{variable.sname} = {variable.exp.strip()}")
+        else:
+            self.output.print(f"{variable.sname} = {variable.exp}")
 
     def load_computed_param(self, variable):
         template = Template("""

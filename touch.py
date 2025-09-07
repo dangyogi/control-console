@@ -32,8 +32,8 @@ import screen
 import traffic_cop
 
 
-__all__ = "touch_slider touch_toggle touch_one_shot touch_start_stop touch_radio " \
-          "radio_control".split()
+__all__ = "touch_slider circle_toggle circle_one_shot circle_start_stop circle_radio " \
+          "rect_toggle rect_one_shot rect_start_stop rect_radio radio_control".split()
 
 
 class touch:
@@ -54,8 +54,11 @@ class touch:
     def activate(self):
         r'''Called at the end of widget.draw, so x, y positions are now known
         '''
-        screen.Screen.Touch_dispatcher.register(self)
-        self.active = True
+        if not self.active:
+            self.active = True
+            self.activate2()
+            self.contains.update_pos()
+            screen.Screen.Touch_dispatcher.register(self)
 
     def deactivate(self):
         r'''Called by clear.
@@ -92,21 +95,10 @@ class rect_contains:
         return self.x_left <= x <= self.x_right \
            and self.y_top <= y <= self.y_bottom
 
-class touch_rect(touch):
-    def attach_widget(self, widget):
-        super().attach_widget(widget)
-        self.width = widget.width
-        self.height = widget.height
 
-    def activate(self):
+class touch_rect(touch):
+    def activate2(self):
         self.contains = rect_contains(self.widget)
-        x_pos = self.widget.x_pos
-        self.x_left = x_pos.S(self.width).i
-        self.x_right = x_pos.E(self.width).i
-        y_pos = self.widget.y_pos
-        self.y_top = y_pos.S(self.height).i
-        self.y_bottom = y_pos.E(self.height).i
-        super().activate()
 
 
 class touch_slider(touch_rect):
@@ -135,16 +127,18 @@ class touch_slider(touch_rect):
         super().attach_widget(widget)  # stores widget in self.widget
         self.scale_fn = self.widget.scale_fn
         self.low_value = self.widget.low_value
-        self.value = self.low_value
         self.high_value = self.widget.high_value
+        self.starting_value = self.widget.starting_value
+        self.value = self.starting_value
         self.tick = self.widget.tick
         self.num_values = self.widget.num_values
         self.slide_height = self.widget.slide_height
         self.knob = widget.knob
 
-    def activate(self):    # FIX: move knob to value, if not low_value
+    def activate2(self):
         r'''Called at the end of slider_touch.draw.
         '''
+        super().activate2()
         self.slide_y_top_C = self.widget.slide_y_top_C
         self.slide_y_bottom_C = self.widget.slide_y_bottom_C
         self.knob_contains = rect_contains(self.widget.knob)
@@ -152,8 +146,6 @@ class touch_slider(touch_rect):
         # no recursion here, these don't call activate; slider_touch does!
         self.draw_knob()
         self.update_text()
-
-        super().activate()  # registers with touch_dispatcher
 
     def touch(self, x, y):
         if not self.knob_contains(x, y):
@@ -223,35 +215,22 @@ class touch_slider(touch_rect):
                 return True
         return False
 
-
 class touch_button(touch):
-    def __init__(self, name, command, trace=False):
-        super().__init__(name, command, trace)
-        self.is_on = False
-
+    r'''Base button class for both rect_button and circle_button.
+    '''
     def attach_widget(self, widget):
-        super().attach_widget(widget)  # stores widget in self.widget
-        self.diameter = self.widget.diameter
+        r'''Called at end of widget.__init__ method.  x_pos, y_pos not yet known...
+        '''
+        super().attach_widget(widget)
         self.on_color = self.widget.on_color
         self.off_color = self.widget.off_color
-        self.touch_radius = self.widget.touch_radius
+        self.is_on = False
 
-    def activate(self):
-        if not self.active:   # prevent infinite recursion on show_on/off calls back to activate
-            self.active = True
-            x_pos = self.widget.x_pos
-            self.x_center = x_pos.C(self.diameter).i
-            y_pos = self.widget.y_pos
-            self.y_middle = y_pos.C(self.diameter).i
-            if self.is_on:
-                self.show_on()
-            else:
-                self.show_off()
-            super().activate()             # registers with touch_dispatcher
-
-    def contains(self, x, y):
-        dist = math.sqrt((x - self.x_center)**2 + (y - self.y_middle)**2)
-        return dist <= self.touch_radius
+    def activate2(self):
+        if self.is_on:
+            self.show_on()
+        else:
+            self.show_off()
 
     def show_on(self):
         self.widget.draw(color=self.on_color)
@@ -263,7 +242,35 @@ class touch_button(touch):
         self.is_on = False
         return True
 
-class touch_toggle(touch_button):
+class rect_button(touch_button):
+    def activate2(self):
+        self.contains = rect_contains(self.widget)
+        super().activate2()
+
+class circle_contains:
+    def __init__(self, widget):
+        self.widget = widget
+        self.width = widget.width
+        self.height = widget.height
+        self.touch_radius = self.widget.touch_radius
+        self.update_pos()
+
+    def update_pos(self):
+        x_pos = self.widget.x_pos
+        self.x_center = x_pos.C(self.width).i
+        y_pos = self.widget.y_pos
+        self.y_middle = y_pos.C(self.height).i
+
+    def __call__(self, x, y):
+        dist = math.hypot((x - self.x_center), (y - self.y_middle))
+        return dist <= self.touch_radius
+
+class circle_button(touch_button):
+    def activate2(self):
+        self.contains = circle_contains(self.widget)
+        super().activate2()
+
+class touch_toggle:
     r'''Calls command.value_change(is_on)
     '''
     def touch(self, x, y):
@@ -291,7 +298,7 @@ class touch_toggle(touch_button):
             return True
         return False
 
-class touch_one_shot(touch_button):
+class touch_one_shot:
     r'''Calls command.act()
     '''
     def __init__(self, name, command, blink_time=0.3, trace=False):
@@ -299,9 +306,9 @@ class touch_one_shot(touch_button):
         self.blink_time = blink_time
         #self.is_on not used
 
-    def activate(self):
+    def activate2(self):
         self.is_on = False
-        super().activate()
+        super().activate2()
 
     def touch(self, x, y):
         self.show_on()
@@ -310,7 +317,7 @@ class touch_one_shot(touch_button):
         traffic_cop.set_alarm(self.blink_time, self.show_off)
         return True
 
-class touch_start_stop(touch_button):
+class touch_start_stop:
     r'''Calls command.start() and command.stop()
     '''
     def touch(self, x, y):
@@ -319,9 +326,9 @@ class touch_start_stop(touch_button):
             self.command.start()
         return True
 
-    def activate(self):
+    def activate2(self):
         self.is_on = False
-        super().activate()
+        super().activate2()
 
     def release(self):
         self.show_off()
@@ -361,4 +368,28 @@ class radio_control:
     def off(self, button):
         if self.on_button == button:
             self.on_button = None
+
+class circle_toggle(touch_toggle, circle_button):
+    pass
+
+class circle_one_shot(touch_one_shot, circle_button):
+    pass
+
+class circle_start_stop(touch_start_stop, circle_button):
+    pass
+
+class circle_radio(touch_radio, circle_button):
+    pass
+
+class rect_toggle(touch_toggle, rect_button):
+    pass
+
+class rect_one_shot(touch_one_shot, rect_button):
+    pass
+
+class rect_start_stop(touch_start_stop, rect_button):
+    pass
+
+class rect_radio(touch_radio, rect_button):
+    pass
 

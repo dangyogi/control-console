@@ -1,5 +1,7 @@
 # tests.py
 
+import math
+
 from pyray import *
 
 from alignment import *
@@ -8,6 +10,8 @@ from shapes import *
 from slider import *
 from containers import *
 from buttons import *
+from song_position import *
+from controls import *
 import traffic_cop
 from commands import ControlChange, Channels
 import midi_io
@@ -169,6 +173,7 @@ def slider_test(profile=False):
         x_pos = C(900)
         y_pos = S(100)
         sc.draw(x_pos=x_pos, y_pos=y_pos)
+        print(f"slider: width={sc.width} height={sc.height}")
     if profile:
         pr.enable()
     traffic_cop.run(15)
@@ -180,15 +185,27 @@ def buttons():
     re = rect(width=200, height=100)   # for radio buttons
     rc = radio_control()
     radio = static_text(text="radio")
-    r1 = radio_button(radio_control=rc)
-    r2 = radio_button(radio_control=rc)
-    r3 = radio_button(radio_control=rc)
+    r1 = radio_circle(radio_control=rc, label=static_text(text="1"), off_color=GRAY)
+    r2 = radio_circle(radio_control=rc, label=static_text(text="2"), off_color=DARKGRAY)
+    r3 = radio_circle(radio_control=rc, label=static_text(text="3"))
     toggle = static_text(text="toggle")
-    t = toggle_button()
+    t = toggle_circle()
     one_shot = static_text(text="one-shot")
-    os = one_shot_button()  # blink_time = 0.3
+    os = one_shot_circle()  # blink_time = 0.3
     start_stop = static_text(text="start-stop")
-    ss = start_stop_button()
+    ss = start_stop_circle()
+    c = circle()
+    print(f"{c.diameter=}")
+    c1_label = static_text(text="1")
+    print(f"{c1_label.width=}, {c1_label.height=}, "
+          f"hypot={math.hypot(c1_label.width, c1_label.height)}")
+    c1 = circle(label=c1_label)
+    print(f"{c1.adj_dia=}")
+    c16_label = static_text(text="16")
+    print(f"{c16_label.width=}, {c16_label.height=}, "
+          f"hypot={math.hypot(c16_label.width, c16_label.height)}")
+    c16 = circle(label=c16_label)
+    print(f"{c16.adj_dia=}")
     with screen.Screen.update():
         x_pos = C(300)
         text_y = E(140)
@@ -205,7 +222,49 @@ def buttons():
         os.draw(x_pos=C(600), y_pos=b_y_pos)
         start_stop.draw(x_pos=C(700), y_pos=text_y) # "start_stop" text
         ss.draw(x_pos=C(700), y_pos=b_y_pos)
+        c.draw(x_pos=C(900), y_pos=b_y_pos)
+        c1.draw(x_pos=C(950), y_pos=b_y_pos)
+        c16.draw(x_pos=C(1000), y_pos=b_y_pos)
     traffic_cop.run(10)
+
+def spp():
+    tos = titled_one_shot()     # title, gap__margin (3)
+    sd = spp_display()          # title, color
+    ssb = spp_start_stop()
+    sr = spp_replay()       # title, button__title, gap__margin (3), color
+    tr = transpose()
+    te = tempo()
+    sv = synth_volume()
+    p1 = player_row1()
+    p2 = player_row2()
+    p = player()
+    pspp = player_spp()
+    #pa = player_all(color=(255, 130, 255))
+    pa = player_all()
+    with screen.Screen.update():
+        #y_pos = S(100)
+        #x_pos = S(30)
+        #for x, widget in zip(range(30, 1900, 113), (tr, te, sv)):
+        #    widget.draw(x_pos, y_pos)
+        #    x_pos += widget.width + 29
+        #    print(f"{widget.name}: width={widget.width} height={widget.height}")
+        #y_pos = S(600)
+        #x_pos = S(30)
+        #for x, widget in zip(range(30, 1900, 193), (# tos, sd,
+        #                                             ssb, sr)):
+        #    widget.draw(x_pos, y_pos)
+        #    x_pos += widget.width + 29
+        #    print(f"{widget.name}: width={widget.width} height={widget.height}")
+        pa.draw(S(2), S(2))
+        #pa.draw(S(2), S(540))
+        print(f"{pa.name}: width={pa.width} height={pa.height}")
+        p.draw(S(400), S(2))
+        print(f"{p.name}: width={p.width} height={p.height}")
+        pspp.draw(S(400), S(540))
+        print(f"{pspp.name}: width={pspp.width} height={pspp.height}")
+        p.draw(S(800), S(2))
+        p.draw(S(800), S(540))
+    traffic_cop.run(15)
 
 
 
@@ -218,7 +277,7 @@ if __name__ == "__main__":
     parser.add_argument("test", nargs='?',
                         choices=("group", "rect_borders", "rect_margins", 
                                  "circle_colors", "lines", "scales",
-                                 "knob", "slider", "buttons"))
+                                 "knob", "slider", "buttons", "spp"))
 
     args = parser.parse_args()
 
@@ -235,6 +294,7 @@ if __name__ == "__main__":
             case "knob": knob()
             case "slider": slider_test(args.profile)
             case "buttons": buttons()
+            case "spp": spp()
             case None:
                 group()
                 time.sleep(2)
@@ -260,4 +320,7 @@ if __name__ == "__main__":
                 time.sleep(2)
                 screen.Screen.clear()
                 buttons()
+                time.sleep(2)
+                screen.Screen.clear()
+                spp()
 

@@ -168,6 +168,7 @@ dynamic_text:
             draw_msize: measure_text_ex(font, text, size, spacing)
             draw_width: int(math.ceil(draw_msize.x))
             draw_height: int(math.ceil(draw_msize.y))
+            x_left: x_pos.C(width).S(draw_width)
     include:
         init: |
             self.sprite = sprite.Sprite(self.width, self.height, trace=self.trace)
@@ -185,8 +186,37 @@ rect:
     layout:
         width: null
         height: null
+        label: null                 # static_text over the button, pass a static_text object
+        label_wmargin: 2
+        label_hmargin: 2
+        touch: null
+
+        # used by touch_buttons:
+        on_color: GREEN    # suggest: RED, GREEN, BLUE
+        off_color: GRAY    # suggest: GRAY, DARKGRAY, BROWN, BLACK
     appearance:
         color: WHITE
+    computed:
+        init:
+            width: self.label.width + 2*self.label_wmargin
+            height: self.label.height + 2*self.label_hmargin
+    include:
+        init: |
+            if self.label is not None:
+                if self.width is None:
+                    self.width = self.label.width + 2 * self.label_wmargin
+                if self.height is None:
+                    self.height = self.label.height + 2 * self.label_hmargin
+            if self.touch is not None:
+                self.touch.attach_widget(self)
+        draw_end: |
+            if self.label is not None:
+                self.label.draw(self.x_pos.C(draw_width), self.y_pos.C(draw_height))
+            if self.touch is not None:
+                self.touch.activate()
+        clear: |
+            if self.touch is not None:
+                self.touch.deactivate()
 
 circle:
     raylib_call:
@@ -198,24 +228,33 @@ circle:
         # used by touch_buttons:
         min_touch_radius: 28        # ok even or odd
         #min_touch_diameter: 57
+        label: null                 # static_text over the button, pass a static_text object
+        label_margin: 2
         touch: null
-    appearance:
-        color: WHITE
 
         # used by touch_buttons:
         on_color: GREEN    # suggest: RED, GREEN, BLUE
-        off_color: BROWN   # suggest: GRAY, DARKGRAY, BROWN, BLACK
+        off_color: GRAY    # suggest: GRAY, DARKGRAY, BROWN, BLACK
+    appearance:
+        color: WHITE
     computed:
         init:
-            radius: half(diameter)
-            width: diameter
-            height: diameter
+            adj_dia: |
+                (diameter if self.label is None
+                          else max(diameter,
+                                   math.ceil(math.hypot(self.label.width, self.label.height)
+                                               + 2*self.label_margin) | 1))  # force odd
+            radius: half(adj_dia)
+            width: adj_dia
+            height: adj_dia
             touch_radius: max(radius, min_touch_radius)
     include:
         init: |
             if self.touch is not None:
                 self.touch.attach_widget(self)
         draw_end: |
+            if self.label is not None:
+                self.label.draw(self.x_pos.C(draw_width), self.y_pos.C(draw_height))
             if self.touch is not None:
                 self.touch.activate()
         clear: |
@@ -238,17 +277,21 @@ bordered_circle:
     layout:
         diameter: 31
         border_width: 2             # or, maybe, 3 -- ok even or odd
+        label: null                 # static_text over the button, pass a static_text object
+        label_margin: 2
         touch: null
     appearance:
         border__color: BLACK
         color: WHITE
         on_color: GREEN
-        off_color: BROWN
+        off_color: GRAY
     shortcuts:
         diameter: border__diameter  # nice if this is odd, gives integer radius
         color: body__color
         on_color: body__on_color
         off_color: body__off_color
+        label: body__label
+        label_margin: body__label_margin
         touch: body__touch
     computed:
         init:
@@ -327,40 +370,6 @@ boxed_titled:
         middle_margin: body_titled__middle__margin
         bottom_margin: body_titled__bottom__margin
 
-spp_text:
-    specializes: dynamic_text
-    layout:
-        max_text: '"888-8.8"'
-    appearance:
-        color: BLACK
-        text: '"1.1"'
-
-spp_display:
-    specializes: boxed_titled
-    placeholders:
-        body:
-            - text: spp_text
-    layout:
-        title: '"title"'
-    appearance:
-        color: WHITE
-
-spp_mark:
-    specializes: boxed_titled
-    placeholders:
-        body:
-            - text: spp_text
-            - gap: vgap
-            - mark: bordered_circle
-    layout:
-        title: '"title"'
-        gap__margin: 3
-    appearance:
-        color: WHITE
-    computed:
-        init:
-            bordered_circle__touch: null  # FIX
-
 ---
 
 module: slider
@@ -394,7 +403,7 @@ include: |
     #    m = (max_y - min_y) / (max_x - min_x)
     def linear(m, b):
         # y = m*x + b
-        digits = max(0, int(math.ceil(-math.log(m, 10) - 1e10)))  # after decimal point
+        digits = max(0, int(math.ceil(-math.log(m, 10) - 1e-10)))  # after decimal point
         def scalei(x):  # returns an int
             return round(m*x + b)
         def scalef(x):  # returns a float
@@ -408,7 +417,7 @@ include: |
     # m = math.pow(max_y / min_y, 1/max_x) # raise each side by 1/max_x
     def exponential(m, min):
         # y = min*math.pow(m, x)
-        digits_at_min = max(0, int(math.ceil(-math.log(min*(m-1), 10) - 1e10)))  # after decimal point
+        digits_at_min = max(0, int(math.ceil(-math.log(min*(m-1), 10) - 1e-10)))  # after decimal point
         breakpoints = [math.ceil(math.pow(10, -d) / (m - 1))
                        for d in range(digits_at_min, -1, -1)] 
         assert breakpoints[0] < min, f"{breakpoints[0]=} >= {min=}"
@@ -423,6 +432,9 @@ include: |
                 return round(ans)
             return round(ans, digits)
         return scale
+
+add_to_all: [id, linear, exponential]
+
 
 slider_vknob:
     stacked:
@@ -456,7 +468,9 @@ slider_touch:
     layout:
         low_value: 0
         high_value: 127
+        starting_value: 0
         tick: 3  # width of a "tick", or the number of pixels separating one value from the next
+                 # make this 10 to be able to easily select between neighboring values.
         centerline__width: 3
         touch: null
         scale_fn: id
@@ -507,6 +521,7 @@ slider:
         title: null
         low_value: 0
         high_value: 127
+        starting_value: 0
         tick: 3  # number of pixels separating one value from the next
         scale_fn: id
         slider_gap__margin: 5
@@ -524,7 +539,8 @@ slider:
     shortcuts:
         low_value: slider__low_value
         high_value: slider__high_value
-        tick: slider.tick
+        starting_value: slider__starting_value
+        tick: slider__tick
         scale_fn: slider__scale_fn
     computed:
         init:
@@ -544,61 +560,307 @@ import:
 add_to_all: [radio_control]
 
 
-toggle_button:
+toggle_circle:
     specializes: bordered_circle
     layout:
         diameter: 31
         border_width: 2         # or, maybe, 3 -- ok even or odd
+        label: null                 # static_text over the button, pass a static_text object
+        label_margin: 2
         command: null
     appearance:
         border__color: BLACK
         on_color: GREEN
-        off_color: BROWN
+        off_color: GRAY
     computed:
         init:
-            touch: touch_toggle(name, command, trace)
+            touch: circle_toggle(name, command, trace)
 
-one_shot_button:
+one_shot_circle:
     specializes: bordered_circle
     layout:
         diameter: 31
         border_width: 2         # or, maybe, 3 -- ok even or odd
+        label: null                 # static_text over the button, pass a static_text object
+        label_margin: 2
         command: null
         blink_time: 0.3
     appearance:
         border__color: BLACK
         on_color: GREEN
-        off_color: BROWN
+        off_color: GRAY
     computed:
         init:
-            touch: touch_one_shot(name, command, blink_time, trace)
+            touch: circle_one_shot(name, command, blink_time, trace)
 
-start_stop_button:
+start_stop_circle:
     specializes: bordered_circle
     layout:
         diameter: 31
         border_width: 2         # or, maybe, 3 -- ok even or odd
+        label: null                 # static_text over the button, pass a static_text object
+        label_margin: 2
         command: null
     appearance:
         border__color: BLACK
         on_color: GREEN
-        off_color: BROWN
+        off_color: GRAY
     computed:
         init:
-            touch: touch_start_stop(name, command, trace)
+            touch: circle_start_stop(name, command, trace)
 
-radio_button:
+radio_circle:
     specializes: bordered_circle
     layout:
         diameter: 31
         border_width: 2         # or, maybe, 3 -- ok even or odd
+        label: null                 # static_text over the button, pass a static_text object
+        label_margin: 2
         command: null
         radio_control: null     # may not be null, pass same radio_control() to all buttons in group
     appearance:
         border__color: BLACK
         on_color: GREEN
-        off_color: BROWN
+        off_color: GRAY
     computed:
         init:
-            touch: touch_radio(name, command, radio_control, trace)
+            touch: circle_radio(name, command, radio_control, trace)
 
+
+---
+
+module: song_position
+
+import:
+    - from pyray import *
+    - from shapes import *
+    - from containers import *
+    - from buttons import *
+
+
+titled_one_shot:
+    column:
+        elements:
+            - button_title: static_text
+            - gap: vgap
+            - button: one_shot_circle
+    layout:
+        title: '"Start"'
+        gap__margin: 0
+    shortcuts:
+        title: button_title__text
+
+spp_text:
+    specializes: dynamic_text
+    layout:
+        max_text: '"888-8.8"'
+    appearance:
+        color: BLACK
+        text: '"1.1"'
+
+spp_display:  # just title and spp_text
+    specializes: boxed_titled
+    placeholders:
+        body:
+            - display: spp_text
+    layout:
+        title: '"Song Position"'
+    appearance:
+        color: WHITE
+
+start_stop_buttons:
+    row:
+        elements:
+            - button1: titled_one_shot
+            - gap1: hgap
+            - button2: titled_one_shot
+            - gap2: hgap
+            - button3: titled_one_shot
+    layout:
+        gap1__margin: 3
+        button1__title: '"Start"'
+        gap2__margin: 3
+        button2__title: '"Stop"'
+        button3__title: '"Cont."'
+
+spp_start_stop:
+    specializes: boxed_titled
+    placeholders:
+        body:
+            - display: spp_text
+            - gap: vgap
+            - buttons: start_stop_buttons
+    layout:
+        title: '"Song Position"'
+        gap__margin: 3
+    appearance:
+        color: WHITE
+
+two_displays:
+    row:
+        elements:
+            - display1: spp_text
+            - gap: hgap
+            - display2: spp_text
+    layout:
+        gap__margin: 3
+
+two_hbuttons:
+    row:
+        elements:
+            - button1: titled_one_shot
+            - gap: hgap
+            - button2: titled_one_shot
+    layout:
+        gap__margin: 3
+        button1__title: '"Mark"'
+        button2__title: '"End"'
+
+spp_replay:
+    specializes: boxed_titled
+    placeholders:
+        body:
+            - displays: two_displays
+            - gap1: vgap
+            - row1: two_hbuttons
+            - gap2: vgap
+            - row2: two_hbuttons
+    layout:
+        title: '"Replay"'
+        gap1__margin: 3
+        gap2__margin: 3
+        displays__gap__margin: 0
+        row1__gap__margin: 14
+        row2__gap__margin: 6
+        row2__button1__title: '"Replay"'
+        row2__button2__title: '"Loop"'
+    appearance:
+        color: WHITE
+
+---
+
+module: controls
+
+import:
+    - from pyray import *
+    - from shapes import *
+    - from slider import *
+    - from containers import *
+    - from song_position import *
+
+
+transpose:
+    specializes: slider
+    layout:
+        title: '"Transpose"'
+        high_value: 24
+        starting_value: 12
+        scale_fn: linear(1, -12)
+        tick: 10
+        command: null
+
+tempo:
+    specializes: slider
+    layout:
+        title: '"Tempo"'
+        starting_value: 65
+        scale_fn: exponential(1.01506, 30)
+        command: null
+
+synth_volume:
+    specializes: slider
+    layout:
+        title: '"Volume"'
+        starting_value: 45
+        scale_fn: id
+        command: null
+
+player_row1:
+    row:
+        elements:
+            - transpose: transpose
+            - gap1: hgap
+            - tempo: tempo
+            - gap2: hgap
+            - volume: synth_volume
+    layout:
+        y_align: '"S"'
+        gap1__margin: 29
+        gap2__margin: 29
+
+player:
+    specializes: boxed_titled
+    placeholders:
+        body:
+            - row1: player_row1
+    layout:
+        title: '"Player"'
+    appearance:
+        color: (255, 130, 255)
+        # modified YELLOW: (253, 249, 140)
+        # modified MAGENTA: (255, 130, 255)
+
+player_spp:
+    specializes: boxed_titled
+    placeholders:
+        body:
+            - start_stop: spp_start_stop
+            - gap: vgap
+            - replay: spp_replay
+    layout:
+        title: '"Song Position Pointer"'
+        gap__margin: 3
+    appearance:
+        color: (253, 249, 140)
+        # modified YELLOW: (253, 249, 140)
+        # modified MAGENTA: (255, 130, 255)
+
+player_row2:
+    row:
+        elements:
+            - start_stop: spp_start_stop
+            - gap: hgap
+            - replay: spp_replay
+    layout:
+        y_align: '"S"'
+        gap__margin: 29
+
+player_all:  # don't like this, but maybe putting player_spp under transpose?
+    specializes: boxed_titled
+    placeholders:
+        body:
+            - row1: player_row1
+            - gap: vgap
+            - row2: player_row2
+    layout:
+        title: '"Player"'
+        gap__margin: 20
+    appearance:
+        color: (255, 130, 255)
+        # modified YELLOW: (253, 249, 140)
+        # modified MAGENTA: (255, 130, 255)
+
+channel:
+    specializes: slider
+    layout:
+        title: '"Channel"'
+        high_value: 24
+        scale_fn: linear(1, 1)
+        tick: 10
+        command: null
+
+offset:
+    specializes: slider
+    layout:
+        title: '"Offset"'
+        starting_value: 63
+        scale_fn: linear(1.1969, -75)
+        command: null
+
+velocity:
+    specializes: slider
+    layout:
+        title: '"Velocity"'
+        starting_value: 63
+        scale_fn: exponential(1.01745, 33.626)
+        command: null

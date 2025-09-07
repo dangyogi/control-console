@@ -425,6 +425,9 @@ class specializes(widget):
         args, _needs = self.create_widget_args(self.init_method, self.base_widget, "", *widget_args)
         self.output.print_args(f"ans = {self.base_widget}(", args, tail=')', first_comma=False)
 
+    def draw_params(self):
+        return Widgets[self.base_widget].draw_params()
+
 class widget_stub:
     def __init__(self, name, layout=(), appearance=()):
         self.name = name

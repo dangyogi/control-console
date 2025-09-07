@@ -37,10 +37,15 @@ class base_vars:
         return self.enames.values()
 
     def add_var(self, name, exp):
+        r'''Ignores request if name already in self.enames.
+        '''
         self.index_var(self.variable_class(self, name, exp))
 
     def index_var(self, var):
-        self.enames[var.ename] = var
+        r'''Ignores request if var.ename already in self.enames.
+        '''
+        if var.ename not in self.enames:
+            self.enames[var.ename] = var
 
 class vars(base_vars):
     r'''This encapsulates {name: exp} dicts in the yaml file.
@@ -76,6 +81,8 @@ class computed_init(computed, vars):
     name = "computed_init"
 
     def add_create_widget(self, child_name, widget_name, *args):
+        r'''Ignores request if child_name already in self.enames.
+        '''
         self.index_var(computed_create_widget(self, child_name, widget_name, args))
 
 class computed_specialize(computed_init):
