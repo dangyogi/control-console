@@ -357,23 +357,6 @@ bordered_rect:
     #  X X  | create body; width = body.width + 2*border_width; create border
     #   X   | body__width = width - 2*border_width; create body; create border
 
-    #
-    #
-    #
-    #
-    #
-    # with label:
-    #
-    #   create body with label
-    #   calc border width/height (width/height params should be null)
-    #   create border
-    #
-    # without label:
-    #
-    #   calc body width/height
-    #   create body
-    #   create border
-
 titled:
     trace:
         - show_init_params
@@ -402,20 +385,12 @@ boxed:
         border_width: 5             # width of outer border line
         horz_margin: null           # between body and left/right edge of background
         vert_margin: null           # between body and top/bottom edge of background
-        label: null                 # static_text over the button, pass a static_text object
-        label_wmargin: 2
-        label_hmargin: 2
-        touch: null
-
-        # used by touch_buttons:
-        on_color: GREEN    # suggest: RED, GREEN, BLUE
-        off_color: GRAY    # suggest: GRAY, DARKGRAY, BROWN, BLACK
     appearance:
-        border__color: BLACK
+        border_color: BLACK
         color: WHITE
     shortcuts:
-        width: border__width
-        height: border__height
+        border_width: border__border_width
+        border_color: border__border_color
         color: border__color
         label: border__label
         label_wmargin: border__wmargin
@@ -427,10 +402,8 @@ boxed:
         init:
             horz_margin: border_width
             vert_margin: border_width
-            border__width: background__width + 2*border_width
-            border__height: background__height + 2*border_width
-            background__width: body__width + 2*horz_margin
-            background__height: body__height + 2*vert_margin
+            border__body__width: body__width + 2*horz_margin
+            border__body__height: body__height + 2*vert_margin
 
 boxed_titled:
     trace:
@@ -454,6 +427,7 @@ boxed_titled:
         middle_margin: 5
         bottom_margin: 6
     appearance:
+        border_color: BLACK
         color: WHITE
     shortcuts:
         title: body_titled__title

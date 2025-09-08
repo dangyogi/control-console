@@ -185,7 +185,7 @@ class init_method(method):
             self.output.print("if trace:")
         self.output.indent()
         args = ', '.join(f'{{{variable.sname}=}}' for variable in self.appearance.gen_variables())
-        self.output.print(f'print(f"{self.widget.name}({{self.method_name}}).__init__: {args}")')
+        self.output.print(f'print(f"{self.widget.name}({{self.name}}).__init__: {args}")')
         self.output.deindent()
         if 'init_end' in self.widget.include:
             self.output.print_block(self.widget.include.pop('init_end'))
@@ -254,7 +254,7 @@ class draw_method(method):
         self.output.print("if self.trace:")
         self.output.indent()
         args = ', '.join(f'{{{ename}=}}' for ename in self.appearance.gen_names())
-        self.output.print(f'print(f"{self.widget.name}({{self.method_name}}).draw: {args}")')
+        self.output.print(f'print(f"{self.widget.name}({{self.name}}).draw: {args}")')
         self.output.deindent()
         if 'draw_before' in self.widget.include:
             self.output.print_block(self.widget.include.pop('draw_before'))
