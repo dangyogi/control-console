@@ -641,7 +641,7 @@ toggle_circle:
         off_color: GRAY
     computed:
         init:
-            touch: circle_toggle(name, command, trace)
+            touch: circle_toggle(name, command, trace=trace)
 
 one_shot_circle:
     specializes: bordered_circle
@@ -701,7 +701,7 @@ toggle_rect:
         label_wmargin: 2
         label_hmargin: 2
         command: null
-        radio_control: null     # may not be null, pass same radio_control() to all buttons in group
+        split: False       # if True, left half of button acts like start-stop, right half toggle
 
         # used by touch_buttons:
         on_color: GREEN    # suggest: RED, GREEN, BLUE
@@ -712,7 +712,7 @@ toggle_rect:
     computed:
         init:
             label: static_text(text=text)
-            touch: rect_toggle(name, command, trace)
+            touch: rect_toggle(name, command, split, trace)
 
 one_shot_rect:
     specializes: bordered_rect

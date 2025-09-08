@@ -77,6 +77,9 @@ class touch:
 
 
 class rect_contains:
+    r'''These are assigned to the "contains" attribute of a touch object, so that they are
+    __call__ed to check for containment.
+    '''
     def __init__(self, widget):
         self.widget = widget
         self.width = widget.width
@@ -86,14 +89,19 @@ class rect_contains:
     def update_pos(self):
         x_pos = self.widget.x_pos
         self.x_left = x_pos.S(self.width).i
+        self.x_center = x_pos.C(self.width).i
         self.x_right = x_pos.E(self.width).i
         y_pos = self.widget.y_pos
         self.y_top = y_pos.S(self.height).i
         self.y_bottom = y_pos.E(self.height).i
 
     def __call__(self, x, y):
+        self.last_x = x
         return self.x_left <= x <= self.x_right \
            and self.y_top <= y <= self.y_bottom
+
+    def on_left(self):
+        return self.last_x <= self.x_center
 
 
 class touch_rect(touch):
@@ -273,10 +281,19 @@ class circle_button(touch_button):
 class touch_toggle:
     r'''Calls command.value_change(is_on)
     '''
+    def __init__(self, name, command, split=False, trace=False):
+        super().__init__(name, command, trace)
+        self.split = split   # if True, left half of button acts like start-stop, right half toggle
+
     def touch(self, x, y):
         if self.is_on:
             return self.turn_off()
         return self.turn_on()
+
+    def release(self):
+        if self.split and self.is_on and self.contains.on_left():
+            return self.turn_off()
+        return False
 
     def turn_on(self):
         r'''Returns True if turned on, False if already on.
@@ -340,7 +357,7 @@ class touch_radio(touch_toggle):
     r'''All touch_radio buttons given the same radio_control object are the same group.
     '''
     def __init__(self, name, command, radio_control, trace=False):
-        super().__init__(name, command, trace)
+        super().__init__(name, command, trace=trace)
         self.radio_control = radio_control
 
     def turn_on(self):

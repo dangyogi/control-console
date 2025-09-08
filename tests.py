@@ -228,6 +228,7 @@ def buttons():
     rr2 = radio_rect(radio_control=rrc, text="Radio 2")
     rr3 = radio_rect(radio_control=rrc, text="Radio 3")
     tr = toggle_rect(text="Toggle")
+    trs = toggle_rect(text="Toggle Split", split=True)
     osr = one_shot_rect(text="One shot")
     ssr = start_stop_rect(text="Start/Stop")
 
@@ -269,6 +270,7 @@ def buttons():
         rr2.draw(x_pos=x_pos, y_pos=S(500))
         rr3.draw(x_pos=x_pos+100, y_pos=S(500))
         tr.draw(x_pos=C(500), y_pos=S(500))
+        trs.draw(x_pos=C(500), y_pos=S(550))
         osr.draw(x_pos=C(600), y_pos=S(500))
         ssr.draw(x_pos=C(700), y_pos=S(500))
 
