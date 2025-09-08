@@ -209,6 +209,7 @@ def buttons():
     r_1 = rect(label=static_text(text="1"))
     r_16 = rect(label=static_text(text="16"))
     r_Continue = rect(label=static_text(text="Continue"))
+
     br = bordered_rect(width=36, height=34)
     print(f"{br.width=}, {br.height=}")
     br2 = bordered_rect(body__width=36, body__height=34)
@@ -219,6 +220,17 @@ def buttons():
     print(f"{br_16.width=}, {br_16.height=}")
     br_Continue = bordered_rect(label=static_text(text="Continue"))
     print(f"{br_Continue.width=}, {br_Continue.height=}")
+
+    rrr = rect(width=300, height=100)   # for radio buttons
+    rrc = radio_control()
+    rr_title = static_text(text="radio_rect")
+    rr1 = radio_rect(radio_control=rrc, text="Radio 1")
+    rr2 = radio_rect(radio_control=rrc, text="Radio 2")
+    rr3 = radio_rect(radio_control=rrc, text="Radio 3")
+    tr = toggle_rect(text="Toggle")
+    osr = one_shot_rect(text="One shot")
+    ssr = start_stop_rect(text="Start/Stop")
+
     with screen.Screen.update():
         x_pos = C(300)
         text_y = E(140)
@@ -238,16 +250,28 @@ def buttons():
         c.draw(x_pos=C(900), y_pos=b_y_pos)
         c_1.draw(x_pos=C(950), y_pos=b_y_pos)
         c_16.draw(x_pos=C(1000), y_pos=b_y_pos)
-        r_y_pos = b_y_pos + 50
+
+        r_y_pos = b_y_pos + 50   # 210
         r_1.draw(x_pos=C(900), y_pos=r_y_pos)
         r_16.draw(x_pos=C(950), y_pos=r_y_pos)
         r_Continue.draw(x_pos=C(1024), y_pos=r_y_pos)
-        br_y_pos = r_y_pos + 50
+
+        br_y_pos = r_y_pos + 50  # 260
         br_1.draw(x_pos=C(900), y_pos=br_y_pos)
         br_16.draw(x_pos=C(950), y_pos=br_y_pos)
         br_Continue.draw(x_pos=C(1024), y_pos=br_y_pos)
         br.draw(x_pos=C(950), y_pos=br_y_pos + 50)
         br2.draw(x_pos=C(950), y_pos=br_y_pos + 100)
+
+        rrr.draw(x_pos=x_pos, y_pos=S(450))   # rect for radio buttons
+        rr_title.draw(x_pos=x_pos, y_pos=E(480))
+        rr1.draw(x_pos=x_pos-100, y_pos=S(500))
+        rr2.draw(x_pos=x_pos, y_pos=S(500))
+        rr3.draw(x_pos=x_pos+100, y_pos=S(500))
+        tr.draw(x_pos=C(500), y_pos=S(500))
+        osr.draw(x_pos=C(600), y_pos=S(500))
+        ssr.draw(x_pos=C(700), y_pos=S(500))
+
     traffic_cop.run(10)
 
 def spp():

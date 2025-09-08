@@ -620,7 +620,8 @@ module: buttons
 
 import:
     - from pyray import *
-    - from containers import bordered_circle
+    - from shapes import *
+    - from containers import *
     - from touch import *
 
 add_to_all: [radio_control]
@@ -692,74 +693,87 @@ radio_circle:
         init:
             touch: circle_radio(name, command, radio_control, trace)
 
-rect_button:
-    specializes: boxed
-    placeholders:
-        body: []
+toggle_rect:
+    specializes: bordered_rect
     layout:
-        label: null             # static_text over the button, pass a static_text object
-        label_margin: 2
+        border_width: 5             # width of outer border line
+        text: null                  # label over the button
+        label_wmargin: 2
+        label_hmargin: 2
         command: null
         radio_control: null     # may not be null, pass same radio_control() to all buttons in group
-    appearance:
-        border__color: BLACK
-        on_color: GREEN
-        off_color: GRAY
-    computed:
-        init:
-            touch: circle_radio(name, command, radio_control, trace)
 
-toggle_rect:
-    specializes: rect_button
-    layout:
-        label: null
-        command: null
+        # used by touch_buttons:
+        on_color: GREEN    # suggest: RED, GREEN, BLUE
+        off_color: GRAY    # suggest: GRAY, DARKGRAY, BROWN, BLACK
     appearance:
         border__color: BLACK
-        on_color: GREEN
-        off_color: GRAY
+        color: GRAY
     computed:
         init:
-            touch: circle_radio(name, command, radio_control, trace)
+            label: static_text(text=text)
+            touch: rect_toggle(name, command, trace)
 
 one_shot_rect:
-    specializes: rect_button
+    specializes: bordered_rect
     layout:
-        label: null
+        border_width: 5             # width of outer border line
+        text: null                  # label over the button
+        label_wmargin: 2
+        label_hmargin: 2
         command: null
+
+        # used by touch_buttons:
+        on_color: GREEN    # suggest: RED, GREEN, BLUE
+        off_color: GRAY    # suggest: GRAY, DARKGRAY, BROWN, BLACK
     appearance:
         border__color: BLACK
-        on_color: GREEN
-        off_color: GRAY
+        color: GRAY
     computed:
         init:
-            touch: circle_radio(name, command, radio_control, trace)
+            label: static_text(text=text)
+            touch: rect_one_shot(name, command, trace=trace)
 
 start_stop_rect:
-    specializes: rect_button
+    specializes: bordered_rect
     layout:
-        label: null
+        border_width: 5             # width of outer border line
+        text: null                  # label over the button
+        label_wmargin: 2
+        label_hmargin: 2
         command: null
+
+        # used by touch_buttons:
+        on_color: GREEN    # suggest: RED, GREEN, BLUE
+        off_color: GRAY    # suggest: GRAY, DARKGRAY, BROWN, BLACK
     appearance:
         border__color: BLACK
-        on_color: GREEN
-        off_color: GRAY
+        color: GRAY
     computed:
         init:
-            touch: circle_radio(name, command, radio_control, trace)
+            label: static_text(text=text)
+            touch: rect_start_stop(name, command, trace)
 
 radio_rect:
-    specializes: rect_button
+    specializes: bordered_rect
     layout:
-        label: null
+        border_width: 5             # width of outer border line
+        text: null                  # label over the button
+        label_wmargin: 2
+        label_hmargin: 2
         command: null
+        radio_control: null     # may not be null, pass same radio_control() to all buttons in group
+
+        # used by touch_buttons:
+        on_color: GREEN    # suggest: RED, GREEN, BLUE
+        off_color: GRAY    # suggest: GRAY, DARKGRAY, BROWN, BLACK
     appearance:
         border__color: BLACK
-        on_color: GREEN
-        off_color: GRAY
+        color: GRAY
     computed:
         init:
-            touch: circle_radio(name, command, radio_control, trace)
+            label: static_text(text=text)
+            touch: rect_radio(name, command, radio_control, trace)
 
 
 ---
