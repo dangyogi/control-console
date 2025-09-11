@@ -16,7 +16,6 @@ class base_vars:
     def __init__(self, widget, trace):
         self.trace = trace
         self.widget = widget
-        self.output = self.widget.output  # FIX: still needed?
         self.enames = {}
 
     def __contains__(self, ename):

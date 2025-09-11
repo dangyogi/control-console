@@ -5,10 +5,10 @@ from itertools import chain
 
 from methods import *
 from vars import *
-#from variable import *
 
 
-__all__ = "raylib_call stacked column row specializes widget_stub Widget_types Widgets".split()
+__all__ = "raylib_call stacked column row panel specializes " \
+          "widget_stub Widget_types Widgets".split()
 
 
 Widgets = {}
@@ -245,6 +245,9 @@ class raylib_call(widget):
 class composite(widget):
     e_x_pos = "getattr(self.x_pos, self.x_align)(self.width)"
     e_y_pos = "getattr(self.y_pos, self.y_align)(self.height)"
+    x_pos_arg = "e_x_pos"
+    y_pos_arg = "e_y_pos"
+    placeholders_allowed = True
 
     def __init__(self, name, spec, output, trace):
         #print(f"{name}.__init__: {elements=}")
@@ -271,6 +274,7 @@ class composite(widget):
             assert len(elem) == 1, f"expected element dict with one key, got {elem=}"
             name, widget_name = elem.copy().popitem()
             if widget_name == "placeholder":
+                assert self.placeholders_allowed, f"{self.name}.init: placeholders not allowed"
                 self.placeholders.append(name)
                 self.elements.append((name, None))
             else:
@@ -311,8 +315,8 @@ class composite(widget):
         for name, widget in self.elements:
             if widget is not None:
                 self.output.print_head(f"self.{name}.draw(", first_comma=False)
-                self.output.print_arg('x_pos=e_x_pos')
-                self.output.print_arg('y_pos=e_y_pos')
+                self.output.print_arg("x_pos=" + self.x_pos_arg.format(name=name))
+                self.output.print_arg("y_pos=" + self.y_pos_arg.format(name=name))
                 for pname in widget.draw_params():
                     my_iname = f"{name}__{pname}"
                     if my_iname in draw_available:
@@ -384,12 +388,21 @@ class row(composite):
     def inc_draw_pos(self, sname):
         self.output.print(f"e_x_pos += {sname}.width")
 
+class panel(composite):
+    e_x_pos = "self.x_pos.S(self.width)"
+    e_y_pos = "self.y_pos.S(self.height)"
+    x_pos_arg = "e_x_pos + self.{name}_x_offset"
+    y_pos_arg = "e_y_pos + self.{name}_y_offset"
+    placeholders_allowed = False
+
+    def init_calls(self):
+        pass
+
 class specializes(widget):
     computed_vars = (computed_specialize,)
     methods = (specialize_fn,)
     use_self = False
     use_ename = False
-    #skip = True
 
     def init(self):
         super().init()
@@ -442,4 +455,4 @@ class widget_stub:
     def draw_params(self):
         return []
 
-Widget_types = (raylib_call, stacked, column, row, specializes)
+Widget_types = (raylib_call, stacked, column, row, panel, specializes)

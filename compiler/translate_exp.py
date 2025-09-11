@@ -31,13 +31,6 @@ def translate_name(name, method, needs):
     if "translate_name" in method.trace:
         print(f"translate_name({name=}): after shortcuts.substitute, {first=}")
 
-    # FIX:
-    #if names[0] in method.widget.element_names and len(names) > 1:
-    #    first = f"{names[0]}__{names[1]}"
-    #    if "translate_name" in method.trace:
-    #        print(f"translate_name({name=}): after element_name__, {names=}, {first=}")
-    #    names[0: 2] = [first]
-
     # first is now ename
 
     if "translate_name" in method.trace:
@@ -72,10 +65,8 @@ def translate_name(name, method, needs):
     return '.'.join(names)
 
 
-#Word_re = r'[.\w]+|\w+[(=]?'
-Word_re = r'\w+((\.\w+)*|[(=])'
+Word_re = r'\w+((\.\w+)*|[(=])'  # matches \w+ (.\w+)* or, \w+(=
 
-# FIX: still needed? -- No...
 #Global_names = frozenset("str int float self and or not math round min max sum as_dict "
 #                         "half measure_text_ex".split())
 

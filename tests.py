@@ -43,16 +43,19 @@ def rect_borders():
     for x in range(30, 1758, 140):  # 12 iterations
         #print("drawing x", x)
 
-        top_margin = 5
-        middle_margin = 4
-        bottom_margin = 7
+        horz_margin = 5
+        vert_margin = 5
+        #top_margin = 5
+        middle_margin = 2
+        #bottom_margin = 57
 
         # missing horz/vert_margin (both border_width)
-        bt = boxed_titled(title=f"width={border_width}", placeholders=t_placeholders,
+        bt = boxed_titled(title=f"wid={border_width}", placeholders=t_placeholders,
                           border_width=border_width,
-                          top_margin=top_margin, middle_margin=middle_margin,
-                          bottom_margin=bottom_margin)
+                          horz_margin=horz_margin, middle_margin=middle_margin,
+                          vert_margin=vert_margin)
 
+        print(f"{bt.border.border_width=}, {bt.horz_margin=}, {bt.vert_margin=}")
         print(f"{bt.width=}, {bt.height=}")   # width: 77-136, height: 465-513
 
         with screen.Screen.update():
@@ -64,23 +67,24 @@ def rect_borders():
 def rect_margins():
     inner = rect(height=425, width=61, color=LIGHTGRAY)
     t_placeholders = dict(body=[dict(inner=inner)])
-    border_width = 5
     # screen: width=1920, height=1080
     for y_i, y in enumerate(range(18, 1000, 513)):       # 2 iterations
         for x_i, x in enumerate(range(30, 1758, 140)):   # 13 iterations
             #print("drawing x", x)
-            i = 13*y_i + x_i
+            i = 13*y_i + x_i  # i ranges 0-25
 
-            top_margin = 8
-            middle_margin = 5 + i // 5
-            bottom_margin = 5 + i % 5
-            print(f"{y_i=}, {x_i=}, {i=}, {top_margin=}, {middle_margin=}")
+            horz_margin = 5  # default 5
+            vert_margin = 5  # default 5
+            middle_margin = 0 + i % 7
+            print(f"{y_i=}, {x_i=}, {i=}, {horz_margin=}, {vert_margin=}, {middle_margin=}")
 
-            # missing horz/vert_margin (both border_width)
-            bt = boxed_titled(title=f"mid={middle_margin} bot={bottom_margin}",
-                              placeholders=t_placeholders, border_width=border_width,
-                              top_margin=top_margin, middle_margin=middle_margin,
-                              bottom_margin=bottom_margin)
+            # missing horz/vert_margin
+            bt = boxed_titled(title=f"m{middle_margin}",
+                              placeholders=t_placeholders,
+                              horz_margin=horz_margin,
+                              vert_margin=vert_margin,
+                              middle_margin=middle_margin,
+                              )
 
             print(f"{bt.width=}, {bt.height=}")   # width: 77-136, height: 465-513
 
@@ -165,7 +169,7 @@ def slider_test(profile=False):
         import cProfile
         import time
         pr = cProfile.Profile(time.perf_counter)
-    sc = slider(title="Testing...", top_margin=5, middle_margin=5)
+    sc = slider(title="Testing", vert_margin=5, middle_margin=1)
     print(f"{sc.width=}, {sc.height=}")
     #midi_io.Trace = True
     #ControlChange(0, 0x10, Channels(1,3,5), sc.guts.slider, trace=True)
@@ -277,43 +281,38 @@ def buttons():
     traffic_cop.run(10)
 
 def spp():
-    tos = titled_one_shot()     # title, gap__margin (3)
-    sd = spp_display()          # title, color
     ssb = spp_start_stop()
+    print(f"spp_start_stop: width={ssb.width}, height={ssb.height}")
     sr = spp_replay()       # title, button__title, gap__margin (3), color
+    print(f"spp_replay: width={sr.width}, height={sr.height}")
+    ch = channel()
+    print(f"channel: width={ch.width}, height={ch.height}")
     tr = transpose()
+    print(f"transpose: width={tr.width}, height={tr.height}")
     te = tempo()
+    print(f"tempo: width={te.width}, height={te.height}")
     sv = synth_volume()
-    p1 = player_row1()
-    p2 = player_row2()
+    print(f"synth_volume: width={sv.width}, height={sv.height}")
     p = player()
-    pspp = player_spp()
-    #pa = player_all(color=(255, 130, 255))
-    pa = player_all()
+    print(f"player: width={p.width}, height={p.height}")
+    soft = soft_pedal()
+    print(f"soft_pedal: width={soft.width}, height={soft.height}")
+    sostenuto = sostenuto_pedal()
+    print(f"sostenuto_pedal: width={sostenuto.width}, height={sostenuto.height}")
+    sustain = sustain_pedal()
+    print(f"sustain_pedal: width={sustain.width}, height={sustain.height}")
+    n = note()
+    print(f"note: width={n.width}, height={n.height}")
     with screen.Screen.update():
-        #y_pos = S(100)
-        #x_pos = S(30)
-        #for x, widget in zip(range(30, 1900, 113), (tr, te, sv)):
-        #    widget.draw(x_pos, y_pos)
-        #    x_pos += widget.width + 29
-        #    print(f"{widget.name}: width={widget.width} height={widget.height}")
-        #y_pos = S(600)
-        #x_pos = S(30)
-        #for x, widget in zip(range(30, 1900, 193), (# tos, sd,
-        #                                             ssb, sr)):
-        #    widget.draw(x_pos, y_pos)
-        #    x_pos += widget.width + 29
-        #    print(f"{widget.name}: width={widget.width} height={widget.height}")
-        pa.draw(S(2), S(2))
-        #pa.draw(S(2), S(540))
-        print(f"{pa.name}: width={pa.width} height={pa.height}")
-        p.draw(S(400), S(2))
+        #soft.draw(S(2), S(540))
+        #sostenuto.draw(S(61), S(540))
+        #sustain.draw(S(170), S(540))
+        p.draw(S(2), S(2))
         print(f"{p.name}: width={p.width} height={p.height}")
-        pspp.draw(S(400), S(540))
-        print(f"{pspp.name}: width={pspp.width} height={pspp.height}")
-        p.draw(S(800), S(2))
-        p.draw(S(800), S(540))
-    traffic_cop.run(15)
+        n.draw(S(2), S(540))
+        #sr.draw(S(1500), S(2))
+        #ssb.draw(S(1700), S(2))
+    traffic_cop.run(35)
 
 
 

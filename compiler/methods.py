@@ -205,14 +205,6 @@ class specialize_fn(init_method):
 
     def load_param(self, variable):
         pass
-        ''' FIX
-        if exp is not None:
-            template = Template("""
-                if $pname is None:
-                    $pname = $exp
-            """)
-            self.output.print_block(template.substitute(pname=pname, exp=exp))
-        '''
 
     def end(self):
         super().end()
@@ -223,8 +215,6 @@ class draw_method(method):
     first_auto_params = (('x_pos', None), ('y_pos', None))
     param_vars = 'appearance',
     available_vars = 'computed_draw',
-    #available_vars = 'appearance', 'computed_draw'
-    #available_vars = 'layout', 'appearance', 'computed_init', 'computed_draw'
     computed_vars_name = 'computed_draw'
 
     def available_variables(self):
