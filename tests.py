@@ -285,7 +285,7 @@ def spp():
     print(f"spp_start_stop: width={ssb.width}, height={ssb.height}")
     sr = spp_replay()       # title, button__title, gap__margin (3), color
     print(f"spp_replay: width={sr.width}, height={sr.height}")
-    print(f"spp_replay: {sr.guts.mark_col.replay.border__diameter=}")
+    print(f"spp_replay: {sr.guts.mark_col.plus.border__diameter=}")
     ch = channel()
     print(f"channel: width={ch.width}, height={ch.height}")
     tr = transpose()

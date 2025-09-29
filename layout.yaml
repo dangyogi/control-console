@@ -832,17 +832,18 @@ spp_replay_mark:
             - gap3: vgap
             - plus: one_shot_circle
     layout:
-        gap0__margin: 7
-        gap1__margin: 7
-        gap2__margin: 7
-        gap3__margin: 7
+        gap0__margin: 3
+        gap1__margin: 6
+        gap2__margin: 4
+        gap3__margin: 5
     computed:
         init:
             mark_spp__text: '"1.1"'
             mark__text: '"Mark"'
             replay__label: static_text(text="Replay")
             mark_end__choices: [Mark, End]
-            plus__label: static_text(text="+")
+            plus__label: static_text(text="+", size=30)
+            plus__label_margin: 0
 
 spp_replay_end:
     column:
@@ -858,17 +859,19 @@ spp_replay_end:
             - minus: one_shot_circle
     layout:
         loop__diameter: 71
-        gap0__margin: 7
-        gap1__margin: 7
-        gap2__margin: 7
-        gap3__margin: 7
+        gap0__margin: 3
+        gap1__margin: 6
+        gap2__margin: 4
+        gap3__margin: 5
     computed:
         init:
             end_spp__text: '"1.1"'
             end__text: '"End"'
             loop__label: static_text(text="Loop")
             inc__choices: [100, 10, 1, .1]
-            minus__label: static_text(text="-")
+            minus__label: static_text(text="-", size=30)
+            minus__label_margin: 0
+            minus__diameter: 43
 
 spp_replay_guts:
     row:
