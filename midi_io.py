@@ -5,9 +5,14 @@ import os
 import time
 import selectors
 from alsa_midi import (SequencerClient, PortCaps, EventType,
-                       ControlChangeEvent, RegisteredParameterChangeEvent,
+                       StartEvent, StopEvent, ContinueEvent, ClockEvent,
+                       SystemEvent,               # (event, result), i.e. (status_byte, data_byte)
+                       ControlChangeEvent,        # (channel, param, value)
+                       RegisteredParameterChangeEvent,
                        NonRegisteredParameterChangeEvent, NoteOnEvent, NoteOffEvent,
-                       SongPositionPointerEvent)
+                       SongPositionPointerEvent,  # (channel??, value)
+                       SongSelectEvent,           # (channel??, value)
+                      )
 
 import screen
 import traffic_cop
@@ -56,6 +61,8 @@ Beats = None
 Beat_type = None
 Clocks_per_beat_type = None
 Spp_per_beat_type = None
+Clocks_per_measure = None
+Spp_per_measure = None
 
 def set_spp(spp):
     r'''Returns True if screen changed.
@@ -124,6 +131,8 @@ def get_midi_events(_fd):
                         Beats, Beat_type = data_to_time_sig(event.result)
                         Clocks_per_beat_type = Clocks_per_whole // Beat_type
                         Spp_per_beat_type = Clocks_per_beat_type // Clocks_per_spp
+                        Clocks_per_measure = Clocks_per_beat_type * Beats
+                        Spp_per_measure = Spp_per_beat_type * Beats
                     case _:
                         print(f"Unrecognized SYSTEM event {event.event=} -- ignored")
            #case EventType.CONTROLLER:

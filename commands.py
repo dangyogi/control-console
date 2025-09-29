@@ -1,71 +1,116 @@
 # commands.py
 
-from midi_io import send_midi_event, ControlChangeEvent
+import midi_io
 
 
-class Channels:
-    r'''A fixed set of channels.
-    '''
-    def __init__(self, *channels):
-        self.channels = frozenset(channels)
-    
-    def __contains__(self, ch):
-        return ch in self.channels
-
-    def __iter__(self):
-        return iter(self.channels)
+__all__ = "ControlChange CannedEvent Cycle SaveSpp".split()
 
 
-class ControlChange:
-    r'''Knows how to package a change in the value of some user_control into a midi message.
+class Command:
+    def attach_touch(self, touch):
+        self.touch = touch
 
-    Currently only accepts one user_control.
-    '''
-    event = ControlChangeEvent
-
-    def __init__(self, port, param, channels, user_control, trace=False):
-        if trace:
-            print(f"ControlChange.__init__({port=}, {param=}, {channels=}, {user_control=}")
-        self.port = port
+class ControlChange(Command):
+    def __init__(self, channel, param, multiplier=1):
+        self.channel = channel
         self.param = param
-        self.channels = channels
-        self.user_control = user_control
-        user_control.command = self
-        self.trace = trace
+        self.multiplier = multiplier
 
-    def __repr__(self):
-        return f"<ControlChange port={self.port} param={self.param}>"
-
-    def key(self):
-        return self.port, self.event.type, self.param
-
-    def local_change(self, ignore_channel=None):
-        r'''Sends midi output events
+    def value_change(self, value):
+        r'''Returns True if screen changed.
         '''
-        if self.trace:
-            print(f"{self}.local_change: {ignore_channel=}")
-        value = self.user_control.get_raw_value()
-
-        for ch in self.channels:
-            if ch != ignore_channel:
-                event = self.event(ch, self.param, value)
-                send_midi_event(self.port, event)
-
-    def remote_change(self, channel, new_value):
-        r'''Forwards new_value to self.user_control.
-
-        The user_control doesn't care about channels.
-
-        Returns True if the screen changed and needs a Screen.draw_to_framebuffer() done.
-        '''
-        if self.trace:
-            print(f"{self}.remote_change: {channel=} {new_value=}")
-        # FIX: Should any channel be able to change the user_control, or just the lowest value, or ??
-        if channel in self.channels:
-            # FIX: How to update other channels to match?
-            if self.trace:
-                print(f"{self}.remote_change: forwarding to user_control")
-            return self.user_control.remote_change(channel, new_value)
-        if self.trace:
-            print(f"{self}.remote_change: ignored, not my channel")
+        midi_io.send_midi_event(midi_io.ControlChangeEvent(self.channel, self.param, value * self.multiplier))
         return False
+
+class SystemCommon(Command):
+    def __init__(self, status):
+        self.status = status
+
+    def value_change(self, value):
+        r'''Returns True if screen changed.
+        '''
+        midi_io.send_midi_event(midi_io.SystemEvent(self.status, value))
+        return False
+
+class CannedEvent(Command):
+    def __init__(self, event):
+        self.event = event
+
+    def act(self):
+        r'''Returns True if screen changed.
+        '''
+        midi_io.send_midi_event(self.event)
+        return False
+
+class Cycle(Command):
+    def __init__(self):
+        self.index = 0
+
+    def attach_touch(self, touch):
+        super().attach_touch(touch)
+        self.widget = touch.widget
+        print(f"Cycle.attach_touch: {self.widget.name=}")
+        self.choices = self.widget.choices
+        print(f"Cycle.act: {self.choices=}")
+
+    def act(self):
+        r'''Called before turning on the button.
+        '''
+        self.index = (self.index + 1) % len(self.choices)
+        self.widget.text = str(self.choices(self.index))
+        return False  # haven't updated the screen ... yet ...
+
+    def choice(self):
+        return self.choices[self.index]
+
+class SaveSpp(Command):
+    def __init__(self, display, multiplier):
+        self.display = display        # dynamic_text
+        self.multiplier = multiplier  # Cycle command
+        self.spp = 0
+
+    def act(self):
+        r'''Returns True if screen changed.
+        '''
+        self.spp = midi_io.get_spp()
+        return update_display()
+
+    def update_display(self):
+        self.display.draw(text=midi_io.get_location(self.spp))
+        return True
+
+    def inc(self, sign):
+        self.spp += sign * self.inc_amount()
+        return update_display()
+
+    def inc_amount(self):
+        multiplier = self.multiplier.choice()
+        if multiplier == 0.1:
+            return midi_io.Spp_per_beat_type
+        return multiplier * midi_io.Spp_per_measure
+
+class IncSpp(Command):
+    def __init__(self, sign):
+        self.sign = sign  # 1 or -1
+
+    def args(self, mark_end, mark_savespp, end_savespp):
+        self.mark_end = mark_end                     # Cycle command
+        self.savespps = (mark_savespp, end_savespp)  # SaveSpp commands
+
+    def act(self):
+        return self.savespps[self.mark_end.index].inc(self.sign)
+
+class Replay(Command):
+    def args(self, mark_savespp, end_savespp):
+        self.mark_savespp = mark_savespp
+        self.end_savespp = end_savespp
+
+    def act(self):
+        # FIX: implement
+        print(f"Replay.act() called -- ignored for now...")
+
+class Loop(Replay):
+    def act(self):
+        # FIX: implement
+        print(f"Loop.act() called -- ignored for now...")
+

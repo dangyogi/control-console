@@ -567,6 +567,7 @@ import:
     - from shapes import *
     - from containers import *
     - from touch import *
+    - from commands import *
 
 add_to_all: [radio_control]
 
@@ -735,7 +736,6 @@ cycle_rect:
         height: null             # of border rect, if null, calced by background__height + border_width
         label_wmargin: 2
         label_hmargin: 2
-        command: null
         choices: null
 
         # used by touch_buttons:
@@ -746,6 +746,7 @@ cycle_rect:
         color: GRAY
     computed:
         init:
+            command: Cycle()
             label: dynamic_text(all_texts=choices, text=str(choices[0]))
             touch: rect_one_shot(name, command, trace=trace)
 
@@ -759,6 +760,8 @@ import:
     - from shapes import *
     - from containers import *
     - from buttons import *
+    - from commands import *
+    - from midi_io import *
 
 
 spp_text:
@@ -774,7 +777,7 @@ start_button:
     computed:
         init:
             label: static_text(text="Start")
-            command: null
+            command: CannedEvent(StartEvent())
 
 stop_button:
     specializes: one_shot_circle
@@ -783,7 +786,7 @@ stop_button:
     computed:
         init:
             label: static_text(text="Stop")
-            command: null
+            command: CannedEvent(StopEvent())
 
 cont_button:
     specializes: one_shot_circle
@@ -792,7 +795,7 @@ cont_button:
     computed:
         init:
             label: static_text(text="Cont.")
-            command: null
+            command: CannedEvent(ContinueEvent())
 
 spp_start_stop_col:
     column:
@@ -836,14 +839,18 @@ spp_replay_mark:
         gap1__margin: 6
         gap2__margin: 4
         gap3__margin: 5
+        multiplier: null
     computed:
         init:
             mark_spp__text: '"1.1"'
             mark__text: '"Mark"'
+            mark__command: SaveSpp(mark_spp, multiplier)
             replay__label: static_text(text="Replay")
+            replay__command: Replay()
             mark_end__choices: [Mark, End]
             plus__label: static_text(text="+", size=30)
             plus__label_margin: 0
+            plus__command: IncSpp(1)
 
 spp_replay_end:
     column:
@@ -854,7 +861,7 @@ spp_replay_end:
             - gap1: vgap
             - loop: one_shot_circle
             - gap2: vgap
-            - inc: cycle_rect
+            - multiplier: cycle_rect
             - gap3: vgap
             - minus: one_shot_circle
     layout:
@@ -867,11 +874,14 @@ spp_replay_end:
         init:
             end_spp__text: '"1.1"'
             end__text: '"End"'
+            end__command: SaveSpp(end_spp, multiplier)
             loop__label: static_text(text="Loop")
-            inc__choices: [100, 10, 1, .1]
+            loop__command: Loop()
+            multiplier__choices: [100, 10, 1, .1]
             minus__label: static_text(text="-", size=30)
             minus__label_margin: 0
             minus__diameter: 43
+            minus__command: IncSpp(-1)
 
 spp_replay_guts:
     row:
@@ -882,6 +892,21 @@ spp_replay_guts:
     layout:
         y_align: '"S"'
         gap__margin: 9
+    computed:
+        init:
+            mark_col__multiplier: end_col.multiplier
+    include:
+        init_end: |
+            self.mark_col.plus__command.args(self.mark_col.mark_end.command,
+                                             self.mark_col.mark__command,
+                                             self.end_col.end__command)
+            self.end_col.minus__command.args(self.mark_col.mark_end.command,
+                                             self.mark_col.mark__command,
+                                             self.end_col.end__command)
+            self.mark_col.replay__command.args(self.mark_col.mark__command,
+                                               self.end_col.end__command)
+            self.end_col.loop__command.args(self.mark_col.mark__command,
+                                            self.end_col.end__command)
 
 spp_replay:
     specializes: boxed
@@ -905,6 +930,8 @@ import:
     - from containers import *
     - from buttons import *
     - from song_position import *
+    - from commands import *
+    - from midi_io import *
 
 
 transpose:   # width=107, height=322
@@ -915,15 +942,19 @@ transpose:   # width=107, height=322
         starting_value: 12
         scale_fn: Transpose_scale.scale_rounded
         tick: 10
-        command: null
+    computed:
+        init:
+            command: ControlChange(2, 0x56)
 
 tempo:   # width=79, height=463
     specializes: slider
     layout:
         title: '"Tempo"'
         starting_value: 65
-        scale_fn: Tempo_scale.scale_rounded
-        command: null
+    computed:
+        init:
+            scale_fn: Tempo_scale.scale_rounded
+            command: SystemCommon(0xF4)
 
 channel_volume:   # width=82, height=463
     specializes: slider
@@ -931,16 +962,20 @@ channel_volume:   # width=82, height=463
         title: '"Volume"'
         starting_value: 45
         scale_fn: id
-        command: null
+    computed:
+        init:
+            command: ControlChange(2, 0x07)
 
 channel:         # width=88, height=232
     specializes: slider
     layout:
         title: '"Channel"'
         high_value: 15
-        scale_fn: Channel_scale.scale_rounded
         tick: 10
-        command: null
+    computed:
+        init:
+            scale_fn: Channel_scale.scale_rounded
+            command: ControlChange(2, 0x55)
 
 offset:
     specializes: slider
@@ -948,7 +983,9 @@ offset:
         title: '"Offset"'
         starting_value: 63
         scale_fn: Offset_scale.scale_rounded         # [-0.75:0.76]
-        command: null
+    computed:
+        init:
+            command: null
 
 velocity:
     specializes: slider
@@ -956,21 +993,29 @@ velocity:
         title: '"Velocity"'
         starting_value: 63
         scale_fn: Velocity_scale.scale_rounded       # [-40:41]
-        command: null
+    computed:
+        init:
+            command: null
 
 soft_pedal:             # width=43, height=28
     specializes: toggle_rect
     layout:
         width: 93           # of border rect, if null, calced by background__width + border_width
         height: null        # of border rect, if null, calced by background__height + border_width
-        text: '" Soft "'
+        text: '"Soft"'
         split: true
+    computed:
+        init:
+            command: ControlChange(2, 0x40, 127)
 
 sostenuto_pedal:        # width=93, height=28
     specializes: toggle_rect
     layout:
         text: '"Sostenuto"'
         split: true
+    computed:
+        init:
+            command: ControlChange(2, 0x42, 127)
 
 sustain_pedal:          # width=72, height=28
     specializes: toggle_rect
@@ -979,6 +1024,9 @@ sustain_pedal:          # width=72, height=28
         height: null        # of border rect, if null, calced by background__height + border_width
         text: '"Sustain"'
         split: true
+    computed:
+        init:
+            command: ControlChange(2, 0x43, 127)
 
 ch_spp_row:
     row:

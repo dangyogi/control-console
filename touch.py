@@ -50,6 +50,7 @@ class touch:
         r'''Called at end of widget.__init__ method.  x_pos, y_pos not yet known...
         '''
         self.widget = widget
+        self.command.attach_touch(self)
 
     def activate(self):
         r'''Called at the end of widget.draw, so x, y positions are now known
@@ -67,12 +68,18 @@ class touch:
         self.active = False
 
     def touch(self, x, y):
+        r'''Returns True is the screen has changed.
+        '''
         return False
 
     def move_to(self, x, y):
+        r'''Returns True is the screen has changed.
+        '''
         return False
 
     def release(self):
+        r'''Returns True is the screen has changed.
+        '''
         return False
 
 
@@ -156,6 +163,8 @@ class touch_slider(touch_rect):
         self.update_text()
 
     def touch(self, x, y):
+        r'''Returns True is the screen has changed.
+        '''
         if not self.knob_contains(x, y):
             # do a sudden jump to the touch point!
             if self.trace:
@@ -172,6 +181,8 @@ class touch_slider(touch_rect):
         return False
 
     def move_to(self, x, y):
+        r'''Returns True is the screen has changed.
+        '''
         if self.trace:
             print(f"{self}.move_to({x=}, {y=})")
         knob_y = y + self.offset
@@ -230,6 +241,7 @@ class touch_button(touch):
         r'''Called at end of widget.__init__ method.  x_pos, y_pos not yet known...
         '''
         super().attach_widget(widget)
+        print(f"{self.__class__.__name__}.attach_widget({widget.name})")
         self.on_color = self.widget.on_color
         self.off_color = self.widget.off_color
         self.is_on = False
@@ -241,14 +253,16 @@ class touch_button(touch):
             self.show_off()
 
     def show_on(self):
+        r'''Causes screen change.
+        '''
         self.widget.draw(color=self.on_color)
         self.is_on = True
-        return True
 
     def show_off(self):
+        r'''Causes screen change.
+        '''
         self.widget.draw(color=self.off_color)
         self.is_on = False
-        return True
 
 class rect_button(touch_button):
     def activate2(self):
@@ -290,17 +304,21 @@ class touch_toggle:
         self.split = split   # if True, left half of button acts like start-stop, right half toggle
 
     def touch(self, x, y):
+        r'''Returns True is the screen has changed.
+        '''
         if self.is_on:
             return self.turn_off()
         return self.turn_on()
 
     def release(self):
+        r'''Returns True is the screen has changed.
+        '''
         if self.split and self.is_on and self.contains.on_left():
             return self.turn_off()
         return False
 
     def turn_on(self):
-        r'''Returns True if turned on, False if already on.
+        r'''Returns True if turned on (and screen changed), False if already on (no screen change).
         '''
         if not self.is_on:
             self.show_on()
@@ -310,7 +328,7 @@ class touch_toggle:
         return False
 
     def turn_off(self):
-        r'''Returns True if turned off, False if already off.
+        r'''Returns True if turned off (and screen changed), False if already off (no screen change).
         '''
         if self.is_on:
             self.show_off()
@@ -332,9 +350,11 @@ class touch_one_shot:
         super().activate2()
 
     def touch(self, x, y):
-        self.show_on()
+        r'''Returns True is the screen has changed.
+        '''
         if self.command is not None:
             self.command.act()
+        self.show_on()
         traffic_cop.set_alarm(self.blink_time, self.show_off)
         return True
 
@@ -342,6 +362,8 @@ class touch_start_stop:
     r'''Calls command.start() and command.stop()
     '''
     def touch(self, x, y):
+        r'''Returns True is the screen has changed.
+        '''
         self.show_on()
         if self.command is not None:
             self.command.start()
@@ -352,6 +374,8 @@ class touch_start_stop:
         super().activate2()
 
     def release(self):
+        r'''Returns True is the screen has changed.
+        '''
         self.show_off()
         if self.command is not None:
             self.command.stop()
@@ -365,12 +389,16 @@ class touch_radio(touch_toggle):
         self.radio_control = radio_control
 
     def turn_on(self):
+        r'''Returns True if turned on (and screen changed), False if already on (no screen change).
+        '''
         if super().turn_on():
             self.radio_control.on(self)
             return True
         return False
 
     def turn_off(self, tell_radio=True):
+        r'''Returns True if turned off (and screen changed), False if already off (no screen change).
+        '''
         if super().turn_off():
             if tell_radio:
                 self.radio_control.off(self)
@@ -382,6 +410,10 @@ class radio_control:
         self.on_button = None
 
     def on(self, button):
+        r'''May (or may not) change the screen.
+
+        Only called when the screen has already been changed...
+        '''
         if self.on_button is not None:
             self.on_button.turn_off(tell_radio=False)
         self.on_button = button

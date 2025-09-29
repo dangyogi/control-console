@@ -13,7 +13,6 @@ from buttons import *
 from song_position import *
 from controls import *
 import traffic_cop
-from commands import ControlChange, Channels
 import midi_io
 
 
@@ -172,7 +171,6 @@ def slider_test(profile=False):
     sc = slider(title="Testing", vert_margin=5, middle_margin=1)
     print(f"{sc.width=}, {sc.height=}")
     #midi_io.Trace = True
-    #ControlChange(0, 0x10, Channels(1,3,5), sc.guts.slider, trace=True)
     with screen.Screen.update():
         x_pos = C(900)
         y_pos = S(100)

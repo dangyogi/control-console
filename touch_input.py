@@ -88,11 +88,15 @@ class Touch_dispatcher:
         self.widgets.remove(widget)
 
     def dispatch(self, event):
+        r'''Returns True if the screen was changed.
+        '''
         if self.trace:
             print(f"Touch_dispatcher.dispatch({event=})")
         return getattr(self, event.action)(event)
 
     def touch(self, event):
+        r'''Returns True if the screen was changed.
+        '''
         if self.trace:
             print(f"Touch_dispatcher.touch({event=})")
         if event.slot in self.ignore:
@@ -113,6 +117,8 @@ class Touch_dispatcher:
         return False
 
     def move(self, event):
+        r'''Returns True if the screen was changed.
+        '''
         if self.trace:
             print(f"Touch_dispatcher.move({event=})")
         if event.slot in self.assignments:
@@ -128,6 +134,8 @@ class Touch_dispatcher:
         return False
 
     def release(self, event):
+        r'''Returns True if the screen was changed.
+        '''
         if self.trace:
             print(f"Touch_dispatcher.release({event=})")
         if event.slot in self.assignments:
