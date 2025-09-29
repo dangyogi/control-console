@@ -89,20 +89,10 @@ class computed_var(computed_exp):
         elif name in vars.widget.appearance:
             param = vars.widget.appearance[name]
             where = "appearance"
-        # FIX: delete
-        if self.vars.widget.name == "bordered_rect":
-            if param is None:
-                print(f"computed_var({name=}, {exp=}).__init__ got param=None")
-                print(f"  layout={list(vars.widget.layout.gen_names())}")
-            else:
-                print(f"computed_var({name=}, {exp=}).__init__ got {param=}, {where=}")
         if param is not None:
             if param.exp is not None:
                 print(f"{vars.widget.name}.computed_var({name}): "
                       f"ERROR: also in {where} with a non-None exp {param.exp}")
-            # FIX: delete
-            if self.vars.widget.name == "bordered_rect":
-                print(f"computed_var({name=}) calling {param=}.flag_computed()")
             param.flag_computed()
             self.computed_param = True
             self.pname = param.pname

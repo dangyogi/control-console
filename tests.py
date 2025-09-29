@@ -281,11 +281,11 @@ def buttons():
     traffic_cop.run(10)
 
 def spp():
-    ssb = spp_start_stop2()
-    print(f"spp_start_stop2: width={ssb.width}, height={ssb.height}")
-    sr = spp_replay2()       # title, button__title, gap__margin (3), color
-    print(f"spp_replay2: width={sr.width}, height={sr.height}")
-    print(f"spp_replay2: {sr.guts.mark_col.replay.border__diameter=}")
+    ssb = spp_start_stop()
+    print(f"spp_start_stop: width={ssb.width}, height={ssb.height}")
+    sr = spp_replay()       # title, button__title, gap__margin (3), color
+    print(f"spp_replay: width={sr.width}, height={sr.height}")
+    print(f"spp_replay: {sr.guts.mark_col.replay.border__diameter=}")
     ch = channel()
     print(f"channel: width={ch.width}, height={ch.height}")
     tr = transpose()
@@ -296,8 +296,6 @@ def spp():
     print(f"channel_volume: width={cv.width}, height={cv.height}")
     p = player()
     print(f"player: width={p.width}, height={p.height}")
-    p2 = player2()
-    print(f"player2: width={p2.width}, height={p2.height}")
     soft = soft_pedal()
     print(f"soft_pedal: width={soft.width}, height={soft.height}")
     sostenuto = sostenuto_pedal()
@@ -312,13 +310,11 @@ def spp():
         #sustain.draw(S(170), S(540))
         p.draw(S(2), S(2))      # width 514
         n.draw(S(2), S(540))
-        p2.draw(S(600), S(2))
-        ssb.draw(S(1700), S(2))
         screenshot = screen.Screen.screenshot()     # must be done before exiting Screen.update()
     #traffic_cop.run(35)
     traffic_cop.run(5)
-    image_crop(screenshot, (600, 2, p2.width, p2.height))
-    export_image(screenshot, "player2.png")
+    image_crop(screenshot, (2, 2, p.width, p.height))
+    export_image(screenshot, "player.png")
    #export_image(screenshot, "screenshot.png")      # much smaller than .bmp!
    #export_image(screenshot, "screenshot.bmp")
    #image = screen.Screen.as_image()                # these are upside down...

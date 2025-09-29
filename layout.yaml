@@ -341,14 +341,16 @@ bordered_rect:
         init:
             border__width: background.width + 2*border_width    # only calced if width is None
             border__height: background.height + 2*border_width  # only calced if height is None
-            #width: background.width + 2*border_width    # only calced if width is None
-            #height: background.height + 2*border_width  # only calced if height is None
     include:
         init_background: |
-            if width is not None:
-                self.background__width = width - 2*self.border_width
-            if height is not None:
-                self.background__height = height - 2*self.border_width
+            if background__width is not None:
+                width = background__width + 2*border_width
+            elif width is not None:
+                self.background__width = width - 2*border_width
+            if background__height is not None:
+                height = background__height + 2*border_width
+            elif height is not None:
+                self.background__height = height - 2*border_width
 
     # NNNNYYYY | label is None
     # NNYYNNYY | background__width is None
@@ -396,7 +398,7 @@ boxed:
     shortcuts:
         border_width: border__border_width
         border_color: border__border_color
-        color: border__color
+        color: border__color        # background (fill) color
         label: border__label
         label_wmargin: border__wmargin
         label_hmargin: border__hmargin
@@ -662,6 +664,8 @@ one_shot_rect:
     specializes: bordered_rect
     layout:
         border_width: 2          # width of outer border line
+        width: null              # of border rect, if null, calced by background__width + border_width
+        height: null             # of border rect, if null, calced by background__height + border_width
         text: null               # label over the button
         label_wmargin: 2
         label_hmargin: 2
@@ -682,6 +686,8 @@ start_stop_rect:
     specializes: bordered_rect
     layout:
         border_width: 2          # width of outer border line
+        width: null              # of border rect, if null, calced by background__width + border_width
+        height: null             # of border rect, if null, calced by background__height + border_width
         text: null               # label over the button
         label_wmargin: 2
         label_hmargin: 2
@@ -702,6 +708,8 @@ radio_rect:
     specializes: bordered_rect
     layout:
         border_width: 2          # width of outer border line
+        width: null              # of border rect, if null, calced by background__width + border_width
+        height: null             # of border rect, if null, calced by background__height + border_width
         text: null               # label over the button
         label_wmargin: 2
         label_hmargin: 2
@@ -723,6 +731,8 @@ cycle_rect:
     specializes: bordered_rect
     layout:
         border_width: 2          # width of outer border line
+        width: null              # of border rect, if null, calced by background__width + border_width
+        height: null             # of border rect, if null, calced by background__height + border_width
         label_wmargin: 2
         label_hmargin: 2
         command: null
@@ -803,72 +813,11 @@ spp_start_stop_col:
             stop__diameter: start.border__diameter
             cont__diameter: start.border__diameter
 
-spp_start_stop2:
+spp_start_stop:
     specializes: boxed
     placeholders:
         body:
             - contents: spp_start_stop_col
-
-spp_start_stop:    # width=161, height=103
-    panel:
-        elements:
-            - border: rect
-            - background: rect
-            - spp: spp_text
-            - start_label: static_text
-            - start: one_shot_circle
-            - stop_label: static_text
-            - stop: one_shot_circle
-            - cont_label: static_text
-            - cont: one_shot_circle
-    layout:
-        start_label__text: '"Start"'
-        stop_label__text: '"Stop"'
-        cont_label__text: '"Cont."'
-        vert_margin: 5
-        horz_margin: 5
-        border_width: 4
-    appearance:
-        border__color: BLACK
-        background__color: WHITE
-    computed:
-        init:
-            # x_offsets:
-            border_x_offset: 0
-            background_x_offset: border_width
-            spp_x_offset: background_x_offset + half(background.width) - half(spp.width)
-
-            start_label_x_offset: background_x_offset + horz_margin
-            start_label_x_center: start_label_x_offset + half(start_label.width)
-            stop_label_x_offset: start_label_x_offset + start_label.width + horz_margin
-            stop_label_x_center: stop_label_x_offset + half(stop_label.width)
-            cont_label_x_offset: stop_label_x_offset + stop_label.width + horz_margin
-            cont_label_x_center: cont_label_x_offset + half(cont_label.width)
-
-            background__width: cont_label_x_offset + cont_label.width + horz_margin
-            border__width: background.width + 2*border_width
-            width: border.width
-
-            start_x_offset: start_label_x_center - half(start.width)
-            stop_x_offset: stop_label_x_center - half(stop.width)
-            cont_x_offset: cont_label_x_center - half(cont.width)
-
-            # y_offsets:
-            border_y_offset: 0
-            background_y_offset: border_width
-            spp_y_offset: background_y_offset + vert_margin
-
-            start_label_y_offset: spp_y_offset + spp.height + vert_margin
-            stop_label_y_offset: start_label_y_offset
-            cont_label_y_offset: start_label_y_offset
-
-            start_y_offset: start_label_y_offset + start_label.height + vert_margin
-            stop_y_offset: start_y_offset
-            cont_y_offset: start_y_offset
-
-            background__height: start_y_offset + start.height + vert_margin
-            border__height: background.height + 2*border_width
-            height: border.height
 
 spp_replay_mark:
     column:
@@ -931,7 +880,7 @@ spp_replay_guts:
         y_align: '"S"'
         gap__margin: 9
 
-spp_replay2:
+spp_replay:
     specializes: boxed
     placeholders:
         body:
@@ -939,76 +888,6 @@ spp_replay2:
     layout:
         horz_margin: 8              # between body and left/right edge of border
         vert_margin: 5              # between body and top/bottom edge of border
-
-spp_replay:   # width=155, height=164
-    panel:
-        elements:
-            - border: rect
-            - background: rect
-            - start_spp: spp_text
-            - end_spp: spp_text
-            - mark_label: static_text
-            - mark: one_shot_circle
-            - end_label: static_text
-            - end: one_shot_circle
-            - replay_label: static_text
-            - replay: one_shot_circle
-            - loop_label: static_text
-            - loop: one_shot_circle
-    layout:
-        mark_label__text: '"Mark"'
-        end_label__text: '"End"'
-        replay_label__text: '"Replay"'
-        loop_label__text: '"Loop"'
-        vert_margin: 5
-        horz_margin: 5
-        border_width: 4
-    appearance:
-        border__color: BLACK
-        background__color: WHITE
-    computed:
-        init:
-            # x_offsets:
-            border_x_offset: 0
-            background_x_offset: border_width
-            start_spp_x_offset: background_x_offset + horz_margin
-            start_spp_x_center: start_spp_x_offset + half(start_spp.width)
-            end_spp_x_offset: start_spp_x_offset + start_spp.width + horz_margin
-            end_spp_x_center: end_spp_x_offset + half(end_spp.width)
-            background__width: end_spp_x_offset + end_spp.width + horz_margin
-            border__width: background.width + 2*border_width
-            width: border.width
-
-            # left side x_offsets:
-            mark_label_x_offset: start_spp_x_center - half(mark_label.width)
-            mark_x_offset: start_spp_x_center - half(mark.width)
-            replay_label_x_offset: start_spp_x_center - half(replay_label.width)
-            replay_x_offset: start_spp_x_center - half(replay.width)
-
-            # right side x_offsets:
-            end_label_x_offset: end_spp_x_center - half(end_label.width)
-            end_x_offset: end_spp_x_center - half(end.width)
-            loop_label_x_offset: end_spp_x_center - half(loop_label.width)
-            loop_x_offset: end_spp_x_center - half(loop.width)
-
-            # y_offsets:
-            border_y_offset: 0
-            background_y_offset: border_width
-            start_spp_y_offset: background_y_offset + vert_margin
-            end_spp_y_offset: background_y_offset + vert_margin
-
-            mark_label_y_offset: start_spp_y_offset + start_spp.height + vert_margin
-            end_label_y_offset: end_spp_y_offset + end_spp.height + vert_margin
-            mark_y_offset: mark_label_y_offset + mark_label.height + vert_margin
-            end_y_offset: end_label_y_offset + end_label.height + vert_margin
-            replay_label_y_offset: mark_y_offset + mark.height + vert_margin
-            loop_label_y_offset: end_y_offset + end.height + vert_margin
-            replay_y_offset: replay_label_y_offset + replay_label.height + vert_margin
-            loop_y_offset: loop_label_y_offset + loop_label.height + vert_margin
-
-            background__height: loop_y_offset + loop.height + vert_margin
-            border__height: background.height + 2*border_width
-            height: border.height
 
 ---
 
@@ -1103,7 +982,7 @@ ch_spp_row:
         elements:
             - ch: channel
             - gap: hgap
-            - spp: spp_start_stop2
+            - spp: spp_start_stop
     layout:
         y_align: '"S"'
         margin: 5
@@ -1130,11 +1009,11 @@ ch_spp_replay_col:
         elements:
             - ch_spp: ch_spp_row
             - gap: vgap
-            - replay: spp_replay2
+            - replay: spp_replay
     layout:
         gap__margin: 5
 
-player2_guts:
+player_guts:
     row:
         elements:
             - ch_spp_replay: ch_spp_replay_col
@@ -1150,85 +1029,14 @@ player2_guts:
         gap1__margin: 5
         gap2__margin: 5
 
-player2:
+player:
     specializes: boxed_titled
     placeholders:
         body:
-            - guts: player2_guts
+            - guts: player_guts
     layout:
         title: '"Player"'
         color: (255, 130, 255)
-
-player:
-    panel:
-        elements:
-            - border: rect
-            - background: rect
-            - title: static_text
-            - chan: channel                # width=88, height=232
-            - trans: transpose             # width=107, height=322
-            - tempo: tempo                 # width=79, height=463
-            - volume: channel_volume       # width=82, height=463
-            - replay: spp_replay           # width=155, height=164
-            - start_stop: spp_start_stop   # width=161, height=103
-            - soft: soft_pedal             # width=43, height=28
-            - sostenuto: sostenuto_pedal   # width=93, height=28
-            - sustain: sustain_pedal       # width=72, height=28
-    layout:
-        title__text: '"Player"'
-        vert_margin: 5
-        horz_margin: 5
-        border_width: 4
-        pedal_margin: 30
-    appearance:
-        border__color: BLACK
-        background__color: (255, 130, 255)
-    computed:
-        init:
-            # x_offsets:
-            border_x_offset: 0
-            background_x_offset: border_width
-            title_x_offset: background_x_offset + half(background.width) - half(title.width)
-
-            replay_x_offset: background_x_offset + horz_margin
-            replay_x_center: replay_x_offset + half(replay.width)
-            start_stop_x_offset: replay_x_offset + replay.width + horz_margin
-            start_stop_x_center: start_stop_x_offset + half(start_stop.width)
-            replay_ss_width: replay.width + horz_margin + start_stop.width
-            tempo_x_offset: start_stop_x_offset + start_stop.width + horz_margin
-            volume_x_offset: tempo_x_offset + tempo.width + horz_margin
-
-            background__width: volume_x_offset + volume.width + horz_margin
-            border__width: background.width + 2*border_width
-            width: border.width
-
-            chan_x_offset: replay_x_center - half(chan.width)
-            trans_x_offset: start_stop_x_center - half(trans.width)
-            pedal_width: soft.width + pedal_margin + sostenuto.width + pedal_margin + sustain.width
-            soft_x_offset: replay_x_offset + (replay_ss_width - pedal_width) // 2
-            sostenuto_x_offset: soft_x_offset + soft.width + pedal_margin
-            sustain_x_offset: sostenuto_x_offset + sostenuto.width + pedal_margin
-
-            # y_offsets:
-            border_y_offset: 0
-            background_y_offset: border_width
-            title_y_offset: background_y_offset + vert_margin
-
-            chan_y_offset: title_y_offset + title.height + vert_margin
-            trans_y_offset: chan_y_offset
-            tempo_y_offset: chan_y_offset
-            volume_y_offset: chan_y_offset
-
-            background__height: volume_y_offset + volume.height + vert_margin
-            border__height: background.height + 2*border_width
-            height: border.height
-
-            start_stop_y_offset: trans_y_offset + trans.height + vert_margin
-            replay_y_offset: start_stop_y_offset + start_stop.height - replay.height
-
-            soft_y_offset: start_stop_y_offset + start_stop.height + vert_margin
-            sostenuto_y_offset: soft_y_offset
-            sustain_y_offset: soft_y_offset
 
 note_row1:
     row:
