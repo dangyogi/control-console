@@ -17,7 +17,7 @@ def process(document, trace_widgets):
     if 'module' in document:
         filename = document['module'] + '.py'
         print()
-        print("document", filename)
+        print("module", filename)
         with open(filename, 'w') as out_file:
             output = indenter(out_file, width=94)
             output.print("#", filename)
@@ -51,8 +51,7 @@ def compile(document, output, trace_widgets):
             if spec.get('skip', False):
                 continue
             trace = name in trace_widgets  # turns on trace: from yaml
-            print()
-            print("compiling", name)
+            print("  compiling", name)
             spec_copy = spec.copy()
             for cls in Widget_types:
                 cls_name = cls.__name__

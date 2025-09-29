@@ -151,6 +151,9 @@ class Texture:
     def invert_y(self, y):
         return self.texture.texture.height - 1 - y
 
+    def as_image(self):
+        return load_image_from_texture(self.texture.texture)
+
 
 def name(x):
     if x is None:

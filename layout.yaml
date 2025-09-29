@@ -40,6 +40,7 @@ module: shapes
 import:
     - import math
     - import os.path
+    - from operator import attrgetter
     - from pyray import *
     - import screen
     - from alignment import half
@@ -154,13 +155,17 @@ dynamic_text:
         sans: false
         bold: false
         max_text: null
+        all_texts: null      # iterable of all possible values to display (will be converted to str)
     appearance:
         color: BLACK
         text: null
     computed:
         init:
             font: Fonts[2 * sans + bold]
-            msize: measure_text_ex(font, str(max_text), size, spacing)
+            msize: |
+              measure_text_ex(font, str(max_text), size, spacing) if max_text is not None \
+              else max((measure_text_ex(font, str(v), size, spacing) for v in all_texts),
+                       key=attrgetter('x'))
             width: int(math.ceil(msize.x))
             height: int(math.ceil(msize.y))
         draw:
@@ -225,8 +230,8 @@ circle:
         diameter: 31  # nice if this is odd, gives integer radius
 
         # used by touch_buttons:
-        min_touch_radius: 28        # ok even or odd
-        #min_touch_diameter: 57
+        min_touch_radius: 22        # ok even or odd, extends 7 beyond default diameter
+        #min_touch_diameter: 43
         label: null                 # static_text over the button, pass a static_text object
         label_margin: 2
         touch: null
@@ -238,8 +243,9 @@ circle:
         color: WHITE
     computed:
         init:
+            # adj_dia is max(diameter, computed label diameter)
             adj_dia: |
-                (diameter if self.label is None
+                (diameter if label is None
                           else max(diameter,
                                    math.ceil(math.hypot(self.label.width, self.label.height)
                                                + 2*self.label_margin) | 1))  # force odd
@@ -272,7 +278,7 @@ bordered_circle:
     stacked:
         elements:
             - border: circle
-            - body: circle
+            - inner: circle
     layout:
         diameter: 31
         border_width: 2             # or, maybe, 3 -- ok even or odd
@@ -285,29 +291,32 @@ bordered_circle:
         on_color: GREEN
         off_color: GRAY
     shortcuts:
-        diameter: border__diameter  # nice if this is odd, gives integer radius
-        color: body__color
-        on_color: body__on_color
-        off_color: body__off_color
-        label: body__label
-        label_margin: body__label_margin
-        touch: body__touch
+       #diameter: border__diameter  # nice if this is odd, gives integer radius
+        color: inner__color
+        on_color: inner__on_color
+        off_color: inner__off_color
+        label: inner__label
+        label_margin: inner__label_margin
+        touch: inner__touch
     computed:
         init:
-            body__diameter: border__diameter - 2*border_width
+            inner__diameter: diameter - 2*border_width
+            border__diameter: |
+                (diameter if label is None
+                          else max(diameter, inner.adj_dia + 2*border_width))
 
 bordered_rect:
     stacked:
         elements:
             - border: rect
-            - body: rect
+            - background: rect
     layout:
-        border_width: 4             # width of outer border line
-        width: null                 # of border rect, if null, calced by body__width + border_width
-        height: null                # of border rect, if null, calced by body__height + border_width
-        body__width: null           # if null: calced by label, or width - border_width
-        body__height: null          # if null: calced by label, or height - border_width
-        label: null                 # static_text over the button, pass a static_text object
+        border_width: 4           # width of outer border line
+        width: null               # of border rect, if null, calced by background__width + border_width
+        height: null              # of border rect, if null, calced by background__height + border_width
+        background__width: null   # if null: calced by label, or width - border_width
+        background__height: null  # if null: calced by label, or height - border_width
+        label: null               # static_text over the button, pass a static_text object
         label_wmargin: 2
         label_hmargin: 2
         touch: null
@@ -321,38 +330,41 @@ bordered_rect:
     shortcuts:
         width: border__width
         height: border__height
-        color: body__color
-        label: body__label
-        label_wmargin: body__wmargin
-        label_hmargin: body__hmargin
-        touch: body__touch
-        on_color: body__on_color
-        off_color: body__off_color
+        color: background__color
+        label: background__label
+        label_wmargin: background__wmargin
+        label_hmargin: background__hmargin
+        touch: background__touch
+        on_color: background__on_color
+        off_color: background__off_color
     computed:
         init:
-            border__width: body.width + 2*border_width    # only calced if width is None
-            border__height: body.height + 2*border_width  # only calced if height is None
+            border__width: background.width + 2*border_width    # only calced if width is None
+            border__height: background.height + 2*border_width  # only calced if height is None
+            #width: background.width + 2*border_width    # only calced if width is None
+            #height: background.height + 2*border_width  # only calced if height is None
     include:
-        init_body: |
+        init_background: |
             if width is not None:
-                self.body__width = width - 2*self.border_width
-                self.body__height = height - 2*self.border_width
+                self.background__width = width - 2*self.border_width
+            if height is not None:
+                self.background__height = height - 2*self.border_width
 
     # NNNNYYYY | label is None
-    # NNYYNNYY | body__width is None
+    # NNYYNNYY | background__width is None
     # NYNYNYNY | width is None
     # ----------------------------------
     # X   X  X | error
-    #  X X X   | width = body.width + 2*border_width
-    #   X   X  | body__width = width - 2*border_width 
+    #  X X X   | width = background.width + 2*border_width
+    #   X   X  | background__width = width - 2*border_width 
 
     # -N-YY | label is None
-    # N-YNY | body__width is None
+    # N-YNY | background__width is None
     # NYNYY | width is None
     # ----------------------------------
     # X   X | error
-    #  X X  | create body; width = body.width + 2*border_width; create border
-    #   X   | body__width = width - 2*border_width; create body; create border
+    #  X X  | create background; width = background.width + 2*border_width; create border
+    #   X   | background__width = width - 2*border_width; create background; create border
 
 titled:
     trace:
@@ -393,8 +405,8 @@ boxed:
         off_color: border__off_color
     computed:
         init:
-            border__body__width: body__width + 2*horz_margin
-            border__body__height: body__height + 2*vert_margin
+            border__background__width: body__width + 2*horz_margin
+            border__background__height: body__height + 2*vert_margin
 
 boxed_titled:
     trace:
@@ -435,58 +447,6 @@ import:
     - from containers import *
     - import sprite
     - from touch import touch_slider
-
-include: |
-    def longer_str(a, b):
-        a = str(a)
-        b = str(b)
-        if len(a) > len(b):
-            return a
-        return b
-
-    def id(x):
-        return x
-
-    # m = (max_y - min_y) / (max_x - min_x)
-    # b = min_y - m*min_x       # m*min_x + b = min_y
-
-    # so m*max_x + b = max_y ?
-    #    m*max_x + min_y - m*min_x = max_y ?
-    #    m*(max_x - min_x) = max_y - min_y
-    #    m = (max_y - min_y) / (max_x - min_x)
-    def linear(m, b):
-        # y = m*x + b
-        digits = max(0, int(math.ceil(-math.log(m, 10) - 1e-10)))  # after decimal point
-        def scalei(x):  # returns an int
-            return round(m*x + b)
-        def scalef(x):  # returns a float
-            return round(m*x + b, digits)
-        if digits <= 0:
-            return scalei
-        return scalef
-
-    # min_y*math.pow(m, max_x) = max_y
-    # math.pow(m, max_x) = max_y / min_y
-    # m = math.pow(max_y / min_y, 1/max_x) # raise each side by 1/max_x
-    def exponential(m, min):
-        # y = min*math.pow(m, x)
-        digits_at_min = max(0, int(math.ceil(-math.log(min*(m-1), 10) - 1e-10)))  # after decimal point
-        breakpoints = [math.ceil(math.pow(10, -d) / (m - 1))
-                       for d in range(digits_at_min, -1, -1)] 
-        assert breakpoints[0] < min, f"{breakpoints[0]=} >= {min=}"
-        del breakpoints[0]
-        def scale(x):
-            ans = min*math.pow(m, x)
-            i = 0
-            while i < len(breakpoints) and breakpoints[i] < ans:
-                i += 1
-            digits = digits_at_min - i
-            if digits <= 0:
-                return round(ans)
-            return round(ans, digits)
-        return scale
-
-add_to_all: [id, linear, exponential]
 
 
 slider_vknob:
@@ -592,7 +552,7 @@ slider:
         scale_fn: slider__scale_fn
     computed:
         init:
-            display__max_text: longer_str(scale_fn(low_value), scale_fn(high_value))
+            display__all_texts: map(scale_fn, range(low_value, high_value + 1))
             display__text: str(scale_fn(low_value))
             slider__touch: touch_slider(name, display, command)
 
@@ -679,6 +639,8 @@ toggle_rect:
     specializes: bordered_rect
     layout:
         border_width: 2          # width of outer border line
+        width: null              # of border rect, if null, calced by background__width + border_width
+        height: null             # of border rect, if null, calced by background__height + border_width
         text: null               # label over the button
         label_wmargin: 2
         label_hmargin: 2
@@ -757,6 +719,25 @@ radio_rect:
             label: static_text(text=text)
             touch: rect_radio(name, command, radio_control, trace)
 
+cycle_rect:
+    specializes: bordered_rect
+    layout:
+        border_width: 2          # width of outer border line
+        label_wmargin: 2
+        label_hmargin: 2
+        command: null
+        choices: null
+
+        # used by touch_buttons:
+        on_color: GREEN    # suggest: RED, GREEN, BLUE
+        off_color: GRAY    # suggest: GRAY, DARKGRAY, BROWN, BLACK
+    appearance:
+        border__color: BLACK
+        color: GRAY
+    computed:
+        init:
+            label: dynamic_text(all_texts=choices, text=str(choices[0]))
+            touch: rect_one_shot(name, command, trace=trace)
 
 ---
 
@@ -777,6 +758,56 @@ spp_text:
     appearance:
         color: BLACK
         text: '"1.1"'
+
+start_button:
+    specializes: one_shot_circle
+    computed:
+        init:
+            label: static_text(text="Start")
+            command: null
+
+stop_button:
+    specializes: one_shot_circle
+    layout:
+        diameter: 31
+    computed:
+        init:
+            label: static_text(text="Stop")
+            command: null
+
+cont_button:
+    specializes: one_shot_circle
+    layout:
+        diameter: 31
+    computed:
+        init:
+            label: static_text(text="Cont.")
+            command: null
+
+spp_start_stop_col:
+    column:
+        elements:
+            - spp: spp_text
+            - gap0: vgap
+            - start: start_button
+            - gap1: vgap
+            - stop: stop_button
+            - gap2: vgap
+            - cont: cont_button
+    layout:
+        gap0__margin: 7
+        gap1__margin: 7
+        gap2__margin: 7
+    computed:
+        init:
+            stop__diameter: start.border__diameter
+            cont__diameter: start.border__diameter
+
+spp_start_stop2:
+    specializes: boxed
+    placeholders:
+        body:
+            - contents: spp_start_stop_col
 
 spp_start_stop:    # width=161, height=103
     panel:
@@ -838,6 +869,76 @@ spp_start_stop:    # width=161, height=103
             background__height: start_y_offset + start.height + vert_margin
             border__height: background.height + 2*border_width
             height: border.height
+
+spp_replay_mark:
+    column:
+        elements:
+            - mark_spp: spp_text
+            - gap0: vgap
+            - mark: one_shot_rect
+            - gap1: vgap
+            - replay: one_shot_circle
+            - gap2: vgap
+            - mark_end: cycle_rect
+            - gap3: vgap
+            - plus: one_shot_circle
+    layout:
+        gap0__margin: 7
+        gap1__margin: 7
+        gap2__margin: 7
+        gap3__margin: 7
+    computed:
+        init:
+            mark_spp__text: '"1.1"'
+            mark__text: '"Mark"'
+            replay__label: static_text(text="Replay")
+            mark_end__choices: [Mark, End]
+            plus__label: static_text(text="+")
+
+spp_replay_end:
+    column:
+        elements:
+            - end_spp: spp_text
+            - gap0: vgap
+            - end: one_shot_rect
+            - gap1: vgap
+            - loop: one_shot_circle
+            - gap2: vgap
+            - inc: cycle_rect
+            - gap3: vgap
+            - minus: one_shot_circle
+    layout:
+        loop__diameter: 71
+        gap0__margin: 7
+        gap1__margin: 7
+        gap2__margin: 7
+        gap3__margin: 7
+    computed:
+        init:
+            end_spp__text: '"1.1"'
+            end__text: '"End"'
+            loop__label: static_text(text="Loop")
+            inc__choices: [100, 10, 1, .1]
+            minus__label: static_text(text="-")
+
+spp_replay_guts:
+    row:
+        elements:
+            - mark_col: spp_replay_mark
+            - gap: hgap
+            - end_col: spp_replay_end
+    layout:
+        y_align: '"S"'
+        gap__margin: 9
+
+spp_replay2:
+    specializes: boxed
+    placeholders:
+        body:
+            - guts: spp_replay_guts
+    layout:
+        horz_margin: 8              # between body and left/right edge of border
+        vert_margin: 5              # between body and top/bottom edge of border
 
 spp_replay:   # width=155, height=164
     panel:
@@ -916,6 +1017,7 @@ module: controls
 import:
     - from pyray import *
     - from alignment import *
+    - from scale_fns import *
     - from shapes import *
     - from slider import *
     - from containers import *
@@ -929,7 +1031,7 @@ transpose:   # width=107, height=322
         title: '"Transpose"'
         high_value: 24
         starting_value: 12
-        scale_fn: linear(1, -12)
+        scale_fn: Transpose_scale.scale_rounded
         tick: 10
         command: null
 
@@ -938,10 +1040,10 @@ tempo:   # width=79, height=463
     layout:
         title: '"Tempo"'
         starting_value: 65
-        scale_fn: exponential(1.01506, 30)
+        scale_fn: Tempo_scale.scale_rounded
         command: null
 
-synth_volume:   # width=82, height=463
+channel_volume:   # width=82, height=463
     specializes: slider
     layout:
         title: '"Volume"'
@@ -954,7 +1056,7 @@ channel:         # width=88, height=232
     layout:
         title: '"Channel"'
         high_value: 15
-        scale_fn: linear(1, 1)
+        scale_fn: Channel_scale.scale_rounded
         tick: 10
         command: null
 
@@ -963,7 +1065,7 @@ offset:
     layout:
         title: '"Offset"'
         starting_value: 63
-        scale_fn: linear(1.1969, -75)
+        scale_fn: Offset_scale.scale_rounded         # [-0.75:0.76]
         command: null
 
 velocity:
@@ -971,13 +1073,15 @@ velocity:
     layout:
         title: '"Velocity"'
         starting_value: 63
-        scale_fn: linear(2.3465, -148)
+        scale_fn: Velocity_scale.scale_rounded       # [-40:41]
         command: null
 
 soft_pedal:             # width=43, height=28
     specializes: toggle_rect
     layout:
-        text: '"Soft"'
+        width: 93           # of border rect, if null, calced by background__width + border_width
+        height: null        # of border rect, if null, calced by background__height + border_width
+        text: '" Soft "'
         split: true
 
 sostenuto_pedal:        # width=93, height=28
@@ -989,8 +1093,71 @@ sostenuto_pedal:        # width=93, height=28
 sustain_pedal:          # width=72, height=28
     specializes: toggle_rect
     layout:
+        width: 93           # of border rect, if null, calced by background__width + border_width
+        height: null        # of border rect, if null, calced by background__height + border_width
         text: '"Sustain"'
         split: true
+
+ch_spp_row:
+    row:
+        elements:
+            - ch: channel
+            - gap: hgap
+            - spp: spp_start_stop2
+    layout:
+        y_align: '"S"'
+        margin: 5
+    shortcuts:
+        margin: gap__margin
+
+trans_pedal_col:
+    column:
+        elements:
+            - trans: transpose
+            - gap0: vgap
+            - sustain: sustain_pedal
+            - gap1: vgap
+            - sostenuto: sostenuto_pedal
+            - gap2: vgap
+            - soft: soft_pedal
+    layout:
+        gap0__margin: 19
+        gap1__margin: 19
+        gap2__margin: 19
+
+ch_spp_replay_col:
+    column:
+        elements:
+            - ch_spp: ch_spp_row
+            - gap: vgap
+            - replay: spp_replay2
+    layout:
+        gap__margin: 5
+
+player2_guts:
+    row:
+        elements:
+            - ch_spp_replay: ch_spp_replay_col
+            - gap0: hgap
+            - trans_pedals: trans_pedal_col
+            - gap1: hgap
+            - tempo_slider: tempo
+            - gap2: hgap
+            - volume: channel_volume
+    layout:
+        y_align: '"S"'
+        gap0__margin: 5
+        gap1__margin: 5
+        gap2__margin: 5
+
+player2:
+    specializes: boxed_titled
+    placeholders:
+        body:
+            - guts: player2_guts
+    layout:
+        title: '"Player"'
+        color: (255, 130, 255)
 
 player:
     panel:
@@ -1001,7 +1168,7 @@ player:
             - chan: channel                # width=88, height=232
             - trans: transpose             # width=107, height=322
             - tempo: tempo                 # width=79, height=463
-            - volume: synth_volume         # width=82, height=463
+            - volume: channel_volume       # width=82, height=463
             - replay: spp_replay           # width=155, height=164
             - start_stop: spp_start_stop   # width=161, height=103
             - soft: soft_pedal             # width=43, height=28
@@ -1012,6 +1179,7 @@ player:
         vert_margin: 5
         horz_margin: 5
         border_width: 4
+        pedal_margin: 30
     appearance:
         border__color: BLACK
         background__color: (255, 130, 255)
@@ -1036,10 +1204,10 @@ player:
 
             chan_x_offset: replay_x_center - half(chan.width)
             trans_x_offset: start_stop_x_center - half(trans.width)
-            pedal_width: soft.width + horz_margin + sostenuto.width + horz_margin + sustain.width
+            pedal_width: soft.width + pedal_margin + sostenuto.width + pedal_margin + sustain.width
             soft_x_offset: replay_x_offset + (replay_ss_width - pedal_width) // 2
-            sostenuto_x_offset: soft_x_offset + soft.width + horz_margin
-            sustain_x_offset: sostenuto_x_offset + sostenuto.width + horz_margin
+            sostenuto_x_offset: soft_x_offset + soft.width + pedal_margin
+            sustain_x_offset: sostenuto_x_offset + sostenuto.width + pedal_margin
 
             # y_offsets:
             border_y_offset: 0

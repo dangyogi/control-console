@@ -113,6 +113,8 @@ def register_init2(init_fn, prio=2):
     These functions are passed the initialized screen.
 
     Can be used as a function decorator.
+
+    register_init2 runs after all register_inits are done.
     '''
     Inits.append((prio, init_fn))
     return init_fn
@@ -133,12 +135,16 @@ def register_quit2(quit_fn, prio=2):
     These functions are not passed any arguments.
 
     Can be used as a function decorator.
+
+    register_quit2 runs before any register_quits are done.
     '''
     Quits.append((prio, quit_fn))
     return quit_fn
 
 
 class Screen_class:
+    r'''Screen measures 20.75" wide, and 11.11/16" high.  That's 0.0108"/pixel in both dimensions.
+    '''
     def __init__(self, width=1920, height=1080, background_color=SKYBLUE, trace=False):
         global Screen
         print(f"{width=}, {height=}")
@@ -207,6 +213,12 @@ class Screen_class:
         # inverted height here to flip image which reverse openGL flip wrt raylib.
         draw_texture_rec(my_texture, (0, 0, my_texture.width, -my_texture.height), (0, 0), WHITE)
         end_drawing()
+
+    def as_image(self):
+        return self.render_texture.as_image()
+
+    def screenshot(self):
+        return load_image_from_screen()
 
 
 import touch_input

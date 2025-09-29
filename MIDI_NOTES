@@ -16,6 +16,7 @@ Alsa midi support commands:
       - see also rtpmidi(d)
     amidiminder  # operates from a set of rules to automatically connect ports when it sees them
                  # sudo apt-get install amidiminder
+    cat /proc/asound/seq/clients        # shows more info about clients, ports, connections and buffers
 
 Use aseqnet to create a MIDI connection over ethernet:
 

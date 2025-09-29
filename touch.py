@@ -260,7 +260,8 @@ class circle_contains:
         self.widget = widget
         self.width = widget.width
         self.height = widget.height
-        self.touch_radius = self.widget.touch_radius
+        self.touch_radius = max(widget.touch_radius, widget.radius)
+        #print(f"circle_contains({self.widget.name=}).__init__: touch_radius={self.touch_radius}")
         self.update_pos()
 
     def update_pos(self):
@@ -270,7 +271,10 @@ class circle_contains:
         self.y_middle = y_pos.C(self.height).i
 
     def __call__(self, x, y):
-        dist = math.hypot((x - self.x_center), (y - self.y_middle))
+        x_offset = x - self.x_center
+        y_offset = y - self.y_middle
+        dist = math.hypot(x_offset, y_offset)
+        #print(f"circle_contains({self.widget.name=}).__init__: {x_offset=}, {y_offset=}, {dist=}")
         return dist <= self.touch_radius
 
 class circle_button(touch_button):

@@ -140,7 +140,8 @@ def run(secs=None):
             while Alarms and get_time() >= Alarms[-1][0]:
                 fn = Alarms.pop()[1]
                 screen_changed |= fn()
-        midi_io.drain_output()
+       # FIX: delete
+       #midi_io.drain_output()
         if screen_changed:
             screen.Screen.draw_to_framebuffer()
 

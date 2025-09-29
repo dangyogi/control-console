@@ -285,7 +285,7 @@ class composite(widget):
                 self.needed_draw_names.extend(
                   computed_draw_enames.intersection(
                     (f"{name}__{pname}" for pname in widget.draw_params())))
-                self.computed_init.add_create_widget(name, widget_name, f'name="{name}"')
+                self.computed_init.add_create_widget(name, widget_name, f'name=f"{{name}}.{name}"')
         self.sub_init()
 
     def sub_init(self):
@@ -413,7 +413,7 @@ class specializes(widget):
             for placeholder_name, elements in self.placeholders.items():
                 for element in elements:
                     name, widget = element.copy().popitem()
-                    self.computed_init.add_create_widget(name, widget, f'name="{name}"')
+                    self.computed_init.add_create_widget(name, widget, f'name=f"{{name}}.{name}"')
 
     def generate_widget(self):
         self.init_method.gen_method()

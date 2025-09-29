@@ -1,6 +1,6 @@
 # commands.py
 
-from midi_io import register_command, send_midi_event, ControlChangeEvent
+from midi_io import send_midi_event, ControlChangeEvent
 
 
 class Channels:
@@ -32,7 +32,6 @@ class ControlChange:
         self.user_control = user_control
         user_control.command = self
         self.trace = trace
-        register_command(self)
 
     def __repr__(self):
         return f"<ControlChange port={self.port} param={self.param}>"
