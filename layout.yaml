@@ -1029,13 +1029,41 @@ player_guts:
         gap1__margin: 5
         gap2__margin: 5
 
-player:
-    specializes: boxed_titled
-    placeholders:
-        body:
+player_top_row:
+    row:
+        elements:
+            - gap0: hgap
+            - title: static_text
+            - gap1: hgap
+            - songs: cycle_rect
+            - gap2: hgap
+            - select: one_shot_rect
+    layout:
+        gap0__margin: 3
+        title__text: '"Player:"'
+        gap1__margin: 4
+        songs__choices:
+            - Gladiolus Rag
+            - La Campanella
+            - Weeping Willow
+        gap2__margin: 8
+        select__text: '"Select"'
+
+player_full:
+    column:
+        elements:
+            - top_row: player_top_row
+            - gap: vgap
             - guts: player_guts
     layout:
-        title: '"Player"'
+        gap__margin: 5
+
+player:
+    specializes: boxed
+    placeholders:
+        body:
+            - full: player_full
+    layout:
         color: (255, 130, 255)
 
 note_row1:
