@@ -308,11 +308,12 @@ def spp():
         #sustain.draw(S(170), S(540))
         p.draw(S(2), S(2))      # width 514
         n.draw(S(2), S(540))
-        screenshot = screen.Screen.screenshot()     # must be done before exiting Screen.update()
+        #screenshot = screen.Screen.screenshot()     # must be done before exiting Screen.update()
+    traffic_cop.run(205)
     #traffic_cop.run(35)
-    traffic_cop.run(5)
-    image_crop(screenshot, (2, 2, p.width, p.height))
-    export_image(screenshot, "player.png")
+    #traffic_cop.run(5)
+    #image_crop(screenshot, (2, 2, p.width, p.height))
+    #export_image(screenshot, "player.png")
    #export_image(screenshot, "screenshot.png")      # much smaller than .bmp!
    #export_image(screenshot, "screenshot.bmp")
    #image = screen.Screen.as_image()                # these are upside down...

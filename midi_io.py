@@ -10,8 +10,8 @@ from alsa_midi import (SequencerClient, PortCaps, EventType,
                        ControlChangeEvent,        # (channel, param, value)
                        RegisteredParameterChangeEvent,
                        NonRegisteredParameterChangeEvent, NoteOnEvent, NoteOffEvent,
-                       SongPositionPointerEvent,  # (channel??, value)
-                       SongSelectEvent,           # (channel??, value)
+                       SongPositionPointerEvent,  # (channel??, value) set ch=0
+                       SongSelectEvent,           # (channel??, value) set ch=0
                       )
 
 import screen
@@ -28,8 +28,18 @@ Clocks_per_whole = Clocks_per_qtr * 4
 Clocks_per_spp = Clocks_per_whole // 16
 
 Client = SequencerClient("Exp Console")
+print("Client:", Client.client_id)
 Port = Client.create_port("Player Control",
                           PortCaps.READ | PortCaps.SUBS_READ | PortCaps.WRITE | PortCaps.SUBS_WRITE)
+
+# connect to aseqnet
+for port_info in Client.list_ports():
+    if port_info.client_name == "Net Client" and port_info.port_id == 0:
+        Port.connect_to(port_info)
+        Port.connect_from(port_info)
+        break
+else:
+    print("Net Client not found -- not connected")
 
 # fn() each time location changes (based on Beat_type in time signature)
 # return True is screen was updated
@@ -57,12 +67,12 @@ def notify_location_fn(fn):
 
 Clock_running = False
 Clock_count = 0
-Beats = None
-Beat_type = None
-Clocks_per_beat_type = None
-Spp_per_beat_type = None
-Clocks_per_measure = None
-Spp_per_measure = None
+Beats = 4
+Beat_type = 4
+Clocks_per_beat_type = Clocks_per_whole // Beat_type
+Spp_per_beat_type = Clocks_per_beat_type // Clocks_per_spp
+Clocks_per_measure = Clocks_per_beat_type * Beats
+Spp_per_measure = Spp_per_beat_type * Beats
 
 def set_spp(spp):
     r'''Returns True if screen changed.
@@ -80,7 +90,7 @@ def get_spp():
 def get_location(spp):
     beats_since_start = spp // Spp_per_beat_type
     measure, beat = divmod(beats_since_start, Beats)
-    return f"{measure}.{beat}"
+    return f"{measure+1}.{beat+1}"
 
 def get_midi_events(_fd):
     # w/false, often 0, but there's still an event.
@@ -92,15 +102,13 @@ def get_midi_events(_fd):
     start_time = time.time()
     num_pending = Client.event_input_pending(True)
     pending_time = time.time()
-    print("event_input_pending took", pending_time - start_time)
-    print(f"{num_pending=}")
+    #print("event_input_pending took", pending_time - start_time)
+    #print(f"{num_pending=}")
     screen_changed = False
     for i in range(1, num_pending + 1):
-        print("reading", i, "of", num_pending)
         event = Client.event_input()
         input_time = time.time()
-        print("event_input took", input_time - pending_time)
-        print(event)
+        #print("event_input took", input_time - pending_time)
         match event.type:
             case EventType.CLOCK:
                 if Clock_running:
@@ -109,13 +117,16 @@ def get_midi_events(_fd):
                         if Notify_location_fn():
                             screen_changed = True
             case EventType.START:
+                print("Got", event, "source", event.source)
                 Clock_count = 0
                 if Notify_location_fn():
                     screen_changed = True
                 Clock_running = True
             case EventType.STOP:
+                print("Got", event, "source", event.source)
                 Clock_running = False
             case EventType.CONTINUE:
+                print("Got", event, "source", event.source)
                 Clock_running = True
            #case EventType.SONGPOS:
            #    spp = event.value
@@ -125,20 +136,21 @@ def get_midi_events(_fd):
                 match event.event:
                     case 0xF4:  # tempo
                         bpm = Tempo_scale.scale_rounded(event.result)
-                        # FIX: do we care about this??
-                        print(f"get_midi_events got tempo {bpm=} -- ignored")
+                        print(f"get_midi_events got tempo {bpm=}, {event.source=} -- ignored")
                     case 0xF5:  # time signature
                         Beats, Beat_type = data_to_time_sig(event.result)
+                        print("Got time signature", Beats, Beat_type, "source", event.source)
                         Clocks_per_beat_type = Clocks_per_whole // Beat_type
                         Spp_per_beat_type = Clocks_per_beat_type // Clocks_per_spp
                         Clocks_per_measure = Clocks_per_beat_type * Beats
                         Spp_per_measure = Spp_per_beat_type * Beats
                     case _:
-                        print(f"Unrecognized SYSTEM event {event.event=} -- ignored")
+                        print(f"Unrecognized SYSTEM event {event.event=}, {event.source=} -- ignored")
            #case EventType.CONTROLLER:
            #    match event.param:
             case _:
-                print(f"Unrecognized event.type {Event_type_names[event.type]} -- ignored")
+                print(f"Unrecognized event.type {Event_type_names[event.type]}, "
+                      f"{event.source=} -- ignored")
     return screen_changed
 
 def send_midi_event(event):

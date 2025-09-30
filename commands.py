@@ -3,7 +3,7 @@
 import midi_io
 
 
-__all__ = "ControlChange CannedEvent Cycle SaveSpp".split()
+__all__ = "ControlChange SystemCommon CannedEvent Cycle SongSelect SaveSpp IncSpp Replay Loop".split()
 
 
 class Command:
@@ -19,7 +19,10 @@ class ControlChange(Command):
     def value_change(self, value):
         r'''Returns True if screen changed.
         '''
-        midi_io.send_midi_event(midi_io.ControlChangeEvent(self.channel, self.param, value * self.multiplier))
+        #print(f"sending ControlChangeEvent channel={self.channel}, param={hex(self.param)}, "
+        #      f"value={value * self.multiplier}")
+        midi_io.send_midi_event(
+          midi_io.ControlChangeEvent(self.channel, self.param, value * self.multiplier))
         return False
 
 class SystemCommon(Command):
@@ -29,6 +32,7 @@ class SystemCommon(Command):
     def value_change(self, value):
         r'''Returns True if screen changed.
         '''
+        #print(f"sending SystemEvent event={hex(self.status)}, result={hex(value)}")
         midi_io.send_midi_event(midi_io.SystemEvent(self.status, value))
         return False
 
@@ -39,29 +43,39 @@ class CannedEvent(Command):
     def act(self):
         r'''Returns True if screen changed.
         '''
+        #print("sending", self.event)
         midi_io.send_midi_event(self.event)
         return False
 
 class Cycle(Command):
-    def __init__(self):
+    def __init__(self, choices):
+        self.choices = choices
         self.index = 0
 
     def attach_touch(self, touch):
         super().attach_touch(touch)
-        self.widget = touch.widget
-        print(f"Cycle.attach_touch: {self.widget.name=}")
-        self.choices = self.widget.choices
-        print(f"Cycle.act: {self.choices=}")
+        self.widget = touch.widget.label
 
     def act(self):
         r'''Called before turning on the button.
         '''
         self.index = (self.index + 1) % len(self.choices)
-        self.widget.text = str(self.choices(self.index))
+        self.widget.text = str(self.choices[self.index])
         return False  # haven't updated the screen ... yet ...
 
     def choice(self):
         return self.choices[self.index]
+
+class SongSelect(Command):
+    def __init__(self, songs):
+        self.songs = songs
+
+    def act(self):
+        r'''Returns True if screen changed.
+        '''
+        #print(f"sending SongSelectEvent channel=4, song={self.songs.index}")
+        midi_io.send_midi_event(midi_io.SongSelectEvent(0, self.songs.index))
+        return False
 
 class SaveSpp(Command):
     def __init__(self, display, multiplier):
@@ -73,7 +87,7 @@ class SaveSpp(Command):
         r'''Returns True if screen changed.
         '''
         self.spp = midi_io.get_spp()
-        return update_display()
+        return self.update_display()
 
     def update_display(self):
         self.display.draw(text=midi_io.get_location(self.spp))
@@ -81,7 +95,7 @@ class SaveSpp(Command):
 
     def inc(self, sign):
         self.spp += sign * self.inc_amount()
-        return update_display()
+        return self.update_display()
 
     def inc_amount(self):
         multiplier = self.multiplier.choice()

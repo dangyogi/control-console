@@ -50,7 +50,8 @@ class touch:
         r'''Called at end of widget.__init__ method.  x_pos, y_pos not yet known...
         '''
         self.widget = widget
-        self.command.attach_touch(self)
+        if self.command is not None:
+            self.command.attach_touch(self)
 
     def activate(self):
         r'''Called at the end of widget.draw, so x, y positions are now known
@@ -241,7 +242,7 @@ class touch_button(touch):
         r'''Called at end of widget.__init__ method.  x_pos, y_pos not yet known...
         '''
         super().attach_widget(widget)
-        print(f"{self.__class__.__name__}.attach_widget({widget.name})")
+        #print(f"{self.__class__.__name__}.attach_widget({widget.name})")
         self.on_color = self.widget.on_color
         self.off_color = self.widget.off_color
         self.is_on = False
@@ -257,12 +258,14 @@ class touch_button(touch):
         '''
         self.widget.draw(color=self.on_color)
         self.is_on = True
+        return True
 
     def show_off(self):
         r'''Causes screen change.
         '''
         self.widget.draw(color=self.off_color)
         self.is_on = False
+        return True
 
 class rect_button(touch_button):
     def activate2(self):

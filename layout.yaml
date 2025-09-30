@@ -156,6 +156,7 @@ dynamic_text:
         bold: false
         max_text: null
         all_texts: null      # iterable of all possible values to display (will be converted to str)
+        as_sprite: true
     appearance:
         color: BLACK
         text: null
@@ -175,11 +176,14 @@ dynamic_text:
             x_left: x_pos.C(width).S(draw_width)
     include:
         init_end: |
-            self.sprite = sprite.Sprite(self.width, self.height, trace=self.trace)
+            if self.as_sprite:
+                self.sprite = sprite.Sprite(self.width, self.height, trace=self.trace)
         draw_before: |
-            self.sprite.save_pos(self.x_pos, self.y_pos)
+            if self.as_sprite:
+                self.sprite.save_pos(self.x_pos, self.y_pos)
         clear: |
-            self.sprite.reset()
+            if self.as_sprite:
+                self.sprite.reset()
 
 rect:
     raylib_call:
@@ -746,8 +750,8 @@ cycle_rect:
         color: GRAY
     computed:
         init:
-            command: Cycle()
-            label: dynamic_text(all_texts=choices, text=str(choices[0]))
+            command: Cycle(choices)
+            label: dynamic_text(all_texts=choices, text=str(choices[0]), as_sprite=False)
             touch: rect_one_shot(name, command, trace=trace)
 
 ---
@@ -844,7 +848,7 @@ spp_replay_mark:
         init:
             mark_spp__text: '"1.1"'
             mark__text: '"Mark"'
-            mark__command: SaveSpp(mark_spp, multiplier)
+            mark__command: SaveSpp(mark_spp, multiplier.background__touch.command)
             replay__label: static_text(text="Replay")
             replay__command: Replay()
             mark_end__choices: [Mark, End]
@@ -874,7 +878,7 @@ spp_replay_end:
         init:
             end_spp__text: '"1.1"'
             end__text: '"End"'
-            end__command: SaveSpp(end_spp, multiplier)
+            end__command: SaveSpp(end_spp, multiplier.background__touch.command)
             loop__label: static_text(text="Loop")
             loop__command: Loop()
             multiplier__choices: [100, 10, 1, .1]
@@ -897,10 +901,10 @@ spp_replay_guts:
             mark_col__multiplier: end_col.multiplier
     include:
         init_end: |
-            self.mark_col.plus__command.args(self.mark_col.mark_end.command,
+            self.mark_col.plus__command.args(self.mark_col.mark_end.background__touch.command,
                                              self.mark_col.mark__command,
                                              self.end_col.end__command)
-            self.end_col.minus__command.args(self.mark_col.mark_end.command,
+            self.end_col.minus__command.args(self.mark_col.mark_end.background__touch.command,
                                              self.mark_col.mark__command,
                                              self.end_col.end__command)
             self.mark_col.replay__command.args(self.mark_col.mark__command,
@@ -1006,7 +1010,7 @@ soft_pedal:             # width=43, height=28
         split: true
     computed:
         init:
-            command: ControlChange(2, 0x40, 127)
+            command: ControlChange(2, 0x43, 127)
 
 sostenuto_pedal:        # width=93, height=28
     specializes: toggle_rect
@@ -1026,7 +1030,7 @@ sustain_pedal:          # width=72, height=28
         split: true
     computed:
         init:
-            command: ControlChange(2, 0x43, 127)
+            command: ControlChange(2, 0x40, 127)
 
 ch_spp_row:
     row:
@@ -1093,12 +1097,15 @@ player_top_row:
         gap0__margin: 3
         title__text: '"Player:"'
         gap1__margin: 4
-        songs__choices:
-            - Gladiolus Rag
-            - La Campanella
-            - Weeping Willow
         gap2__margin: 8
         select__text: '"Select"'
+    computed:
+        init:
+            select__command: SongSelect(songs.background__touch.command)
+            songs__choices:
+                - Gladiolus Rag
+                - La Campanella
+                - Weeping Willow
 
 player_full:
     column:
