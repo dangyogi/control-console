@@ -48,7 +48,7 @@ def close(screen):
 def register_read(file, read_fn):
     r'''Register a read_fn to be called whenever the select finds the file readable.
 
-    The read_fn is passed the file, and must return True if it has changed the Screen's
+    The read_fn is passed the file, and must return True if it has drawn on the Screen's
     render_template.
 
     Only one read_fn may be registered per file, but the same read_fn may be registered against

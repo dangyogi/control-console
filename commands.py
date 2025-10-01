@@ -1,5 +1,7 @@
 # commands.py
 
+import time
+
 import midi_io
 
 
@@ -58,6 +60,8 @@ class Cycle(Command):
 
     def act(self):
         r'''Called before turning on the button.
+
+        Returns True if screen changed.
         '''
         self.index = (self.index + 1) % len(self.choices)
         self.widget.text = str(self.choices[self.index])
@@ -90,10 +94,14 @@ class SaveSpp(Command):
         return self.update_display()
 
     def update_display(self):
+        r'''Returns True if screen changed.
+        '''
         self.display.draw(text=midi_io.get_location(self.spp))
         return True
 
     def inc(self, sign):
+        r'''Returns True if screen changed.
+        '''
         self.spp += sign * self.inc_amount()
         return self.update_display()
 
@@ -112,6 +120,8 @@ class IncSpp(Command):
         self.savespps = (mark_savespp, end_savespp)  # SaveSpp commands
 
     def act(self):
+        r'''Returns True if screen changed.
+        '''
         return self.savespps[self.mark_end.index].inc(self.sign)
 
 class Replay(Command):
@@ -120,11 +130,23 @@ class Replay(Command):
         self.end_savespp = end_savespp
 
     def act(self):
-        # FIX: implement
-        print(f"Replay.act() called -- ignored for now...")
+        r'''Returns True if screen changed.
+        '''
+        midi_io.send_midi_event(midi_io.StopEvent())
+        time.sleep(0.01)
+        midi_io.send_midi_event(midi_io.SongPositionPointerEvent(0, self.mark_savespp.spp))
+        time.sleep(0.01)
+        if self.end_savespp.spp:
+            midi_io.end_spp_fn(self.end_savespp.spp, self.end_fn)
+        time.sleep(0.01)
+        midi_io.send_midi_event(midi_io.ContinueEvent())
+        return False
+
+    def end_fn(self, spp):
+        midi_io.send_midi_event(midi_io.StopEvent())
+        return False
 
 class Loop(Replay):
-    def act(self):
-        # FIX: implement
-        print(f"Loop.act() called -- ignored for now...")
+    def end_fn(self, spp):
+        return self.act()
 

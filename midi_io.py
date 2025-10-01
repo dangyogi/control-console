@@ -41,9 +41,14 @@ for port_info in Client.list_ports():
 else:
     print("Net Client not found -- not connected")
 
-# fn() each time location changes (based on Beat_type in time signature)
-# return True is screen was updated
-Notify_location_fn = lambda: False
+# Notify_location_fn called each time location changes (based on Beat_type in time signature).
+# It is passed the new spp, and must return True if the screen was updated.
+Notify_location_fn = lambda spp: False
+
+# End_spp_fn called when the spp reaches End_spp.
+# It is passed the final spp, and must return True if the screen was updated.
+End_spp = 1000000000
+End_spp_fn = lambda spp: False
 
 @screen.register_init2
 def init(screen):
@@ -60,10 +65,21 @@ def quit(screen):
     Client.close()
 
 def notify_location_fn(fn):
+    r'''fn called with new spp.  Returns True if screen changed.
+    '''
     global Notify_location_fn
     if Trace:
         print(f"midi_io.notify_location_fn({command})")
     Notify_location_fn = fn
+
+def end_spp_fn(end_spp, fn):
+    r'''fn called with end_spp is reached.  Returns True if screen changed.
+    '''
+    global End_spp, End_spp_fn
+    if Trace:
+        print(f"midi_io.end_spp_fn({command})")
+    End_spp = end_spp
+    End_spp_fn = fn
 
 Clock_running = False
 Clock_count = 0
@@ -73,16 +89,6 @@ Clocks_per_beat_type = Clocks_per_whole // Beat_type
 Spp_per_beat_type = Clocks_per_beat_type // Clocks_per_spp
 Clocks_per_measure = Clocks_per_beat_type * Beats
 Spp_per_measure = Spp_per_beat_type * Beats
-
-def set_spp(spp):
-    r'''Returns True if screen changed.
-    '''
-    global Clock_count
-    assert not Clock_running, "set_spp called while clock is running"
-    Clock_count = spp * Clocks_per_spp
-    if Clock_count % Clocks_per_beat_type == 0:
-        return Notify_location_fn()
-    return False
 
 def get_spp():
     return Clock_count // Clocks_per_spp
@@ -96,6 +102,7 @@ def get_midi_events(_fd):
     # w/false, often 0, but there's still an event.
     # w/True, always at least 1, but often more
     global Clock_running, Clock_count, Beats, Beat_type, Clocks_per_beat_type, Spp_per_beat_type
+    global End_spp
 
     if Trace:
         print("midi_io.get_midi_events")
@@ -114,13 +121,23 @@ def get_midi_events(_fd):
                 if Clock_running:
                     Clock_count += 1
                     if Clock_count % Clocks_per_beat_type == 0:
-                        if Notify_location_fn():
+                        spp = get_spp()
+                        if Notify_location_fn(spp):
                             screen_changed = True
+                        if spp >= End_spp:
+                            if End_spp_fn(spp):
+                                End_spp = 1000000000
+                                screen_changed = True
             case EventType.START:
                 print("Got", event, "source", event.source)
                 Clock_count = 0
-                if Notify_location_fn():
+                spp = get_spp()
+                if Notify_location_fn(spp):
                     screen_changed = True
+                if spp >= End_spp:
+                    if End_spp_fn(spp):
+                        End_spp = 1000000000
+                        screen_changed = True
                 Clock_running = True
             case EventType.STOP:
                 print("Got", event, "source", event.source)
