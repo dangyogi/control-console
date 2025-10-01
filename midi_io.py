@@ -136,7 +136,7 @@ def get_midi_events(_fd):
                 match event.event:
                     case 0xF4:  # tempo
                         bpm = Tempo_scale.scale_rounded(event.result)
-                        print(f"get_midi_events got tempo {bpm=}, {event.source=} -- ignored")
+                        #print(f"get_midi_events got tempo {bpm=}, {event.source=} -- ignored")
                     case 0xF5:  # time signature
                         Beats, Beat_type = data_to_time_sig(event.result)
                         print("Got time signature", Beats, Beat_type, "source", event.source)
