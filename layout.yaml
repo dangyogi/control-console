@@ -766,19 +766,7 @@ import:
     - from buttons import *
     - from commands import *
     - from midi_io import *
-
-include: |
-    Spp_text = None   # points to spp_text (dynamic_text)
-
-    def set_spp_display(spp_text):
-        global Spp_text
-        Spp_text = spp_text
-
-    def update_spp_display(spp):
-        Spp_text.text = get_location(spp)
-        Spp_text.draw()
-        return True
-
+    - from spp_helpers import set_spp_display, update_spp_display
 
 spp_text:
     specializes: dynamic_text

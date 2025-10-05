@@ -134,13 +134,14 @@ class Replay(Command):
         '''
         midi_io.send_midi_event(midi_io.StopEvent())
         time.sleep(0.01)
-        midi_io.send_midi_event(midi_io.SongPositionPointerEvent(0, self.mark_savespp.spp))
-        time.sleep(0.01)
+        spp = self.mark_savespp.spp
+        midi_io.send_midi_event(midi_io.SongPositionPointerEvent(0, spp))
+        midi_io.set_spp(spp)
         if self.end_savespp.spp:
             midi_io.end_spp_fn(self.end_savespp.spp, self.end_fn)
         time.sleep(0.01)
         midi_io.send_midi_event(midi_io.ContinueEvent())
-        return False
+        return True
 
     def end_fn(self, spp):
         midi_io.send_midi_event(midi_io.StopEvent())

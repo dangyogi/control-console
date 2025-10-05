@@ -17,6 +17,7 @@ from alsa_midi import (SequencerClient, PortCaps, EventType,
 import screen
 import traffic_cop
 from scale_fns import *
+import spp_helpers
 
 Trace = False
 
@@ -45,10 +46,13 @@ else:
 # It is passed the new spp, and must return True if the screen was updated.
 Notify_location_fn = lambda spp: False
 
+def false(spp):
+    return False
+
 # End_spp_fn called when the spp reaches End_spp.
 # It is passed the final spp, and must return True if the screen was updated.
 End_spp = 1000000000
-End_spp_fn = lambda spp: False
+End_spp_fn = false
 
 @screen.register_init2
 def init(screen):
@@ -93,6 +97,13 @@ Spp_per_measure = Spp_per_beat_type * Beats
 def get_spp():
     return Clock_count // Clocks_per_spp
 
+def set_spp(spp):
+    r'''Updates the screen.
+    '''
+    global Clock_count
+    Clock_count = spp * Clocks_per_spp
+    spp_helpers.update_spp_display(spp)
+
 def get_location(spp):
     beats_since_start = spp // Spp_per_beat_type
     measure, beat = divmod(beats_since_start, Beats)
@@ -125,8 +136,10 @@ def get_midi_events(_fd):
                         if Notify_location_fn(spp):
                             screen_changed = True
                         if spp >= End_spp:
-                            if End_spp_fn(spp):
-                                End_spp = 1000000000
+                            fn = End_spp_fn
+                            End_spp = 1000000000
+                            End_spp_fn = false
+                            if fn(spp):
                                 screen_changed = True
             case EventType.START:
                 print("Got", event, "source", event.source)
@@ -135,8 +148,10 @@ def get_midi_events(_fd):
                 if Notify_location_fn(spp):
                     screen_changed = True
                 if spp >= End_spp:
-                    if End_spp_fn(spp):
-                        End_spp = 1000000000
+                    fn = End_spp_fn
+                    End_spp = 1000000000
+                    End_spp_fn = false
+                    if fn(spp):
                         screen_changed = True
                 Clock_running = True
             case EventType.STOP:
@@ -147,6 +162,8 @@ def get_midi_events(_fd):
                 Clock_running = True
            #case EventType.SONGPOS:
            #    spp = event.value
+           #    set_spp(spp)
+           #    screen_changed = True
            #case EventType.SONGSEL:
            #    song_num = event.value
             case EventType.SYSTEM:
