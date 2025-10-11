@@ -781,7 +781,7 @@ start_button:
     computed:
         init:
             label: static_text(text="Start")
-            command: CannedEvent(StartEvent())
+            command: Start()
 
 stop_button:
     specializes: one_shot_circle
@@ -790,7 +790,7 @@ stop_button:
     computed:
         init:
             label: static_text(text="Stop")
-            command: CannedEvent(StopEvent())
+            command: Stop()
 
 cont_button:
     specializes: one_shot_circle
@@ -799,7 +799,7 @@ cont_button:
     computed:
         init:
             label: static_text(text="Cont.")
-            command: CannedEvent(ContinueEvent())
+            command: Continue_()
 
 spp_start_stop_col:
     column:
@@ -952,6 +952,9 @@ transpose:   # width=107, height=322
     computed:
         init:
             command: ControlChange(2, 0x56)
+    include:
+        init_end: |
+            set_transpose(ans.body_titled.slider.touch)
 
 tempo:   # width=79, height=463
     specializes: slider
@@ -962,6 +965,9 @@ tempo:   # width=79, height=463
         init:
             scale_fn: Tempo_scale.scale_rounded
             command: SystemCommon(0xF4)
+    include:
+        init_end: |
+            set_tempo(ans.body_titled.slider.touch)
 
 channel_volume:   # width=82, height=463
     specializes: slider
@@ -971,8 +977,9 @@ channel_volume:   # width=82, height=463
         scale_fn: id
     computed:
         init:
+            command: ControlChange(2, 0x07, multiplier=127, send_msb_lsb=True)   # MSB and LSB
            #command: ControlChange(2, 0x07)   # MSB
-            command: ControlChange(2, 0x27)   # LSB
+           #command: ControlChange(2, 0x27)   # LSB
 
 channel:         # width=88, height=232
     specializes: slider
@@ -984,6 +991,9 @@ channel:         # width=88, height=232
         init:
             scale_fn: Channel_scale.scale_rounded
             command: ControlChange(2, 0x55)
+    include:
+        init_end: |
+            set_channel(ans.body_titled.slider.touch)
 
 offset:
     specializes: slider

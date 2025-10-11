@@ -75,17 +75,25 @@ def notify_location_fn(fn):
     if Trace:
         print(f"midi_io.notify_location_fn({command})")
     Notify_location_fn = fn
+    return False
 
 def end_spp_fn(end_spp, fn):
-    r'''fn called with end_spp is reached.  Returns True if screen changed.
+    r'''fn called with current spp when end_spp is reached.  fn must return True if screen changed.
     '''
     global End_spp, End_spp_fn
     if Trace:
-        print(f"midi_io.end_spp_fn({command})")
+        print(f"midi_io.end_spp_fn({end_spp}, {fn.__name__})")
     End_spp = end_spp
     End_spp_fn = fn
 
-Clock_running = False
+def clear_end_spp():
+    global End_spp, End_spp_fn
+    if Trace:
+        print(f"midi_io.clear_end_spp()")
+    End_spp = 1000000000
+    End_spp_fn = false
+
+Clock_running = False  # FIX: delete
 Clock_count = 0
 Beats = 4
 Beat_type = 4
@@ -98,11 +106,11 @@ def get_spp():
     return Clock_count // Clocks_per_spp
 
 def set_spp(spp):
-    r'''Updates the screen.
+    r'''Returns True.  Updates the screen.
     '''
     global Clock_count
     Clock_count = spp * Clocks_per_spp
-    spp_helpers.update_spp_display(spp)
+    return spp_helpers.update_spp_display(spp)
 
 def get_location(spp):
     beats_since_start = spp // Spp_per_beat_type
@@ -110,15 +118,14 @@ def get_location(spp):
     return f"{measure+1}.{beat+1}"
 
 def get_midi_events(_fd):
-    # w/false, often 0, but there's still an event.
-    # w/True, always at least 1, but often more
     global Clock_running, Clock_count, Beats, Beat_type, Clocks_per_beat_type, Spp_per_beat_type
-    global End_spp
+    global End_spp, End_spp_fn
 
     if Trace:
         print("midi_io.get_midi_events")
     start_time = time.time()
-    num_pending = Client.event_input_pending(True)
+    num_pending = Client.event_input_pending(True) # w/False, often 0, but there's still an event.
+                                                   # w/True, always at least 1, but often more
     pending_time = time.time()
     #print("event_input_pending took", pending_time - start_time)
     #print(f"{num_pending=}")
@@ -129,19 +136,19 @@ def get_midi_events(_fd):
         #print("event_input took", input_time - pending_time)
         match event.type:
             case EventType.CLOCK:
-                if Clock_running:
-                    Clock_count += 1
-                    if Clock_count % Clocks_per_beat_type == 0:
-                        spp = get_spp()
-                        if Notify_location_fn(spp):
+                Clock_count += 1
+                if Clock_count % Clocks_per_beat_type == 0:
+                    spp = get_spp()
+                    if Notify_location_fn(spp):
+                        screen_changed = True
+                    if spp >= End_spp:
+                        fn = End_spp_fn
+                        End_spp = 1000000000
+                        End_spp_fn = false
+                        if fn(spp):
                             screen_changed = True
-                        if spp >= End_spp:
-                            fn = End_spp_fn
-                            End_spp = 1000000000
-                            End_spp_fn = false
-                            if fn(spp):
-                                screen_changed = True
             case EventType.START:
+                # FIX: Not going to see these anymore...
                 print("Got", event, "source", event.source)
                 Clock_count = 0
                 spp = get_spp()
@@ -155,9 +162,11 @@ def get_midi_events(_fd):
                         screen_changed = True
                 Clock_running = True
             case EventType.STOP:
-                print("Got", event, "source", event.source)
+                # FIX: Not going to see these anymore...
+                print("Got", event, "source", event.source, "Clock_count", Clock_count)
                 Clock_running = False
             case EventType.CONTINUE:
+                # FIX: Not going to see these anymore...
                 print("Got", event, "source", event.source)
                 Clock_running = True
            #case EventType.SONGPOS:

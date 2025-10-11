@@ -3,28 +3,63 @@
 import time
 
 import midi_io
+import traffic_cop
 
 
-__all__ = "ControlChange SystemCommon CannedEvent Cycle SongSelect SaveSpp IncSpp Replay Loop".split()
+__all__ = "set_channel set_transpose set_tempo " \
+          "ControlChange SystemCommon CannedEvent Start Stop Continue_ Cycle SongSelect " \
+          "SaveSpp IncSpp Replay Loop".split()
 
+
+Running = False
+First_start = True
+Channel_touch = None
+Transpose_touch = None
+Tempo_touch = None
+
+def set_channel(touch):
+    global Channel_touch
+    Channel_touch = touch
+
+def set_transpose(touch):
+    global Transpose_touch
+    Transpose_touch = touch
+
+def set_tempo(touch):
+    global Tempo_touch
+    Tempo_touch = touch
+
+def init_player():
+    print(f"init_player: {Channel_touch.value=}, {Transpose_touch.value=}, {Tempo_touch.value=}")
+    midi_io.send_midi_event(midi_io.ControlChangeEvent(2, 0x55, Channel_touch.value))
+    midi_io.send_midi_event(midi_io.ControlChangeEvent(2, 0x56, Transpose_touch.value))
+    midi_io.send_midi_event(midi_io.SystemEvent(0xF4, Tempo_touch.value))
 
 class Command:
     def attach_touch(self, touch):
         self.touch = touch
 
 class ControlChange(Command):
-    def __init__(self, channel, param, multiplier=1):
+    def __init__(self, channel, param, multiplier=1, send_msb_lsb=False):
         self.channel = channel
         self.param = param
         self.multiplier = multiplier
+        self.send_msb_lsb = send_msb_lsb
 
     def value_change(self, value):
         r'''Returns True if screen changed.
         '''
         #print(f"sending ControlChangeEvent channel={self.channel}, param={hex(self.param)}, "
         #      f"value={value * self.multiplier}")
-        midi_io.send_midi_event(
-          midi_io.ControlChangeEvent(self.channel, self.param, value * self.multiplier))
+        value *= self.multiplier
+        if self.send_msb_lsb:
+            midi_io.send_midi_event(
+              midi_io.ControlChangeEvent(self.channel, self.param, value >> 7))
+            midi_io.send_midi_event(
+              midi_io.ControlChangeEvent(self.channel, self.param + 0x20, value & 0x7F))
+        else:
+            midi_io.send_midi_event(
+              midi_io.ControlChangeEvent(self.channel, self.param, value))
         return False
 
 class SystemCommon(Command):
@@ -47,6 +82,50 @@ class CannedEvent(Command):
         '''
         #print("sending", self.event)
         midi_io.send_midi_event(self.event)
+        return False
+
+class Start(CannedEvent):
+    def __init__(self):
+        super().__init__(midi_io.StartEvent())
+
+    def act(self):
+        r'''Returns True if screen changed.
+        '''
+        global Running, First_start
+        if not Running:
+            if First_start:
+                init_player()
+                First_start = False
+            super().act()
+            Running = True
+            return midi_io.set_spp(0)
+        return False
+
+class Stop(CannedEvent):
+    def __init__(self):
+        super().__init__(midi_io.StopEvent())
+
+    def act(self):
+        r'''Returns True if screen changed.
+        '''
+        global Running
+        if Running:
+            Running = False
+            midi_io.clear_end_spp()
+            return super().act()
+        return False
+
+class Continue_(CannedEvent):
+    def __init__(self):
+        super().__init__(midi_io.ContinueEvent())
+
+    def act(self):
+        r'''Returns True if screen changed.
+        '''
+        global Running
+        if not Running:
+            Running = True
+            return super().act()
         return False
 
 class Cycle(Command):
@@ -77,8 +156,11 @@ class SongSelect(Command):
     def act(self):
         r'''Returns True if screen changed.
         '''
+        global Running, First_start
         #print(f"sending SongSelectEvent channel=4, song={self.songs.index}")
         midi_io.send_midi_event(midi_io.SongSelectEvent(0, self.songs.index))
+        Running = False
+        First_start = True
         return False
 
 class SaveSpp(Command):
@@ -132,22 +214,44 @@ class Replay(Command):
     def act(self):
         r'''Returns True if screen changed.
         '''
-        midi_io.send_midi_event(midi_io.StopEvent())
-        time.sleep(0.01)
-        spp = self.mark_savespp.spp
-        midi_io.send_midi_event(midi_io.SongPositionPointerEvent(0, spp))
-        midi_io.set_spp(spp)
-        if self.end_savespp.spp:
-            midi_io.end_spp_fn(self.end_savespp.spp, self.end_fn)
-        time.sleep(0.01)
-        midi_io.send_midi_event(midi_io.ContinueEvent())
-        return True
+        global Running
+
+        def step2():
+            r'''Return True if screen changed.
+            '''
+            spp = self.mark_savespp.spp
+            midi_io.send_midi_event(midi_io.SongPositionPointerEvent(0, spp))
+            midi_io.set_spp(spp)
+            if self.end_savespp.spp:
+                midi_io.end_spp_fn(self.end_savespp.spp, self.end_fn)
+            traffic_cop.set_alarm(0.01, step3)
+            return True
+
+        def step3():
+            r'''Return True if screen changed.
+            '''
+            global Running
+            midi_io.send_midi_event(midi_io.ContinueEvent())
+            Running = True
+            return False
+
+        if Running:
+            midi_io.send_midi_event(midi_io.StopEvent())
+            Running = False
+            traffic_cop.set_alarm(0.01, step2)
+            return False
+        else:
+            return step2()
 
     def end_fn(self, spp):
+        r'''Returns True if screen changed.
+        '''
         midi_io.send_midi_event(midi_io.StopEvent())
         return False
 
 class Loop(Replay):
     def end_fn(self, spp):
+        r'''Returns True if screen changed.
+        '''
         return self.act()
 
