@@ -119,6 +119,8 @@ def stop():
 def run(secs=None):
     r'''Run for secs (forever if None), or until stop() or ^C.
     '''
+    global Sigint_registered
+
     if secs is not None:
         end = get_time() + secs
 
@@ -140,10 +142,6 @@ def run(secs=None):
             while Alarms and get_time() >= Alarms[-1][0]:
                 fn = Alarms.pop()[1]
                 screen_changed |= fn()
-       # FIX: delete
-       #midi_io.drain_output()
-        if screen_changed:
-            screen.Screen.draw_to_framebuffer()
 
 
 

@@ -947,11 +947,11 @@ transpose:   # width=107, height=322
         title: '"Transpose"'
         high_value: 24
         starting_value: 12
-        scale_fn: Transpose_scale.scale_rounded
+        scale_fn: Transpose_scale.scale_rounded      # [-12:12]
         tick: 10
     computed:
         init:
-            command: ControlChange(2, 0x56)
+            command: ControlChange(1, 0x56)
     include:
         init_end: |
             set_transpose(ans.body_titled.slider.touch)
@@ -963,7 +963,7 @@ tempo:   # width=79, height=463
         starting_value: 65
     computed:
         init:
-            scale_fn: Tempo_scale.scale_rounded
+            scale_fn: Tempo_scale.scale_rounded      # [30, 200]
             command: SystemCommon(0xF4)
     include:
         init_end: |
@@ -977,9 +977,9 @@ channel_volume:   # width=82, height=463
         scale_fn: id
     computed:
         init:
-            command: ControlChange(2, 0x07, multiplier=127, send_msb_lsb=True)   # MSB and LSB
-           #command: ControlChange(2, 0x07)   # MSB
-           #command: ControlChange(2, 0x27)   # LSB
+            command: ControlChange(1, 0x07, multiplier=127, send_msb_lsb=True)   # MSB and LSB
+           #command: ControlChange(1, 0x07)   # MSB
+           #command: ControlChange(1, 0x27)   # LSB
 
 channel:         # width=88, height=232
     specializes: slider
@@ -990,30 +990,59 @@ channel:         # width=88, height=232
     computed:
         init:
             scale_fn: Channel_scale.scale_rounded
-            command: ControlChange(2, 0x55)
+            command: ControlChange(1, 0x55)
     include:
         init_end: |
-            set_channel(ans.body_titled.slider.touch)
+            set_channel(ans.body_titled.slider.touch)   # Player channel
 
-offset:
+note_channel:    # width=??, height=??
     specializes: slider
     layout:
-        title: '"Offset"'
-        starting_value: 63
-        scale_fn: Offset_scale.scale_rounded         # [-0.75:0.76]
+        title: '"Channel"'
+        high_value: 16
+        tick: 10
+        cc_channel: None
+        cc_param: None
     computed:
         init:
-            command: null
+            scale_fn: Note_channel_scale
+            command: ControlChange(cc_channel, cc_param)
+
+duration:
+    specializes: slider
+    layout:
+        title: '"Duration"'
+        starting_value: 63
+        scale_fn: Duration_scale.scale_rounded         # [-0.75:0.76]
+        cc_channel: None
+        cc_param: None
+    computed:
+        init:
+            command: ControlChange(cc_channel, cc_param)
+
+grace_duration:
+    specializes: slider
+    layout:
+        title: '"Duration"'
+        starting_value: 13
+        scale_fn: Grace_duration_scale.scale_rounded   # [3:150]
+        cc_channel: None
+        cc_param: None
+    computed:
+        init:
+            command: ControlChange(cc_channel, cc_param)
 
 velocity:
     specializes: slider
     layout:
         title: '"Velocity"'
-        starting_value: 63
-        scale_fn: Velocity_scale.scale_rounded       # [-40:41]
+        starting_value: 42
+        scale_fn: Velocity_scale.scale_rounded         # [-50:100]
+        cc_channel: None
+        cc_param: None
     computed:
         init:
-            command: null
+            command: ControlChange(cc_channel, cc_param)
 
 soft_pedal:             # width=43, height=28
     specializes: toggle_rect
@@ -1024,7 +1053,7 @@ soft_pedal:             # width=43, height=28
         split: true
     computed:
         init:
-            command: ControlChange(2, 0x43, 127)
+            command: ControlChange(1, 0x43, 127)
 
 sostenuto_pedal:        # width=93, height=28
     specializes: toggle_rect
@@ -1033,7 +1062,7 @@ sostenuto_pedal:        # width=93, height=28
         split: true
     computed:
         init:
-            command: ControlChange(2, 0x42, 127)
+            command: ControlChange(1, 0x42, 127)
 
 sustain_pedal:          # width=72, height=28
     specializes: toggle_rect
@@ -1044,7 +1073,7 @@ sustain_pedal:          # width=72, height=28
         split: true
     computed:
         init:
-            command: ControlChange(2, 0x40, 127)
+            command: ControlChange(1, 0x40, 127)
 
 ch_spp_row:
     row:
@@ -1102,19 +1131,26 @@ player_top_row:
     row:
         elements:
             - gap0: hgap
-            - title: static_text
+            - quit: one_shot_rect
             - gap1: hgap
-            - songs: cycle_rect
+            - title: static_text
             - gap2: hgap
+            - songs: cycle_rect
+            - gap3: hgap
             - select: one_shot_rect
+            - gap4: hgap
     layout:
-        gap0__margin: 3
+        gap0__margin: 0
+        quit__text: '"Quit"'
+        gap1__margin: 46
         title__text: '"Player:"'
-        gap1__margin: 4
-        gap2__margin: 8
+        gap2__margin: 4
+        gap3__margin: 8
         select__text: '"Select"'
+        gap4__margin: 40
     computed:
         init:
+            quit__command: Quit()
             select__command: SongSelect(songs.background__touch.command)
             songs__choices:
                 - Gladiolus Rag
@@ -1139,31 +1175,79 @@ player:
         color: (255, 130, 255)
 
 note_row1:
+    trace:
+        - body
+        - create_widget_args
+       #- variable.init
     row:
         elements:
-            - channel: channel      # width 90, height 249
+            - channel: note_channel
             - gap0: hgap
-            - on_offset: offset
+            - start: duration
             - gap1: hgap
-            - off_offset: offset
+            - duration: placeholder
             - gap2: hgap
             - velocity: velocity
     layout:
         y_align: '"S"'
-        on_offset__title: '"Note On"'
-        off_offset__title: '"Note Off"'
+        start__title: '"Start"'
         gap0__margin: 5
         gap1__margin: 5
         gap2__margin: 5
+        cc_channel: None
+        cc_param_offset: None
+    computed:
+        init:
+            channel__cc_channel: cc_channel
+            channel__cc_param: cc_param_offset + 0
+            start__cc_channel: cc_channel
+            start__cc_param: cc_param_offset + 1
+            velocity__cc_channel: cc_channel
+            velocity__cc_param: cc_param_offset + 3
 
-note:           # width=389, height=502
+note_base:           # width=389, height=502
     specializes: boxed_titled
     placeholders:
         body:
             - row1: note_row1
     layout:
         title: '"Note"'
+        placeholders: None
+        cc_channel: None
+        cc_param_offset: None
     appearance:
         color: (255, 130, 255)
         # modified YELLOW: (253, 249, 140)
         # modified MAGENTA: (255, 130, 255)
+    shortcuts:
+        placeholders: row1__placeholders
+        cc_channel: row1__cc_channel
+        cc_param_offset: row1__cc_param_offset
+
+note:         # width=379, height=502
+    specializes: note_base
+    placeholders:
+        duration:
+            - dur: duration
+    layout:
+        title: null
+        cc_channel: null
+        cc_param_offset: null
+    computed:
+        init:
+            dur__cc_channel: cc_channel
+            dur__cc_param: cc_param_offset + 2
+
+grace_note:
+    specializes: note_base
+    placeholders:
+        duration:
+            - dur: grace_duration
+    layout:
+        title: null
+        cc_channel: null
+        cc_param_offset: null
+    computed:
+        init:
+            dur__cc_channel: cc_channel
+            dur__cc_param: cc_param_offset + 2

@@ -88,12 +88,14 @@ class choices:
     scale_rounded = scale
 
 
-Transpose_scale = linear(1, -12)
-Channel_scale = linear(1, 1)
-Offset_scale = linear(1.1969, -75)
-Velocity_scale = linear(2.3465, -148)
+Transpose_scale = linear(1, -12)                # high_value: 24, [-12:12] (semitones)
+Channel_scale = linear(1, 1)                    # high_value: 15, [1:16]
+Note_channel_scale = id                         # high_value: 16, [0:16] (0 for no change)
+Duration_scale = linear(1.1969, -75)            # [-75:77] (percent change)
+Grace_duration_scale = linear(1.1575, 3)        # [3:150] (1/12th of a clock)
+Velocity_scale = linear(1.1811, -50)            # [-50:100] (delta, added to starting velocity)
 
-Tempo_scale = exponential(1.01506, 30)
+Tempo_scale = exponential(1.01506, 30)          # [30:200] (bpm)
 
 def data_to_time_sig(data):
     r'''Returns beats, beat_type; given the data byte in the midi message.

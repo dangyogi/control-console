@@ -8,7 +8,7 @@ import traffic_cop
 
 __all__ = "set_channel set_transpose set_tempo " \
           "ControlChange SystemCommon CannedEvent Start Stop Continue_ Cycle SongSelect " \
-          "SaveSpp IncSpp Replay Loop".split()
+          "SaveSpp IncSpp Replay Loop Quit".split()
 
 
 Running = False
@@ -31,8 +31,8 @@ def set_tempo(touch):
 
 def init_player():
     print(f"init_player: {Channel_touch.value=}, {Transpose_touch.value=}, {Tempo_touch.value=}")
-    midi_io.send_midi_event(midi_io.ControlChangeEvent(2, 0x55, Channel_touch.value))
-    midi_io.send_midi_event(midi_io.ControlChangeEvent(2, 0x56, Transpose_touch.value))
+    midi_io.send_midi_event(midi_io.ControlChangeEvent(1, 0x55, Channel_touch.value))
+    midi_io.send_midi_event(midi_io.ControlChangeEvent(1, 0x56, Transpose_touch.value))
     midi_io.send_midi_event(midi_io.SystemEvent(0xF4, Tempo_touch.value))
 
 class Command:
@@ -41,6 +41,7 @@ class Command:
 
 class ControlChange(Command):
     def __init__(self, channel, param, multiplier=1, send_msb_lsb=False):
+       #print(f"ControlChange({channel=}, {param=}, {multiplier=}, {send_msb_lsb=}")
         self.channel = channel
         self.param = param
         self.multiplier = multiplier
@@ -49,8 +50,8 @@ class ControlChange(Command):
     def value_change(self, value):
         r'''Returns True if screen changed.
         '''
-        #print(f"sending ControlChangeEvent channel={self.channel}, param={hex(self.param)}, "
-        #      f"value={value * self.multiplier}")
+       #print(f"sending ControlChangeEvent channel={self.channel}, param={hex(self.param)}, "
+       #      f"value={value * self.multiplier}")
         value *= self.multiplier
         if self.send_msb_lsb:
             midi_io.send_midi_event(
@@ -254,4 +255,8 @@ class Loop(Replay):
         r'''Returns True if screen changed.
         '''
         return self.act()
+
+class Quit(Command):
+    def act(self):
+        traffic_cop.stop()
 

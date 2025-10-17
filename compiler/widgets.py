@@ -122,6 +122,8 @@ class widget:
         needs = set()
         for pname in init_params.intersection(avail_params.keys()):
             avail_param = avail_params[pname]
+            if "create_widget_args" in self.trace:
+                print(f"  {pname=}: {avail_param=}, {avail_param.sname=}, {avail_param.is_computed=}")
             args_dict[pname] = avail_param.sname
             if avail_param.is_computed:
                 needs.add(avail_param.ename)
