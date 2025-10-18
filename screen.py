@@ -86,11 +86,11 @@ Colors = dict(
 Color_names = dict((value, key) for key, value in Colors.items())
 
 
-# For touch_device.py
+# For touch_input.py
 # Find the input touch device file path
 Touch_device_path = "/dev/input/by-id/usb-Siliconworks_SiW_HID_Touch_Controller-event-if00"
 
-# For text.py
+# For shapes.py
 Font_dir = "/usr/share/fonts/truetype/dejavu"
 
 

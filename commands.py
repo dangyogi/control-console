@@ -130,9 +130,11 @@ class Continue_(CannedEvent):
         return False
 
 class Cycle(Command):
-    def __init__(self, choices):
+    def __init__(self, choices, cc_channel=None, cc_param=None):
         self.choices = choices
         self.index = 0
+        self.cc_channel = cc_channel
+        self.cc_param = cc_param
 
     def attach_touch(self, touch):
         super().attach_touch(touch)
@@ -145,6 +147,9 @@ class Cycle(Command):
         '''
         self.index = (self.index + 1) % len(self.choices)
         self.widget.text = str(self.choices[self.index])
+        if self.cc_channel is not None:
+            midi_io.send_midi_event(
+              midi_io.ControlChangeEvent(self.cc_channel, self.cc_param, self.index))
         return False  # haven't updated the screen ... yet ...
 
     def choice(self):

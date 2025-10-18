@@ -741,6 +741,8 @@ cycle_rect:
         label_wmargin: 2
         label_hmargin: 2
         choices: null
+        cc_channel: null
+        cc_param: null
 
         # used by touch_buttons:
         on_color: GREEN    # suggest: RED, GREEN, BLUE
@@ -750,7 +752,7 @@ cycle_rect:
         color: GRAY
     computed:
         init:
-            command: Cycle(choices)
+            command: Cycle(choices, cc_channel, cc_param)
             label: dynamic_text(all_texts=choices, text=str(choices[0]), as_sprite=False)
             touch: rect_one_shot(name, command, trace=trace)
 
@@ -899,7 +901,7 @@ spp_replay_guts:
             - end_col: spp_replay_end
     layout:
         y_align: '"S"'
-        gap__margin: 9
+        gap__margin: 10
     computed:
         init:
             mark_col__multiplier: end_col.multiplier
@@ -922,7 +924,7 @@ spp_replay:
         body:
             - guts: spp_replay_guts
     layout:
-        horz_margin: 8              # between body and left/right edge of border
+        horz_margin: 10             # between body and left/right edge of border
         vert_margin: 5              # between body and top/bottom edge of border
 
 ---
@@ -1044,25 +1046,15 @@ velocity:
         init:
             command: ControlChange(cc_channel, cc_param)
 
-soft_pedal:             # width=43, height=28
-    specializes: toggle_rect
+default_velocity:
+    specializes: slider
     layout:
-        width: 93           # of border rect, if null, calced by background__width + border_width
-        height: null        # of border rect, if null, calced by background__height + border_width
-        text: '"Soft"'
-        split: true
+        title: '"Dynamics"'
+        starting_value: 43
+        scale_fn: id
     computed:
         init:
-            command: ControlChange(1, 0x43, 127)
-
-sostenuto_pedal:        # width=93, height=28
-    specializes: toggle_rect
-    layout:
-        text: '"Sostenuto"'
-        split: true
-    computed:
-        init:
-            command: ControlChange(1, 0x42, 127)
+            command: ControlChange(1, 0x57)
 
 sustain_pedal:          # width=72, height=28
     specializes: toggle_rect
@@ -1075,22 +1067,29 @@ sustain_pedal:          # width=72, height=28
         init:
             command: ControlChange(1, 0x40, 127)
 
-ch_spp_row:
-    row:
-        elements:
-            - ch: channel
-            - gap: hgap
-            - spp: spp_start_stop
+sostenuto_pedal:        # width=93, height=28
+    specializes: toggle_rect
     layout:
-        y_align: '"S"'
-        margin: 5
-    shortcuts:
-        margin: gap__margin
+        text: '"Sostenuto"'
+        split: true
+    computed:
+        init:
+            command: ControlChange(1, 0x42, 127)
 
-trans_pedal_col:
+soft_pedal:             # width=43, height=28
+    specializes: toggle_rect
+    layout:
+        width: 93           # of border rect, if null, calced by background__width + border_width
+        height: null        # of border rect, if null, calced by background__height + border_width
+        text: '"Soft"'
+        split: true
+    computed:
+        init:
+            command: ControlChange(1, 0x43, 127)
+
+pedal_col:
     column:
         elements:
-            - trans: transpose
             - gap0: vgap
             - sustain: sustain_pedal
             - gap1: vgap
@@ -1098,32 +1097,44 @@ trans_pedal_col:
             - gap2: vgap
             - soft: soft_pedal
     layout:
-        gap0__margin: 19
-        gap1__margin: 19
-        gap2__margin: 19
+        gap0__margin: 51
+        gap1__margin: 36
+        gap2__margin: 36
 
-ch_spp_replay_col:
+spp_pedal_row:
+    row:
+        elements:
+            - spp: spp_start_stop
+            - gap: hgap
+            - pedals: pedal_col
+    layout:
+        y_align: '"S"'
+        margin: 5
+    shortcuts:
+        margin: gap__margin
+
+spp_pedal_replay_col:
     column:
         elements:
-            - ch_spp: ch_spp_row
+            - spp_pedals: spp_pedal_row
             - gap: vgap
             - replay: spp_replay
     layout:
         gap__margin: 5
 
+
+
+
 player_guts:
     row:
         elements:
-            - ch_spp_replay: ch_spp_replay_col
-            - gap0: hgap
-            - trans_pedals: trans_pedal_col
+            - ch_spp_replay: spp_pedal_replay_col
             - gap1: hgap
             - tempo_slider: tempo
             - gap2: hgap
-            - volume: channel_volume
+            - dynamics: default_velocity
     layout:
         y_align: '"S"'
-        gap0__margin: 5
         gap1__margin: 5
         gap2__margin: 5
 
@@ -1142,12 +1153,12 @@ player_top_row:
     layout:
         gap0__margin: 0
         quit__text: '"Quit"'
-        gap1__margin: 46
+        gap1__margin: 18
         title__text: '"Player:"'
         gap2__margin: 4
         gap3__margin: 8
         select__text: '"Select"'
-        gap4__margin: 40
+        gap4__margin: 4
     computed:
         init:
             quit__command: Quit()
@@ -1166,13 +1177,37 @@ player_full:
     layout:
         gap__margin: 5
 
-player:
+player:         # width=389, height=514
     specializes: boxed
     placeholders:
         body:
             - full: player_full
     layout:
         color: (255, 130, 255)
+
+player2_full:
+    row:
+        elements:
+            - ch: channel
+            - gap1: hgap
+            - trans: transpose
+            - gap2: hgap
+            - ch_vol: channel_volume
+    layout:
+        y_align: '"S"'
+        gap1__margin: 5
+        gap2__margin: 5
+
+player2:        # width=305, height=502
+    specializes: boxed_titled
+    placeholders:
+        body:
+            - full: player2_full
+    layout:
+        title: '"Player2"'
+    appearance:
+        color: (255, 130, 255)
+
 
 note_row1:
     trace:
@@ -1205,7 +1240,7 @@ note_row1:
             velocity__cc_channel: cc_channel
             velocity__cc_param: cc_param_offset + 3
 
-note_base:           # width=389, height=502
+note_base:           # width=379, height=502
     specializes: boxed_titled
     placeholders:
         body:
@@ -1224,7 +1259,7 @@ note_base:           # width=389, height=502
         cc_channel: row1__cc_channel
         cc_param_offset: row1__cc_param_offset
 
-note:         # width=379, height=502
+note:                # width=379, height=502
     specializes: note_base
     placeholders:
         duration:
@@ -1238,7 +1273,7 @@ note:         # width=379, height=502
             dur__cc_channel: cc_channel
             dur__cc_param: cc_param_offset + 2
 
-grace_note:
+grace_note:          # width=379, height=502
     specializes: note_base
     placeholders:
         duration:
@@ -1251,3 +1286,113 @@ grace_note:
         init:
             dur__cc_channel: cc_channel
             dur__cc_param: cc_param_offset + 2
+
+accent_offset:
+    specializes: slider
+    layout:
+        title: '"Delay"'
+        starting_value: 36
+        scale_fn: id            # [0-127]  clocks (0-5.3 qtr notes)
+        tick: 10
+    computed:
+        init:
+            command: ControlChange(3, 18)
+
+trill_col1:
+    column:
+        elements:
+            - accent: cycle_rect
+            - gap: vgap
+            - up_down: cycle_rect
+            - gap: vgap
+            - first: cycle_rect
+            - gap: vgap
+            - last: cycle_rect
+    layout:
+        gap__margin: 10
+    computed:
+        init:
+            accent__choices:
+                - "Accent \u03941"
+               #- "Accent \u03942"
+               #- Accent Δ1
+                - Accent Δ2
+            accent__cc_channel: 3
+            accent__cc_param: 12
+            up_down__choices:
+                - Accent Up
+                - Accent Down
+            up_down__cc_channel: 3
+            up_down__cc_param: 13
+            first__choices:
+                - Note First
+                - Accent First
+            first__cc_channel: 3
+            first__cc_param: 14
+            last__choices:
+                - Note Last
+                - Accent Last
+            last__cc_channel: 3
+            last__cc_param: 15
+
+trill_rate:
+    specializes: slider
+    layout:
+        title: '"Rate"'
+        starting_value: 36
+        scale_fn: id            # FIX: ??
+    computed:
+        init:
+            command: ControlChange(3, 16)
+
+trill_speed_up_down:
+    specializes: slider
+    layout:
+        title: '"\u0394Rate"'
+        starting_value: 36
+        scale_fn: id            # FIX: ??
+    computed:
+        init:
+            command: ControlChange(3, 17)
+
+trill_guts:
+    row:
+        elements:
+            - accent: trill_col1
+            - gap1: hgap
+            - rate: trill_rate
+            - gap2: hgap
+            - speed_up_down: trill_speed_up_down
+    layout:
+        gap1__margin: 2
+        gap2__margin: 2
+
+trill:          # width=300, height=502
+    specializes: boxed_titled
+    placeholders:
+        body:
+            - guts: trill_guts
+    layout:
+        title: '"Trill"'
+    appearance:
+        color: (255, 130, 255)
+
+delay:
+    specializes: slider
+    layout:
+        title: '"Delay"'
+        starting_value: 36
+        scale_fn: id            # [0-127]  clocks (0-5.3 qtr notes)
+    computed:
+        init:
+            command: ControlChange(3, 18)
+
+fermata:        # width=97, height=502
+    specializes: boxed_titled
+    placeholders:
+        body:
+            - clocks: delay
+    layout:
+        title: '"Fermata"'
+    appearance:
+        color: (255, 130, 255)

@@ -1,0 +1,9 @@
+# unicode.yaml
+
+---
+
+- Accent \u03941
+- Accent \u03942
+- "Delta \u0394"
+- "Fermata \U0001D110"
+- "Accent? \U0001D19C"
