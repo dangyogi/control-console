@@ -63,7 +63,7 @@ class widget:
             #print(f"{self.__class__.__name__}({self.name}).__init__: {name=}, {subname=}")
             setattr(self, name, section(computed.pop(subname, {}), self, self.trace))
         if computed:
-            print("unknown keys in 'computed' spec for", self.name, tuple(self.computed.keys()))
+            print("unknown keys in 'computed' spec for", self.name, tuple(computed.keys()))
 
         for method in self.methods:
             name = method.__name__

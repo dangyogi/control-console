@@ -12,6 +12,10 @@ def read_yaml(filename, fn):
 def dump_yaml(document):
     sys.stdout.write(dump(document))
 
+def print_list(document):
+    for str in document:
+        print(str)
+
 
 if __name__ == "__main__":
     import argparse
@@ -23,6 +27,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.print:
-        read_yaml(args.yaml_file, print)
+        read_yaml(args.yaml_file, print_list)
     else:
         read_yaml(args.yaml_file, dump_yaml)

@@ -35,6 +35,25 @@
 # for touch:
 #     touch_width and touch_height are used.  They default to width and height.
 
+# musical marks:
+#
+#  Unicode musical blocks:
+#    1CF00..1CFCF; Znamenny Musical Notation
+#    1D000..1D0FF; Byzantine Musical Symbols
+#    1D100..1D1FF; Musical Symbols                 disappointing
+#    1D200..1D24F; Ancient Greek Musical Notation
+#
+#    fermata       𝄐 \U0001d110                  Musical Symbols, LastResort
+#    accent        > (just a greater than char)
+#    mercato       ∧ (\u2227), ⋀ (\u22C0)        Mathematical Operators, Dejavu Sans, FreeSans, Arial
+#    staccato      • (\u2022)                    General Punctuation, Dejavu Sans, FreeSans, Arial
+#    staccatissimo ▼ (\u25BC)                    Geometric Shapes, Dejavu, FreeSans, Arial
+#    tenuto        — (\u2014), ‾ (\u203E)        General Punctuation
+#
+#    delta         Δ (\u0394)
+#
+# google fonts: ubuntu light 300, ubuntu regular 400
+
 module: shapes
 
 import:
@@ -383,9 +402,10 @@ titled:
             - body: placeholder
     layout:
         title: '"title"'
-        middle__margin: 2  # between title and body
+        margin: 2          # between title and body
     shortcuts:
         title: title_text__text
+        margin: middle__margin
 
 boxed:
     stacked:
@@ -432,14 +452,14 @@ boxed_titled:
         vert_margin: 5           # between body and top edge of border
 
         # titled arguments:
-        middle_margin: 1
+        title_margin: 1
     appearance:
         border_color: BLACK
         color: WHITE
     shortcuts:
         title: body_titled__title
         placeholders: body_titled__placeholders
-        middle_margin: body_titled__middle__margin
+        title_margin: body_titled__margin
 
 ---
 
@@ -1198,13 +1218,14 @@ player2_full:
         gap1__margin: 5
         gap2__margin: 5
 
-player2:        # width=305, height=502
+player2:        # width=305, height=514
     specializes: boxed_titled
     placeholders:
         body:
             - full: player2_full
     layout:
         title: '"Player2"'
+        title_margin: 13
     appearance:
         color: (255, 130, 255)
 
@@ -1248,6 +1269,7 @@ note_base:           # width=379, height=502
     layout:
         title: '"Note"'
         placeholders: None
+        title_margin: 13
         cc_channel: None
         cc_param_offset: None
     appearance:
@@ -1259,7 +1281,7 @@ note_base:           # width=379, height=502
         cc_channel: row1__cc_channel
         cc_param_offset: row1__cc_param_offset
 
-note:                # width=379, height=502
+note:                # width=379, height=514
     specializes: note_base
     placeholders:
         duration:
@@ -1273,7 +1295,7 @@ note:                # width=379, height=502
             dur__cc_channel: cc_channel
             dur__cc_param: cc_param_offset + 2
 
-grace_note:          # width=379, height=502
+grace_note:          # width=379, height=514
     specializes: note_base
     placeholders:
         duration:
@@ -1301,6 +1323,7 @@ accent_offset:
 trill_col1:
     column:
         elements:
+            - gap0: vgap
             - accent: cycle_rect
             - gap: vgap
             - up_down: cycle_rect
@@ -1309,7 +1332,8 @@ trill_col1:
             - gap: vgap
             - last: cycle_rect
     layout:
-        gap__margin: 10
+        gap0__margin: 53
+        gap__margin: 40
     computed:
         init:
             accent__choices:
@@ -1319,6 +1343,7 @@ trill_col1:
                 - Accent Δ2
             accent__cc_channel: 3
             accent__cc_param: 12
+            accent__width: up_down.width
             up_down__choices:
                 - Accent Up
                 - Accent Down
@@ -1329,11 +1354,13 @@ trill_col1:
                 - Accent First
             first__cc_channel: 3
             first__cc_param: 14
+            first__width: up_down.width
             last__choices:
                 - Note Last
                 - Accent Last
             last__cc_channel: 3
             last__cc_param: 15
+            last__width: up_down.width
 
 trill_rate:
     specializes: slider
@@ -1364,16 +1391,18 @@ trill_guts:
             - gap2: hgap
             - speed_up_down: trill_speed_up_down
     layout:
-        gap1__margin: 2
-        gap2__margin: 2
+        y_align: '"S"'
+        gap1__margin: 5
+        gap2__margin: 5
 
-trill:          # width=300, height=502
+trill:          # width=306, height=514
     specializes: boxed_titled
     placeholders:
         body:
             - guts: trill_guts
     layout:
         title: '"Trill"'
+        title_margin: 13
     appearance:
         color: (255, 130, 255)
 
@@ -1387,12 +1416,13 @@ delay:
         init:
             command: ControlChange(3, 18)
 
-fermata:        # width=97, height=502
+fermata:        # width=97, height=514
     specializes: boxed_titled
     placeholders:
         body:
             - clocks: delay
     layout:
         title: '"Fermata"'
+        title_margin: 13
     appearance:
         color: (255, 130, 255)
