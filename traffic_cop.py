@@ -140,7 +140,7 @@ def run(secs=None):
             while Alarms and get_time() >= Alarms[-1][0]:
                 fn = Alarms.pop()[1]
                 screen_changed |= fn()
-        if screen_changed:
+        if not load_new_screen() and screen_changed:
             screen.Screen.draw_to_framebuffer()
 
 

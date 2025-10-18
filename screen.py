@@ -54,6 +54,13 @@ import texture
 # FLAG_INTERLACED_HINT
 
 
+New_screen = None
+
+def new_screen(name):
+    global New_screen
+    New_screen = name
+
+
 Colors = dict(
     LIGHTGRAY=LIGHTGRAY,
     GRAY=GRAY,

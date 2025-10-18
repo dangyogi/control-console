@@ -1323,15 +1323,17 @@ trill_col1:
         elements:
             - gap0: vgap
             - accent: cycle_rect
-            - gap: vgap
+            - gap1: vgap
             - up_down: cycle_rect
-            - gap: vgap
+            - gap2: vgap
             - first: cycle_rect
-            - gap: vgap
+            - gap3: vgap
             - last: cycle_rect
     layout:
         gap0__margin: 53
-        gap__margin: 40
+        gap1__margin: 40
+        gap2__margin: 40
+        gap3__margin: 40
     computed:
         init:
             accent__choices:
@@ -1417,6 +1419,52 @@ fermata:        # width=97, height=514
             - clocks: delay
     layout:
         title: '"Fermata"'
+        title_margin: 13
+    appearance:
+        color: (255, 130, 255)
+
+screens_guts:
+    column:
+        elements:
+            - home: one_shot_rect
+            - gap1: vgap
+            - misc: one_shot_rect
+            - gap2: vgap
+            - voice: one_shot_rect
+            - gap3: vgap
+            - chord: one_shot_rect
+            - gap4: vgap
+            - arpeggiate: one_shot_rect
+    layout:
+        gap__margin: 36
+        home__text: '"Home"'
+        misc__text: '"Misc"'
+        voice__text: '"Voice"'
+        chord__text: '"Chord"'
+        arpeggiate__text: '"Arpeggiate"'
+    computed:
+        init:
+            gap1__margin: gap__margin
+            gap2__margin: gap__margin
+            gap3__margin: gap__margin
+            gap4__margin: gap__margin
+            home__command: 'SetScreen("home")'
+            home__width: arpeggiate.width
+            misc__command: 'SetScreen("misc")'
+            misc__width: arpeggiate.width
+            voice__command: 'SetScreen("voice")'
+            voice__width: arpeggiate.width
+            chord__command: 'SetScreen("chord")'
+            chord__width: arpeggiate.width
+            arpeggiate__command: 'SetScreen("arpeggiate")'
+
+screens:        # width=120, height=335
+    specializes: boxed_titled
+    placeholders:
+        body:
+            - guts: screens_guts
+    layout:
+        title: '"Screens"'
         title_margin: 13
     appearance:
         color: (255, 130, 255)

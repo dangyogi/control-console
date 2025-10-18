@@ -2,13 +2,14 @@
 
 import time
 
+import screen
 import midi_io
 import traffic_cop
 
 
 __all__ = "set_channel set_transpose set_tempo " \
           "ControlChange SystemCommon CannedEvent Start Stop Continue_ SongSelect " \
-          "SaveSpp IncSpp Replay Loop Quit".split()
+          "SaveSpp IncSpp Replay Loop Quit SetScreen".split()
 
 
 Running = False
@@ -240,3 +241,10 @@ class Quit(Command):
         traffic_cop.stop()
         return False
 
+class SetScreen(Command):
+    def __init__(self, name):
+        self.name = name
+
+    def act(self):
+        screen.new_screen(self.name)
+        return False

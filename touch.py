@@ -373,13 +373,11 @@ class touch_cycle(touch_one_shot):
         super().__init__(name, command, blink_time, trace)
         self.choices = choices
         self.index = 0
-        print(f"touch_cycle.__init__({name=}, {choices=})")
 
     def run_command(self):
         r'''Returns True is the screen has changed.
         '''
         self.index = (self.index + 1) % len(self.choices)
-        print(f"touch_cycle.{self.name}.run_command: {self.index=}")
         self.widget.label.text = str(self.choices[self.index])
         if self.command is not None:
             return self.command.value_change(self.index)
