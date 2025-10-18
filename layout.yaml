@@ -105,6 +105,9 @@ include: |
         def draw(self, x_pos=None, y_pos=None):
             pass
 
+        def clear(self):
+            pass
+
     class vgap(gap):
         def __init__(self, margin, name="a vgap"):
             super().__init__(name, height=margin)

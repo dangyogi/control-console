@@ -19,6 +19,7 @@ Screens = dict(     # {screen_name: [panel]}
 
 Player = None
 Screen_menu = None
+Current_screen = None
 
 def load_new_screen():
     if screen.New_screen is None:
@@ -28,10 +29,16 @@ def load_new_screen():
     return True
 
 def load_screen(name):
+    global Current_screen
     hgap = 2
     left_gap = 2
     top_gap = 2
     with screen.Screen.update(from_scratch=True):
+        if Current_screen is not None:
+            Player.clear()
+            Screen_menu.clear()
+            for panel in Screens[Current_screen]:
+                panel.clear()
         x = S(left_gap)
         y = S(top_gap)
         def draw(panel):
@@ -45,6 +52,7 @@ def load_screen(name):
                 x = S(left_gap)
                 y = S(540)
                 draw(Screen_menu)
+        Current_screen = name
 
 def run():
     global Player, Screen_menu
