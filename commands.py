@@ -7,7 +7,7 @@ import traffic_cop
 
 
 __all__ = "set_channel set_transpose set_tempo " \
-          "ControlChange SystemCommon CannedEvent Start Stop Continue_ Cycle SongSelect " \
+          "ControlChange SystemCommon CannedEvent Start Stop Continue_ SongSelect " \
           "SaveSpp IncSpp Replay Loop Quit".split()
 
 
@@ -129,32 +129,6 @@ class Continue_(CannedEvent):
             return super().act()
         return False
 
-class Cycle(Command):
-    def __init__(self, choices, cc_channel=None, cc_param=None):
-        self.choices = choices
-        self.index = 0
-        self.cc_channel = cc_channel
-        self.cc_param = cc_param
-
-    def attach_touch(self, touch):
-        super().attach_touch(touch)
-        self.widget = touch.widget.label
-
-    def act(self):
-        r'''Called before turning on the button.
-
-        Returns True if screen changed.
-        '''
-        self.index = (self.index + 1) % len(self.choices)
-        self.widget.text = str(self.choices[self.index])
-        if self.cc_channel is not None:
-            midi_io.send_midi_event(
-              midi_io.ControlChangeEvent(self.cc_channel, self.cc_param, self.index))
-        return False  # haven't updated the screen ... yet ...
-
-    def choice(self):
-        return self.choices[self.index]
-
 class SongSelect(Command):
     def __init__(self, songs):
         self.songs = songs
@@ -172,7 +146,7 @@ class SongSelect(Command):
 class SaveSpp(Command):
     def __init__(self, display, multiplier):
         self.display = display        # dynamic_text
-        self.multiplier = multiplier  # Cycle command
+        self.multiplier = multiplier  # touch_cycle
         self.spp = 0
 
     def act(self):
@@ -204,7 +178,7 @@ class IncSpp(Command):
         self.sign = sign  # 1 or -1
 
     def args(self, mark_end, mark_savespp, end_savespp):
-        self.mark_end = mark_end                     # Cycle command
+        self.mark_end = mark_end                     # touch_cycle
         self.savespps = (mark_savespp, end_savespp)  # SaveSpp commands
 
     def act(self):
@@ -264,4 +238,5 @@ class Loop(Replay):
 class Quit(Command):
     def act(self):
         traffic_cop.stop()
+        return False
 

@@ -32,8 +32,8 @@ import screen
 import traffic_cop
 
 
-__all__ = "touch_slider circle_toggle circle_one_shot circle_start_stop circle_radio " \
-          "rect_toggle rect_one_shot rect_start_stop rect_radio radio_control".split()
+__all__ = "touch_slider circle_toggle circle_one_shot circle_cycle circle_start_stop circle_radio " \
+          "rect_toggle rect_one_shot rect_cycle rect_start_stop rect_radio radio_control".split()
 
 
 class touch:
@@ -355,11 +355,37 @@ class touch_one_shot:
     def touch(self, x, y):
         r'''Returns True is the screen has changed.
         '''
-        if self.command is not None:
-            self.command.act()
+        self.run_command()
         self.show_on()
         traffic_cop.set_alarm(self.blink_time, self.show_off)
         return True
+
+    def run_command(self):
+        r'''Returns True is the screen has changed.
+        '''
+        if self.command is not None:
+            return self.command.act()
+
+class touch_cycle(touch_one_shot):
+    r'''Calls command.value_change(index)
+    '''
+    def __init__(self, name, choices, command, blink_time=0.3, trace=False):
+        super().__init__(name, command, blink_time, trace)
+        self.choices = choices
+        self.index = 0
+        print(f"touch_cycle.__init__({name=}, {choices=})")
+
+    def run_command(self):
+        r'''Returns True is the screen has changed.
+        '''
+        self.index = (self.index + 1) % len(self.choices)
+        print(f"touch_cycle.{self.name}.run_command: {self.index=}")
+        self.widget.label.text = str(self.choices[self.index])
+        if self.command is not None:
+            return self.command.value_change(self.index)
+
+    def choice(self):
+        return self.choices[self.index]
 
 class touch_start_stop:
     r'''Calls command.start() and command.stop()
@@ -431,6 +457,9 @@ class circle_toggle(touch_toggle, circle_button):
 class circle_one_shot(touch_one_shot, circle_button):
     pass
 
+class circle_cycle(touch_cycle, circle_button):
+    pass
+
 class circle_start_stop(touch_start_stop, circle_button):
     pass
 
@@ -441,6 +470,9 @@ class rect_toggle(touch_toggle, rect_button):
     pass
 
 class rect_one_shot(touch_one_shot, rect_button):
+    pass
+
+class rect_cycle(touch_cycle, rect_button):
     pass
 
 class rect_start_stop(touch_start_stop, rect_button):

@@ -761,8 +761,7 @@ cycle_rect:
         label_wmargin: 2
         label_hmargin: 2
         choices: null
-        cc_channel: null
-        cc_param: null
+        command: null
 
         # used by touch_buttons:
         on_color: GREEN    # suggest: RED, GREEN, BLUE
@@ -772,9 +771,8 @@ cycle_rect:
         color: GRAY
     computed:
         init:
-            command: Cycle(choices, cc_channel, cc_param)
             label: dynamic_text(all_texts=choices, text=str(choices[0]), as_sprite=False)
-            touch: rect_one_shot(name, command, trace=trace)
+            touch: rect_cycle(name, choices, command, trace=trace)
 
 ---
 
@@ -874,7 +872,7 @@ spp_replay_mark:
         init:
             mark_spp__text: '"1.1"'
             mark__text: '"Mark"'
-            mark__command: SaveSpp(mark_spp, multiplier.background__touch.command)
+            mark__command: SaveSpp(mark_spp, multiplier.background__touch)
             replay__label: static_text(text="Replay")
             replay__command: Replay()
             mark_end__choices: [Mark, End]
@@ -904,7 +902,7 @@ spp_replay_end:
         init:
             end_spp__text: '"1.1"'
             end__text: '"End"'
-            end__command: SaveSpp(end_spp, multiplier.background__touch.command)
+            end__command: SaveSpp(end_spp, multiplier.background__touch)
             loop__label: static_text(text="Loop")
             loop__command: Loop()
             multiplier__choices: [100, 10, 1, .1]
@@ -927,10 +925,10 @@ spp_replay_guts:
             mark_col__multiplier: end_col.multiplier
     include:
         init_end: |
-            self.mark_col.plus__command.args(self.mark_col.mark_end.background__touch.command,
+            self.mark_col.plus__command.args(self.mark_col.mark_end.background__touch,
                                              self.mark_col.mark__command,
                                              self.end_col.end__command)
-            self.end_col.minus__command.args(self.mark_col.mark_end.background__touch.command,
+            self.end_col.minus__command.args(self.mark_col.mark_end.background__touch,
                                              self.mark_col.mark__command,
                                              self.end_col.end__command)
             self.mark_col.replay__command.args(self.mark_col.mark__command,
@@ -1341,25 +1339,21 @@ trill_col1:
                #- "Accent \u03942"
                #- Accent Δ1
                 - Accent Δ2
-            accent__cc_channel: 3
-            accent__cc_param: 12
+            accent__command: ControlChange(3, 12)
             accent__width: up_down.width
             up_down__choices:
                 - Accent Up
                 - Accent Down
-            up_down__cc_channel: 3
-            up_down__cc_param: 13
+            up_down__command: ControlChange(3, 13)
             first__choices:
                 - Note First
                 - Accent First
-            first__cc_channel: 3
-            first__cc_param: 14
+            first__command: ControlChange(3, 14)
             first__width: up_down.width
             last__choices:
                 - Note Last
                 - Accent Last
-            last__cc_channel: 3
-            last__cc_param: 15
+            last__command: ControlChange(3, 15)
             last__width: up_down.width
 
 trill_rate:
