@@ -1,5 +1,6 @@
 # exp_console.py
 
+import time
 from collections import defaultdict
 
 from alignment import *
@@ -33,6 +34,7 @@ def load_screen(name):
     hgap = 2
     left_gap = 2
     top_gap = 2
+   #start_time = time.clock_gettime(time.CLOCK_MONOTONIC)
     with screen.Screen.update(from_scratch=True):
         if Current_screen is not None:
             Player.clear()
@@ -53,6 +55,8 @@ def load_screen(name):
                 y = S(540)
                 draw(Screen_menu)
         Current_screen = name
+   #elapsed_time = time.clock_gettime(time.CLOCK_MONOTONIC) - start_time
+   #print(f"load_screen took: {elapsed_time:.03} secs")
 
 def run():
     global Player, Screen_menu

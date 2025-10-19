@@ -97,6 +97,7 @@ class Touch_dispatcher:
     def touch(self, event):
         r'''Returns True if the screen was changed.
         '''
+       #start_time = time.clock_gettime(time.CLOCK_MONOTONIC)
         if self.trace:
             print(f"Touch_dispatcher.touch({event=})")
         if event.slot in self.ignore:
@@ -111,6 +112,8 @@ class Touch_dispatcher:
                     print(f"touch: assigning {widget=} to slot={event.slot}")
                 self.assignments[event.slot] = widget
                 return widget.touch(event.x, event.y)
+       #elapsed_time = time.clock_gettime(time.CLOCK_MONOTONIC) - start_time
+       #print(f"touch_dispatcher.touch: {elapsed_time:.03} secs")
         if self.trace:
             print(f"touch: adding slot={event.slot} to ignore list")
         self.ignore.add(event.slot)

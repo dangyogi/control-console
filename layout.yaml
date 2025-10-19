@@ -1183,7 +1183,7 @@ player_top_row:
     computed:
         init:
             quit__command: Quit()
-            select__command: SongSelect(songs.background__touch.command)
+            select__command: SongSelect(songs.background__touch)
             songs__choices:
                 - Gladiolus Rag
                 - La Campanella
