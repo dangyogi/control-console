@@ -7,16 +7,27 @@ import midi_io
 import traffic_cop
 
 
-__all__ = "set_channel set_transpose set_tempo " \
+__all__ = "set_tempo set_dynamics set_channel set_transpose set_volume " \
           "ControlChange SystemCommon CannedEvent Start Stop Continue_ SongSelect " \
           "SaveSpp IncSpp Replay Loop Quit SetScreen".split()
 
 
 Running = False
 First_start = True
+
+Tempo_touch = None
+Dynamics_touch = None
 Channel_touch = None
 Transpose_touch = None
-Tempo_touch = None
+Volume_touch = None
+
+def set_tempo(touch):
+    global Tempo_touch
+    Tempo_touch = touch
+
+def set_dynamics(touch):
+    global Dynamics_touch
+    Dynamics_touch = touch
 
 def set_channel(touch):
     global Channel_touch
@@ -26,15 +37,18 @@ def set_transpose(touch):
     global Transpose_touch
     Transpose_touch = touch
 
-def set_tempo(touch):
-    global Tempo_touch
-    Tempo_touch = touch
+def set_volume(touch):
+    global Volume_touch
+    Volume_touch = touch
 
 def init_player():
     print(f"init_player: {Channel_touch.value=}, {Transpose_touch.value=}, {Tempo_touch.value=}")
+    midi_io.send_midi_event(midi_io.SystemEvent(0xF4, Tempo_touch.value))
+    midi_io.send_midi_event(midi_io.ControlChangeEvent(1, 0x57, Dynamics_touch.value))
     midi_io.send_midi_event(midi_io.ControlChangeEvent(1, 0x55, Channel_touch.value))
     midi_io.send_midi_event(midi_io.ControlChangeEvent(1, 0x56, Transpose_touch.value))
-    midi_io.send_midi_event(midi_io.SystemEvent(0xF4, Tempo_touch.value))
+    midi_io.send_midi_event(midi_io.ControlChangeEvent(1, 0x07, Volume_touch.value))
+    midi_io.send_midi_event(midi_io.ControlChangeEvent(1, 0x27, 0))
 
 class Command:
     def attach_touch(self, touch):

@@ -983,7 +983,7 @@ tempo:   # width=79, height=463
     specializes: slider
     layout:
         title: '"Tempo"'
-        starting_value: 65
+        starting_value: 53
     computed:
         init:
             scale_fn: Tempo_scale.scale_rounded      # [30, 200]
@@ -996,13 +996,16 @@ channel_volume:   # width=82, height=463
     specializes: slider
     layout:
         title: '"Volume"'
-        starting_value: 45
+        starting_value: 75
         scale_fn: id
     computed:
         init:
             command: ControlChange(1, 0x07, multiplier=127, send_msb_lsb=True)   # MSB and LSB
            #command: ControlChange(1, 0x07)   # MSB
            #command: ControlChange(1, 0x27)   # LSB
+    include:
+        init_end: |
+            set_volume(ans.body_titled.slider.touch)
 
 channel:         # width=88, height=232
     specializes: slider
@@ -1071,11 +1074,14 @@ default_velocity:
     specializes: slider
     layout:
         title: '"Dynamics"'
-        starting_value: 43
+        starting_value: 60
         scale_fn: id
     computed:
         init:
             command: ControlChange(1, 0x57)
+    include:
+        init_end: |
+            set_dynamics(ans.body_titled.slider.touch) # Player dynamics
 
 sustain_pedal:          # width=72, height=28
     specializes: toggle_rect
