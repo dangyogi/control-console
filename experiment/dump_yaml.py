@@ -1,32 +1,40 @@
 # dump_yaml.py
 
 import sys
-from yaml import safe_load_all, dump
+from yaml import safe_load, dump
 
 
-def read_yaml(filename, fn):
+def read_yaml(filename):
     with open(filename, "r") as file:
-        for document in safe_load_all(file):
-            fn(document)
+        return safe_load(file)
 
 def dump_yaml(document):
-    sys.stdout.write(dump(document))
+    #sys.stdout.write(dump(document))
+    dump(document, sys.stdout)
+    #dump(document, sys.stdout, default_flow_style=True)
 
 def print_list(document):
     for str in document:
-        print(str)
+        print(repr(str))
+
+def print_dict(document):
+    for key, value in document.items():
+        print(repr(key), repr(value))
 
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--print", "-p", action="store_true", default=False)
+    parser.add_argument("--print-list", "-l", action="store_true", default=False)
+    parser.add_argument("--print-dict", "-d", action="store_true", default=False)
     parser.add_argument("yaml_file")
 
     args = parser.parse_args()
 
-    if args.print:
-        read_yaml(args.yaml_file, print_list)
+    if args.print_list:
+        print_list(read_yaml(args.yaml_file))
+    if args.print_dict:
+        print_dict(read_yaml(args.yaml_file))
     else:
-        read_yaml(args.yaml_file, dump_yaml)
+        dump_yaml(read_yaml(args.yaml_file))

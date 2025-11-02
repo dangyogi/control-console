@@ -95,7 +95,8 @@ Duration_scale = linear(0.011969, -0.75)   # zero: 63, (Start, Duration) [-0.75:
 Grace_duration_scale = linear(1.1575, 3)   # [3:150] (1/12th of a clock)
 Velocity_scale = linear(0.011811, -0.50)   # zero: 42, [-0.50:1.0] (delta, added to starting velocity)
 
-Tempo_scale = exponential(1.01506, 30)     # [30:200] (bpm)
+#Tempo_scale = exponential(1.01505, 30)    # [30:200] (bpm)
+Tempo_scale = linear(1.3386, 30)           # [30:200] (bpm)
 
 def data_to_time_sig(data):
     r'''Returns beats, beat_type; given the data byte in the midi message.

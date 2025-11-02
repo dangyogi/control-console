@@ -789,7 +789,7 @@ import:
     - from buttons import *
     - from commands import *
     - from midi_io import *
-    - from spp_helpers import set_spp_display, update_spp_display
+    - from spp_helpers import *
 
 spp_text:
     specializes: dynamic_text
@@ -842,10 +842,10 @@ spp_start_stop_col:
         init:
             stop__diameter: start.border__diameter
             cont__diameter: start.border__diameter
+            spp_control: Spp_control("spp", spp)
     include:
         init_end: |
-            set_spp_display(self.spp)
-            notify_location_fn(update_spp_display)
+            notify_location_fn(self.spp_control.set_spp)
 
 spp_start_stop:
     specializes: boxed
@@ -874,14 +874,15 @@ spp_replay_mark:
     computed:
         init:
             mark_spp__text: '"1.1"'
+            mark_control: Spp_control("mark", mark_spp)
             mark__text: '"Mark"'
-            mark__command: SaveSpp(mark_spp, multiplier.background__touch)
+            mark__command: SaveSpp(mark_control)
             replay__label: static_text(text="Replay")
             replay__command: Replay()
             mark_end__choices: [Mark, End]
             plus__label: static_text(text="+", size=30)
             plus__label_margin: 0
-            plus__command: IncSpp(1)
+            plus__command: IncSpp(1, multiplier.background__touch)
 
 spp_replay_end:
     column:
@@ -904,15 +905,16 @@ spp_replay_end:
     computed:
         init:
             end_spp__text: '"1.1"'
+            end_control: Spp_control("end", end_spp)
             end__text: '"End"'
-            end__command: SaveSpp(end_spp, multiplier.background__touch)
+            end__command: SaveSpp(end_control)
             loop__label: static_text(text="Loop")
             loop__command: Loop()
-            multiplier__choices: [100, 10, 1, .1]
+            multiplier__choices: [30, 5, 1, .1]
             minus__label: static_text(text="-", size=30)
             minus__label_margin: 0
             minus__diameter: 43
-            minus__command: IncSpp(-1)
+            minus__command: IncSpp(-1, multiplier.background__touch)
 
 spp_replay_guts:
     row:
@@ -928,16 +930,10 @@ spp_replay_guts:
             mark_col__multiplier: end_col.multiplier
     include:
         init_end: |
-            self.mark_col.plus__command.args(self.mark_col.mark_end.background__touch,
-                                             self.mark_col.mark__command,
-                                             self.end_col.end__command)
-            self.end_col.minus__command.args(self.mark_col.mark_end.background__touch,
-                                             self.mark_col.mark__command,
-                                             self.end_col.end__command)
-            self.mark_col.replay__command.args(self.mark_col.mark__command,
-                                               self.end_col.end__command)
-            self.end_col.loop__command.args(self.mark_col.mark__command,
-                                            self.end_col.end__command)
+            self.mark_col.plus__command.args(self.mark_col.mark_end.background__touch)
+            self.end_col.minus__command.args(self.mark_col.mark_end.background__touch)
+            self.mark_col.replay__command.init()
+            self.end_col.loop__command.init()
 
 spp_replay:
     specializes: boxed

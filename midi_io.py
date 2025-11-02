@@ -3,7 +3,7 @@
 import sys
 import os
 import time
-import selectors
+from yaml import safe_load
 from alsa_midi import (SequencerClient, PortCaps, EventType,
                        StartEvent, StopEvent, ContinueEvent, ClockEvent,
                        SystemEvent,               # (event, result), i.e. (status_byte, data_byte)
@@ -17,7 +17,7 @@ from alsa_midi import (SequencerClient, PortCaps, EventType,
 import screen
 import traffic_cop
 from scale_fns import *
-import spp_helpers
+from spp_helpers import calibrate_spp
 
 Trace = False
 
@@ -42,12 +42,13 @@ for port_info in Client.list_ports():
 else:
     print("Net Client not found -- not connected")
 
-# Notify_location_fn called each time location changes (based on Beat_type in time signature).
-# It is passed the new spp, and must return True if the screen was updated.
-Notify_location_fn = lambda spp: False
 
 def false(spp):
     return False
+
+# Notify_location_fn called each time location changes (based on Beat_type in time signature).
+# It is passed the new spp, and must return True if the screen was updated.
+Notify_location_fn = false
 
 # End_spp_fn called when the spp reaches End_spp.
 # It is passed the final spp, and must return True if the screen was updated.
@@ -70,6 +71,9 @@ def quit(screen):
 
 def notify_location_fn(fn):
     r'''fn called with new spp.  Returns True if screen changed.
+
+    This is only called once to set the Notify_location_fn to Spp_control.set_spp.
+    It is never set to anything else...
     '''
     global Notify_location_fn
     if Trace:
@@ -93,29 +97,18 @@ def clear_end_spp():
     End_spp = 1000000000
     End_spp_fn = false
 
-Clock_running = False  # FIX: delete
+Clock_running = False  # FIX: delete, nobody refers to this...
 Clock_count = 0
 Beats = 4
 Beat_type = 4
 Clocks_per_beat_type = Clocks_per_whole // Beat_type
+Part_duration_spp = None
 Spp_per_beat_type = Clocks_per_beat_type // Clocks_per_spp
 Clocks_per_measure = Clocks_per_beat_type * Beats
 Spp_per_measure = Spp_per_beat_type * Beats
 
 def get_spp():
     return Clock_count // Clocks_per_spp
-
-def set_spp(spp):
-    r'''Returns True.  Updates the screen.
-    '''
-    global Clock_count
-    Clock_count = spp * Clocks_per_spp
-    return spp_helpers.update_spp_display(spp)
-
-def get_location(spp):
-    beats_since_start = spp // Spp_per_beat_type
-    measure, beat = divmod(beats_since_start, Beats)
-    return f"{measure+1}.{beat+1}"
 
 def get_midi_events(_fd):
     global Clock_running, Clock_count, Beats, Beat_type, Clocks_per_beat_type, Spp_per_beat_type
@@ -130,14 +123,17 @@ def get_midi_events(_fd):
     #print("event_input_pending took", pending_time - start_time)
     #print(f"{num_pending=}")
     screen_changed = False
-    for i in range(1, num_pending + 1):
+    while num_pending:
+        num_pending -= 1
+       #print("calling Client.event_input()")
         event = Client.event_input()
+       #print(f"Client.event_input() -> {Event_type_names[event.type]}")
         input_time = time.time()
-        #print("event_input took", input_time - pending_time)
+       #print("event_input took", input_time - pending_time)
         match event.type:
             case EventType.CLOCK:
                 Clock_count += 1
-                if Clock_count % Clocks_per_beat_type == 0:
+                if Clock_count % Clocks_per_spp == 0:
                     spp = get_spp()
                     if Notify_location_fn(spp):
                         screen_changed = True
@@ -191,6 +187,13 @@ def get_midi_events(_fd):
                         print(f"Unrecognized SYSTEM event {event.event=}, {event.source=} -- ignored")
            #case EventType.CONTROLLER:
            #    match event.param:
+            case EventType.SYSEX:
+                measure_info = safe_load(event.data.decode("ASCII"))
+                calibrate_spp(measure_info["clocks_per_measure"],
+                              measure_info["part_duration_clocks"],
+                              measure_info["skips"],
+                              measure_info["odd_durations"])
+                num_pending = Client.event_input_pending(True)
             case _:
                 print(f"Unrecognized event.type {Event_type_names[event.type]}, "
                       f"{event.source=} -- ignored")

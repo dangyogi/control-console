@@ -6,6 +6,8 @@ import screen
 import midi_io
 import traffic_cop
 
+from spp_helpers import get_spp_control
+
 
 __all__ = "set_tempo set_dynamics set_channel set_transpose set_volume " \
           "ControlChange SystemCommon CannedEvent Start Stop Continue_ SongSelect " \
@@ -103,18 +105,21 @@ class CannedEvent(Command):
 class Start(CannedEvent):
     def __init__(self):
         super().__init__(midi_io.StartEvent())
+        self.spp_control = None
 
     def act(self):
         r'''Returns True if screen changed.
         '''
         global Running, First_start
+        if self.spp_control is None:
+            self.spp_control = get_spp_control("spp")
         if not Running:
             if First_start:
                 init_player()
                 First_start = False
             super().act()
             Running = True
-            return midi_io.set_spp(0)
+            return self.spp_control.set_spp(0)
         return False
 
 class Stop(CannedEvent):
@@ -159,52 +164,46 @@ class SongSelect(Command):
         return False
 
 class SaveSpp(Command):
-    def __init__(self, display, multiplier):
-        self.display = display        # dynamic_text
-        self.multiplier = multiplier  # touch_cycle
-        self.spp = 0
+    def __init__(self, target_control):
+        self.target_control = target_control
+        self.spp_control = get_spp_control("spp")
 
     def act(self):
-        r'''Returns True if screen changed.
-        '''
-        self.spp = midi_io.get_spp()
-        return self.update_display()
+        r'''Copies spp_control to self.target_control
 
-    def update_display(self):
-        r'''Returns True if screen changed.
+        Returns True if screen changed.
         '''
-        self.display.draw(text=midi_io.get_location(self.spp))
-        return True
-
-    def inc(self, sign):
-        r'''Returns True if screen changed.
-        '''
-        self.spp += sign * self.inc_amount()
-        return self.update_display()
-
-    def inc_amount(self):
-        multiplier = self.multiplier.choice()
-        if multiplier == 0.1:
-            return midi_io.Spp_per_beat_type
-        return multiplier * midi_io.Spp_per_measure
+        self.target_control.capture(self.spp_control)
+        return self.target_control.update_spp_display()
 
 class IncSpp(Command):
-    def __init__(self, sign):
+    def __init__(self, sign, multiplier):
         self.sign = sign  # 1 or -1
+        self.multiplier = multiplier  # touch_cycle
 
-    def args(self, mark_end, mark_savespp, end_savespp):
+    def args(self, mark_end):
         self.mark_end = mark_end                     # touch_cycle
-        self.savespps = (mark_savespp, end_savespp)  # SaveSpp commands
+        self.spps = get_spp_control("mark"), get_spp_control("end")
 
     def act(self):
         r'''Returns True if screen changed.
         '''
-        return self.savespps[self.mark_end.index].inc(self.sign)
+        target = self.spps[self.mark_end.index]
+        multiplier = self.multiplier.choice()
+        if multiplier == 0.1:
+            if self.sign > 1:
+                target.inc_beat()
+            else:
+                target.dec_beat()
+        else:
+            target.inc_measure(self.sign * multiplier)
+        return target.update_spp_display()
 
 class Replay(Command):
-    def args(self, mark_savespp, end_savespp):
-        self.mark_savespp = mark_savespp
-        self.end_savespp = end_savespp
+    def init(self):
+        self.spp_control = get_spp_control("spp")
+        self.mark_spp = get_spp_control("mark")
+        self.end_spp = get_spp_control("end")
 
     def act(self):
         r'''Returns True if screen changed.
@@ -214,13 +213,13 @@ class Replay(Command):
         def step2():
             r'''Return True if screen changed.
             '''
-            spp = self.mark_savespp.spp
+            spp = self.mark_spp.spp
             midi_io.send_midi_event(midi_io.SongPositionPointerEvent(0, spp))
-            midi_io.set_spp(spp)
-            if self.end_savespp.spp:
-                midi_io.end_spp_fn(self.end_savespp.spp, self.end_fn)
+            screen_changed = self.spp_control.set_spp(spp)
+            if self.end_spp.spp:
+                midi_io.end_spp_fn(self.end_spp.spp, self.end_fn)
             traffic_cop.set_alarm(0.01, step3)
-            return True
+            return screen_changed
 
         def step3():
             r'''Return True if screen changed.
