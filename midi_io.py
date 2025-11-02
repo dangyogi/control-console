@@ -110,6 +110,10 @@ Spp_per_measure = Spp_per_beat_type * Beats
 def get_spp():
     return Clock_count // Clocks_per_spp
 
+def set_midi_spp(spp):
+    global Clock_count
+    Clock_count = spp * Clocks_per_spp
+
 def get_midi_events(_fd):
     global Clock_running, Clock_count, Beats, Beat_type, Clocks_per_beat_type, Spp_per_beat_type
     global End_spp, End_spp_fn

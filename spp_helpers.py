@@ -76,13 +76,15 @@ def calibrate_spp(clocks_per_measure, part_duration_clocks, skips, odd_durations
     while spp < Part_duration_spps:
         spp = add(measure)
         measure += 1
-    print(f"calibrate_spp({clocks_per_measure=}, {part_duration_clocks=}, ...):")
+    print(f"calibrate_spp({clocks_per_measure=}, {part_duration_clocks=}, ...): "
+          f"{Part_duration_spps=}")
     print(f"  last measure {Measure_spps[-1]}, {spp=}")
     print(f"  first measure {Measure_spps[0]}")
     screen_updated = False
     for spp in Spp_controls.values():
         if spp.set_spp(0):
             screen_updated = True
+    midi_io.set_midi_spp(0)
     return screen_updated
 
 
@@ -101,8 +103,8 @@ class Spp_control:
 
     def update_spp_display(self):
         self.display_text.text = self.get_location()
-        print(f"Spp_control({self.name}).update_spp_display: "
-              f"spp={self.spp}, text={self.display_text.text}")
+       #print(f"Spp_control({self.name}).update_spp_display: "
+       #      f"spp={self.spp}, text={self.display_text.text}")
         self.display_text.draw()
         return True
 
@@ -151,24 +153,35 @@ class Spp_control:
         self.spp_next = self.spp + duration
 
     def inc_beat(self):
+       #print(f"Spp_control({self.name}).inc_beat: spp={self.spp}, "
+       #      f"Spp_per_beat_type={midi_io.Spp_per_beat_type} "
+       #      f"spp_next={self.spp_next}, measure_index={self.measure_index}")
         self.spp += midi_io.Spp_per_beat_type
-        if self.spp >= self.spp_next:
+        while self.spp >= self.spp_next:
             self.measure_index += 1
             if self.measure_index >= len(Measure_spps):
                 self.measure_index -= 1
                 self.spp -= midi_io.Spp_per_beat_type
+                break
             else:
                 self.spp, name, duration, spp_offset = Measure_spps[self.measure_index]
                 self.spp_next = self.spp + duration
+       #print(f"  {self.spp=}, {self.spp_next=}, {self.measure_index=}")
 
     def dec_beat(self):
+       #print(f"Spp_control({self.name}).dec_beat: spp={self.spp}, "
+       #      f"Spp_per_beat_type={midi_io.Spp_per_beat_type} "
+       #      f"spp_next={self.spp_next}, measure_index={self.measure_index}")
         self.spp -= midi_io.Spp_per_beat_type
         if self.spp < 0:
             self.spp = 0
-        if self.measure_index >= len(Measure_spps) or self.spp < Measure_spps[self.measure_index][0]:
+        while self.measure_index >= len(Measure_spps) or self.spp < Measure_spps[self.measure_index][0]:
             self.measure_index -= 1
-            self.spp, name, duration, spp_offset = Measure_spps[self.measure_index]
-            self.spp_next = self.spp + duration
+            if self.measure_index < 0:
+                self.measure_index = 0
+            spp, name, duration, spp_offset = Measure_spps[self.measure_index]
+            self.spp_next = spp + duration
+       #print(f"  {self.spp=}, {self.spp_next=}, {self.measure_index=}")
 
     def get_location(self):
         if Measure_spps is None:

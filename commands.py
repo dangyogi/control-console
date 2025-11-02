@@ -119,6 +119,7 @@ class Start(CannedEvent):
                 First_start = False
             super().act()
             Running = True
+            midi_io.set_midi_spp(0)
             return self.spp_control.set_spp(0)
         return False
 
@@ -166,14 +167,13 @@ class SongSelect(Command):
 class SaveSpp(Command):
     def __init__(self, target_control):
         self.target_control = target_control
-        self.spp_control = get_spp_control("spp")
 
     def act(self):
         r'''Copies spp_control to self.target_control
 
         Returns True if screen changed.
         '''
-        self.target_control.capture(self.spp_control)
+        self.target_control.capture("spp")
         return self.target_control.update_spp_display()
 
 class IncSpp(Command):
@@ -190,8 +190,9 @@ class IncSpp(Command):
         '''
         target = self.spps[self.mark_end.index]
         multiplier = self.multiplier.choice()
+       #print(f"IncSpp.act: target={target.name}, {multiplier=}")
         if multiplier == 0.1:
-            if self.sign > 1:
+            if self.sign > 0:
                 target.inc_beat()
             else:
                 target.dec_beat()
@@ -215,6 +216,7 @@ class Replay(Command):
             '''
             spp = self.mark_spp.spp
             midi_io.send_midi_event(midi_io.SongPositionPointerEvent(0, spp))
+            midi_io.set_midi_spp(spp)
             screen_changed = self.spp_control.set_spp(spp)
             if self.end_spp.spp:
                 midi_io.end_spp_fn(self.end_spp.spp, self.end_fn)
